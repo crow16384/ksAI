@@ -1,0 +1,38 @@
+Package: ksAI
+Type: Package
+Title: AI-Native Reasoning Layer for ksTFL Clinical Outputs
+Version: 0.1.0
+Authors@R:
+    c(
+    person("Vladimir", "Larchenko",
+           email = "crow16384@gmail.com",
+           role = c("aut", "cre")),
+    person("Igor", "Aleschenkov",
+           email = "igor.aleschenkov@gmail.com",
+           role = c("aut"))
+    )
+Description: Builds an offline, AI-native reasoning layer on top of the
+    'ksTFL' clinical tables framework. Reads the metadata and data JSON
+    artefacts produced by 'ksTFL' save_report(), compiles them into a
+    self-contained study registry of table contexts, and provides an
+    'ellmer'-backed chat with registered tools so a medical writer can ask
+    questions across the whole set of study statistical results and draft
+    clinical study report (CSR) narratives. Works with local models via
+    Ollama or LM Studio, or hosted OpenAI-compatible providers.
+License: GPL-3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports:
+    ksTFL,
+    ellmer,
+    jsonlite,
+    cli,
+    checkmate,
+    rlang
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+Config/roxygen2/version: 8.0.0
