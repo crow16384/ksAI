@@ -21,7 +21,7 @@
   paste(lines, collapse = "\n")
 }
 
-#' Return the full JSON context of one output
+#' Return one output rendered as a human-readable Markdown table
 #' @keywords internal
 #' @noRd
 .tool_get_table_context <- function(study, id) {
@@ -29,7 +29,7 @@
   if (is.null(ctx)) {
     return(sprintf("No output with id '%s'.", id))
   }
-  as_json(ctx, pretty = TRUE)
+  as_markdown(ctx)
 }
 
 #' Render the first n data rows of a table as a markdown table
@@ -146,8 +146,9 @@
     function(id) .tool_get_table_context(study, id),
     name = "get_table_context",
     description = paste(
-      "Get the full structured context (title, population, columns, rows,",
-      "footnotes) of one output as JSON. Use this to read a table's contents."
+      "Get one output rendered as a human-readable Markdown table (title,",
+      "population, treatment-arm columns, section-grouped rows, footnotes).",
+      "Use this to read a table's contents."
     ),
     arguments = list(
       id = ellmer::type_string("The output id, e.g. '14-3.01'.")

@@ -34,6 +34,8 @@ SMALL_STUDY_THRESHOLD <- 20L
 # The system prompt is a special template, not a user-facing skill.
 .KS_SYSTEM_PROMPT <- "system"
 .KS_STUDY_INDEX_PROMPT <- "study_index"
+# Focused system prompt for single-output skills (no whole-study context).
+.KS_SINGLE_SYSTEM_PROMPT <- "system_single"
 
 # ---------------------------------------------------------------------------
 # Invisible control columns emitted by ksTFL table programs

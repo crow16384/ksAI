@@ -13,8 +13,8 @@ ks_llm(x, skill = "describe", id = NULL, chat = NULL, ...)
 
 \item{id}{Optional character scalar. Table id when \code{x} is a study.}
 
-\item{chat}{Optional \code{kschat}. Reuse an existing chat session; if \code{NULL}
-and \code{x} is a study/context, a temporary session is created.}
+\item{chat}{Optional \code{kschat}. Supplies the connection settings; required
+when \code{x} is a \link{ks_study} or bare \link{ks_context}.}
 
 \item{...}{Named values filling additional template placeholders.}
 }
@@ -31,9 +31,12 @@ your own by pointing \code{ks_set_option("skills_dir", ...)} at a folder of
 \details{
 The \code{{{context}}} placeholder is filled automatically from \code{x}:
 \itemize{
-\item if \code{x} is a \link{ks_context}, its JSON is used;
-\item if \code{x} is a \link{ks_study} and \code{id} is supplied, that table's JSON is used;
-\item if \code{x} is a \link{ks_study} without \code{id}, all table contexts are concatenated.
+\item a single output (a \link{ks_context}, or a \link{ks_study}/\code{kschat} with \code{id}) is
+rendered as a human-readable Markdown table and run on a \emph{focused} chat,
+so the model sees only that output and is not flooded with the whole
+study;
+\item a \link{ks_study}/\code{kschat} without \code{id} concatenates all table contexts as
+JSON and reuses the existing chat session.
 }
 
 Any additional named arguments in \code{...} (e.g. \code{audience}, \code{title}) fill the

@@ -201,60 +201,94 @@
       max_rows, n_rows_total
     ))
   }
+  idx <- seq_len(n_keep)
 
-  # Pre-format each visible column once (vectorised), then assemble rows.
+  if (length(visible_cols) == 0) {
+    sections <- .cell_vec(data_json, section_col, idx)
+    kinds <- .cell_vec(data_json, kind_col, idx)
+    rows <- lapply(idx, function(i) {
+      list(cells = list(), section = sections[[i]], kind = kinds[[i]])
+    })
+    return(list(rows = rows, n_rows_total = as.integer(n_rows_total), warnings = warnings))
+  }
+
+  # Pre-format each visible column once (vectorised over the kept rows), then
+  # assemble rows from a character matrix — far cheaper than per-cell R calls.
   formatted <- lapply(visible_cols, function(col) {
-    raw <- data_json[[col]]
-    type <- columns_spec[[col]]$format$type %||% "string"
-    fmt <- columns_spec[[col]]$format$format %||% "%s"
-    miss <- columns_spec[[col]]$format$missings %||% ""
-    .format_column(raw, type, fmt, miss)
+    spec <- columns_spec[[col]]$format
+    .format_column(
+      data_json[[col]][idx],
+      spec$type %||% "string",
+      spec$format %||% "%s",
+      spec$missings %||% ""
+    )
   })
   names(formatted) <- visible_cols
 
-  rows <- lapply(seq_len(n_keep), function(i) {
-    cells <- lapply(visible_cols, function(col) formatted[[col]][[i]])
-    names(cells) <- visible_cols
+  mat <- do.call(cbind, formatted)
+  sections <- .cell_vec(data_json, section_col, idx)
+  kinds <- .cell_vec(data_json, kind_col, idx)
+
+  rows <- lapply(idx, function(i) {
+    cells_i <- mat[i, ]
+    names(cells_i) <- visible_cols
     list(
-      cells = cells,
-      section = .cell_value(data_json, section_col, i),
-      kind = .cell_value(data_json, kind_col, i)
+      cells = as.list(cells_i),
+      section = sections[[i]],
+      kind = kinds[[i]]
     )
   })
 
   list(rows = rows, n_rows_total = as.integer(n_rows_total), warnings = warnings)
 }
 
-#' Format a single raw column vector to character
+#' Format a raw column (list of scalars) to a character vector
+#'
+#' Vectorised: coerces the column once, applies the `sprintf` format to numeric
+#' columns in a single call, and substitutes the missing token for absent
+#' values. Non-numeric values in a numeric column fall back to their string
+#' form (as before).
 #' @keywords internal
 #' @noRd
 .format_column <- function(raw, type, fmt, miss) {
-  vals <- vapply(raw, function(v) {
-    if (is.null(v) || (length(v) == 1 && is.na(v))) {
-      return(miss)
-    }
-    if (identical(type, "numeric")) {
-      num <- suppressWarnings(as.numeric(v))
-      if (is.na(num)) as.character(v) else sprintf(fmt, num)
-    } else {
-      as.character(v)
-    }
-  }, character(1))
-  vals
+  n <- length(raw)
+  if (n == 0) {
+    return(character())
+  }
+  # One-pass flatten: length-1 entries become their value; NULL/absent -> NA.
+  chr <- rep(NA_character_, n)
+  keep <- lengths(raw) == 1L
+  if (any(keep)) {
+    chr[keep] <- as.character(unlist(raw[keep], use.names = FALSE))
+  }
+  missing <- is.na(chr)
+
+  if (identical(type, "numeric")) {
+    num <- suppressWarnings(as.numeric(chr))
+    out <- sprintf(fmt, num)
+    nonnum <- is.na(num) & !missing
+    out[nonnum] <- chr[nonnum]
+  } else {
+    out <- chr
+  }
+  out[missing] <- miss
+  out
 }
 
-#' Safely read a single cell value from a columnar list
+#' Read a control column (SECTION / ROW_KIND) as a character vector
 #' @keywords internal
 #' @noRd
-.cell_value <- function(data_json, col, i) {
+.cell_vec <- function(data_json, col, idx) {
   if (is.null(col)) {
-    return(NA_character_)
+    return(rep(NA_character_, length(idx)))
   }
-  v <- data_json[[col]][[i]]
-  if (is.null(v) || (length(v) == 1 && is.na(v))) {
-    return(NA_character_)
+  v <- data_json[[col]][idx]
+  out <- rep(NA_character_, length(idx))
+  keep <- lengths(v) == 1L
+  if (any(keep)) {
+    out[keep] <- as.character(unlist(v[keep], use.names = FALSE))
   }
-  as.character(v)
+  out
 }
 
 # ---------------------------------------------------------------------------

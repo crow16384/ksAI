@@ -99,8 +99,12 @@ ks_list_skills <- function() {
     character()
   }
   builtin_names <- sub("\\.md$", "", builtin_files)
-  # system.md and study_index.md are infrastructure, not user-facing skills.
-  builtin_names <- setdiff(builtin_names, c(.KS_SYSTEM_PROMPT, .KS_STUDY_INDEX_PROMPT))
+  # system.md, system_single.md and study_index.md are infrastructure, not
+  # user-facing skills.
+  builtin_names <- setdiff(
+    builtin_names,
+    c(.KS_SYSTEM_PROMPT, .KS_SINGLE_SYSTEM_PROMPT, .KS_STUDY_INDEX_PROMPT)
+  )
 
   df <- data.frame(
     name = builtin_names,
@@ -145,9 +149,12 @@ ks_list_skills <- function() {
 #'
 #' The `{{context}}` placeholder is filled automatically from `x`:
 #'
-#' - if `x` is a [ks_context], its JSON is used;
-#' - if `x` is a [ks_study] and `id` is supplied, that table's JSON is used;
-#' - if `x` is a [ks_study] without `id`, all table contexts are concatenated.
+#' - a single output (a [ks_context], or a [ks_study]/`kschat` with `id`) is
+#'   rendered as a human-readable Markdown table and run on a *focused* chat,
+#'   so the model sees only that output and is not flooded with the whole
+#'   study;
+#' - a [ks_study]/`kschat` without `id` concatenates all table contexts as
+#'   JSON and reuses the existing chat session.
 #'
 #' Any additional named arguments in `...` (e.g. `audience`, `title`) fill the
 #' matching placeholders in the template.
@@ -155,8 +162,8 @@ ks_list_skills <- function() {
 #' @param x A [ks_study], [ks_context], or `kschat` object.
 #' @param skill Character scalar. Skill name. Default `"describe"`.
 #' @param id Optional character scalar. Table id when `x` is a study.
-#' @param chat Optional `kschat`. Reuse an existing chat session; if `NULL`
-#'   and `x` is a study/context, a temporary session is created.
+#' @param chat Optional `kschat`. Supplies the connection settings; required
+#'   when `x` is a [ks_study] or bare [ks_context].
 #' @param ... Named values filling additional template placeholders.
 #'
 #' @return The LLM's text response (character scalar).
@@ -173,40 +180,42 @@ ks_list_skills <- function() {
 ks_llm <- function(x, skill = "describe", id = NULL, chat = NULL, ...) {
   checkmate::assert_string(skill)
 
-  # Resolve the chat session and the study/context to describe.
+  # Resolve the chat session and the context to run the skill against.
   resolved <- .resolve_chat_and_context(x, chat, id)
-  chat <- resolved$chat
-  context_json <- resolved$context_json
-  ctx_id <- resolved$id %||% (id %||% "")
 
   template <- .load_prompt(skill)
-  prompt <- .fill_prompt(
-    template,
-    context = context_json,
-    id = ctx_id,
-    ...
-  )
+  prompt <- .assemble_skill_prompt(template, context = resolved$context, id = resolved$id, ...)
 
-  chat$chat(prompt)
+  resolved$chat$chat(prompt)
 }
 
-#' Resolve x + chat + id into a chat session and a context JSON string
+#' Fill a skill template with its context, id, and extra placeholders
+#'
+#' Split out from [ks_llm()] so the assembled prompt can be inspected in tests
+#' without contacting a model.
+#' @keywords internal
+#' @noRd
+.assemble_skill_prompt <- function(template, context, id, ...) {
+  .fill_prompt(
+    template,
+    context = context,
+    id = id %||% "",
+    ...
+  )
+}
+
+#' Resolve x + chat + id into a chat session and a context string
+#'
+#' Single-output targeting (an `id`, or a bare [ks_context]) renders the target
+#' as human-readable Markdown and runs it on a *focused* chat: a fresh session
+#' whose system prompt carries only the constraints, so the model is never
+#' flooded with the whole study nor sent the target table twice. Study-wide
+#' calls (no `id`) reuse the existing session and its full JSON contexts.
 #' @keywords internal
 #' @noRd
 .resolve_chat_and_context <- function(x, chat, id) {
   if (is_kschat(x)) {
-    ks <- x
-    study <- ks$study
-    context_json <- if (!is.null(id)) {
-      ctx <- study[[id]]
-      if (is.null(ctx)) {
-        cli::cli_abort("Output {.val {id}} not found in the study.")
-      }
-      as_json(ctx)
-    } else {
-      .concat_contexts(study$tables)
-    }
-    return(list(chat = ks$chat, context_json = context_json, id = id))
+    return(.resolve_from_kschat(x, id))
   }
 
   if (is_ks_context(x)) {
@@ -216,30 +225,38 @@ ks_llm <- function(x, skill = "describe", id = NULL, chat = NULL, ...) {
         i = "Pass {.arg chat = ks_chat(study, model = ...)}."
       ))
     }
-    return(list(chat = chat$chat, context_json = as_json(x), id = x$id))
+    if (!is_kschat(chat)) {
+      cli::cli_abort("{.arg chat} must be a {.cls kschat} object.")
+    }
+    return(list(chat = .make_focused_chat(chat), context = as_markdown(x), id = x$id))
   }
 
   if (is_ks_study(x)) {
-    if (is.null(chat)) {
+    if (is.null(chat) || !is_kschat(chat)) {
       cli::cli_abort(c(
         "A chat session is required to run a skill.",
         i = "Pass {.arg chat = ks_chat(study, model = ...)} or call {.fn ks_chat} first."
       ))
     }
-    study <- x
-    context_json <- if (!is.null(id)) {
-      ctx <- study[[id]]
-      if (is.null(ctx)) {
-        cli::cli_abort("Output {.val {id}} not found in the study.")
-      }
-      as_json(ctx)
-    } else {
-      .concat_contexts(study$tables)
-    }
-    return(list(chat = chat$chat, context_json = context_json, id = id))
+    return(.resolve_from_kschat(chat, id, study = x))
   }
 
   cli::cli_abort("{.arg x} must be a {.cls ks_study}, {.cls ks_context}, or {.cls kschat}.")
+}
+
+#' Resolve a chat + context from a `kschat` (and optional overriding study)
+#' @keywords internal
+#' @noRd
+.resolve_from_kschat <- function(ks, id, study = ks$study) {
+  if (!is.null(id)) {
+    ctx <- study[[id]]
+    if (is.null(ctx)) {
+      cli::cli_abort("Output {.val {id}} not found in the study.")
+    }
+    return(list(chat = .make_focused_chat(ks), context = as_markdown(ctx), id = id))
+  }
+  # Study-wide: reuse the existing session and the full JSON contexts.
+  list(chat = ks$chat, context = .concat_contexts(study$tables), id = NULL)
 }
 
 #' Concatenate multiple contexts into one JSON-array-ish string

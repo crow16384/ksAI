@@ -53,5 +53,41 @@ test_that("study-navigation tools return expected content", {
   expect_match(ksAI:::.tool_list_tables(study), "14-3.01", fixed = TRUE)
   expect_match(ksAI:::.tool_get_table_data(study, "14-3.01", 2L), "| section |", fixed = TRUE)
   expect_match(ksAI:::.tool_compare_tables(study, "14-3.01", "14-3.02"), "Comparison", fixed = TRUE)
-  expect_match(ksAI:::.tool_get_table_context(study, "14-3.01"), "\"id\"", fixed = TRUE)
+  expect_match(ksAI:::.tool_get_table_context(study, "14-3.01"), "Placebo (N=79)", fixed = TRUE)
+})
+
+test_that("ask() passes the raw question through when no id is given", {
+  dir <- make_fixture_study(n_tables = 2L)
+  study <- load_study(dir)
+  ks <- structure(
+    list(chat = list(chat = function(p) p), study = study),
+    class = c("kschat", "list")
+  )
+  expect_equal(ask(ks, "What is the trend?"), "What is the trend?")
+})
+
+test_that("ask(id=) spotlights one table while keeping the study session", {
+  dir <- make_fixture_study(n_tables = 2L)
+  study <- load_study(dir)
+  # The fake session echoes the prompt so we can inspect what was sent.
+  ks <- structure(
+    list(chat = list(chat = function(p) p), study = study),
+    class = c("kschat", "list")
+  )
+  out <- ask(ks, "Is this consistent?", id = "14-3.01")
+  # The spotlighted table is rendered inline with human labels...
+  expect_match(out, "Placebo (N=79)", fixed = TRUE)
+  # ...framed to keep the rest of the study in scope, with the question appended.
+  expect_match(out, "taking the rest of the", fixed = TRUE)
+  expect_match(out, "Question: Is this consistent?", fixed = TRUE)
+})
+
+test_that("ask(id=) errors on an unknown output id", {
+  dir <- make_fixture_study(n_tables = 1L)
+  study <- load_study(dir)
+  ks <- structure(
+    list(chat = list(chat = function(p) p), study = study),
+    class = c("kschat", "list")
+  )
+  expect_error(ask(ks, "q", id = "no-such-id"), "not found")
 })

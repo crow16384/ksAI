@@ -5,11 +5,11 @@
 \title{Load a Study from a ksTFL Meta Folder or a Saved \code{.ks} File}
 \usage{
 load_study(
-	path,
-	latest_only = TRUE,
-	max_rows = ks_get_option("max_rows"),
-	pattern = NULL,
-	ignore_case = TRUE
+  path,
+  latest_only = TRUE,
+  max_rows = ks_get_option("max_rows"),
+  pattern = NULL,
+  ignore_case = TRUE
 )
 }
 \arguments{
@@ -26,7 +26,7 @@ Defaults to \code{ks_get_option("max_rows")}.}
 \item{pattern}{Optional regular expression. When set, keeps only outputs
 whose id, type, or title matches the pattern.}
 
-\item{ignore_case}{Logical. Passed to \code{\link[=grepl]{base::grepl()}} when matching
+\item{ignore_case}{Logical. Passed to \code{\link[base:grepl]{base::grepl()}} when matching
 \code{pattern}. Default \code{TRUE}.}
 }
 \value{

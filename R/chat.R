@@ -54,6 +54,17 @@
   .fill_prompt(base, study_context = study_context)
 }
 
+#' Build the focused system prompt for a single-output skill
+#'
+#' Contains only the hard constraints, with no embedded study context. The
+#' target table is supplied as rendered Markdown in the user turn, so the
+#' model is never flooded with the whole study.
+#' @keywords internal
+#' @noRd
+.build_single_system_prompt <- function() {
+  .load_prompt(.KS_SINGLE_SYSTEM_PROMPT)
+}
+
 # ---------------------------------------------------------------------------
 # Provider dispatch
 # ---------------------------------------------------------------------------
@@ -142,7 +153,18 @@ ks_chat <- function(study,
   ellmer_chat <- .make_ellmer_chat(provider, model, system_prompt, base_url, echo, ...)
 
   ks <- structure(
-    list(chat = ellmer_chat, study = study, mode = mode, provider = provider),
+    list(
+      chat = ellmer_chat,
+      study = study,
+      mode = mode,
+      provider = provider,
+      # Constructor params, retained so focused single-output sessions can be
+      # rebuilt with a minimal system prompt (see .make_focused_chat()).
+      model = model,
+      base_url = base_url,
+      echo = echo,
+      dots = list(...)
+    ),
     class = c("kschat", "list")
   )
 
@@ -151,6 +173,32 @@ ks_chat <- function(study,
   }
 
   ks
+}
+
+#' Build a focused ellmer chat for single-output skills
+#'
+#' Reuses the provider/model/connection settings of an existing `kschat` but
+#' with the focused single-output system prompt, so a single-table skill runs
+#' without the whole-study context and without conversation history.
+#'
+#' @param ks A `kschat` object.
+#' @return A bare ellmer chat object.
+#' @keywords internal
+#' @noRd
+.make_focused_chat <- function(ks) {
+  do.call(
+    .make_ellmer_chat,
+    c(
+      list(
+        provider = ks$provider,
+        model = ks$model,
+        system_prompt = .build_single_system_prompt(),
+        base_url = ks$base_url,
+        echo = ks$echo %||% "none"
+      ),
+      ks$dots %||% list()
+    )
+  )
 }
 
 #' Test for a `kschat` Object

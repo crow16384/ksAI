@@ -2,10 +2,12 @@
 
 S3method("[[",ks_study)
 S3method(as_json,ks_context)
+S3method(as_markdown,ks_context)
 S3method(print,ks_context)
 S3method(print,ks_study)
 S3method(print,kschat)
 export(as_json)
+export(as_markdown)
 export(ask)
 export(compare_tables)
 export(enrich_context)

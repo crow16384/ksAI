@@ -1,3 +1,5 @@
 tmp/
 .Rproj.user/
 .serena/
+.RData
+.Rhistory

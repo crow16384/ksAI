@@ -14,10 +14,11 @@ writer can reason across the whole set of study statistical results and
 draft clinical study report (CSR) narratives.
 }
 \author{
-\strong{Maintainer}: Igor Aleschenkov \email{igor.aleschenkov@gmail.com}
+\strong{Maintainer}: Vladimir Larchenko \email{crow16384@gmail.com}
 
 Authors:
 \itemize{
+  \item Vladimir Larchenko \email{crow16384@gmail.com}
   \item Igor Aleschenkov \email{igor.aleschenkov@gmail.com}
 }
 

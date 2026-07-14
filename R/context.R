@@ -139,6 +139,143 @@ as_json.ks_context <- function(x, pretty = FALSE) {
 }
 
 # ---------------------------------------------------------------------------
+# Markdown view (for prompt injection — human-readable, model-friendly)
+# ---------------------------------------------------------------------------
+
+#' Render a `ks_context` as a Human-Readable Markdown Table
+#'
+#' Reconstructs the output the way a reader sees it: real column labels (not
+#' raw column codes), treatment-arm/span-header groups, section-grouped rows,
+#' and footnotes. This is the representation injected into single-output skill
+#' prompts, because models describe a rendered table far more richly than the
+#' machine-shaped JSON produced by [as_json()].
+#'
+#' @param x A `ks_context` object.
+#' @param ... Unused; for S3 compatibility.
+#'
+#' @return A length-1 character string of Markdown.
+#'
+#' @examples
+#' \dontrun{
+#' study <- load_study("path/to/outputs/meta")
+#' cat(as_markdown(study[["14-3.01"]]))
+#' }
+#'
+#' @export
+as_markdown <- function(x, ...) {
+  UseMethod("as_markdown")
+}
+
+#' @export
+as_markdown.ks_context <- function(x, ...) {
+  lines <- character()
+
+  # Title lines.
+  if (length(x$title)) {
+    lines <- c(lines, paste0("# ", x$title[[1]]))
+    if (length(x$title) > 1) {
+      lines <- c(lines, vapply(x$title[-1], function(t) paste0("_", t, "_"), character(1)))
+    }
+  }
+
+  # Metadata block.
+  meta <- c(
+    paste0("- **ID**: ", x$id),
+    paste0("- **Type**: ", x$type)
+  )
+  if (!is.na(x$population)) meta <- c(meta, paste0("- **Population**: ", x$population))
+  if (!is.na(x$source)) meta <- c(meta, paste0("- **Source**: ", x$source))
+  lines <- c(lines, "", meta)
+
+  cols <- x$columns
+  has_table <- length(cols) > 0 && length(x$rows) > 0
+
+  if (!has_table) {
+    note <- if (!identical(x$type, "Table")) {
+      paste0("_(", x$type, " output; no tabular data embedded.)_")
+    } else {
+      "_(No data rows available.)_"
+    }
+    lines <- c(lines, "", note)
+    lines <- c(lines, .md_footnotes(x$footnotes))
+    return(paste(lines, collapse = "\n"))
+  }
+
+  col_names <- vapply(cols, function(c) c$name, character(1))
+  col_labels <- vapply(cols, function(c) {
+    lab <- c$label
+    if (is.null(lab) || !nzchar(lab)) c$name else lab
+  }, character(1))
+  name_to_label <- stats::setNames(col_labels, col_names)
+
+  # Treatment-arm / span-header groups, mapped to human labels.
+  if (length(x$span_headers)) {
+    spans <- vapply(x$span_headers, function(s) {
+      lbls <- unname(name_to_label[s$cols])
+      lbls[is.na(lbls)] <- s$cols[is.na(lbls)]
+      paste0(s$label, " (", paste(lbls, collapse = ", "), ")")
+    }, character(1))
+    lines <- c(lines, "", paste0("**Column groups**: ", paste(spans, collapse = "; ")))
+  }
+
+  # Header + separator.
+  lines <- c(
+    lines,
+    "",
+    paste0("| ", paste(.md_escape(col_labels), collapse = " | "), " |"),
+    paste0("| ", paste(rep("---", length(col_labels)), collapse = " | "), " |")
+  )
+
+  # Body rows, with section subheaders inserted on change.
+  prev_section <- NULL
+  n_col <- length(col_names)
+  for (row in x$rows) {
+    sec <- row$section
+    if (!is.null(sec) && !is.na(sec) && nzchar(sec) && !identical(prev_section, sec)) {
+      secrow <- c(paste0("**", .md_escape(sec), "**"), rep("", n_col - 1))
+      lines <- c(lines, paste0("| ", paste(secrow, collapse = " | "), " |"))
+      prev_section <- sec
+    }
+    cells <- vapply(col_names, function(nm) {
+      v <- row$cells[[nm]]
+      if (is.null(v) || (length(v) == 1 && is.na(v))) "" else as.character(v)
+    }, character(1))
+    cells <- .md_escape(cells)
+    if (identical(row$kind, "label") && nzchar(cells[[1]])) {
+      cells[[1]] <- paste0("**", cells[[1]], "**")
+    }
+    lines <- c(lines, paste0("| ", paste(cells, collapse = " | "), " |"))
+  }
+
+  # Truncation note.
+  shown <- length(x$rows)
+  if (x$n_rows_total > shown) {
+    lines <- c(lines, "", sprintf("_Showing %d of %d rows._", shown, x$n_rows_total))
+  }
+
+  lines <- c(lines, .md_footnotes(x$footnotes))
+  paste(lines, collapse = "\n")
+}
+
+#' Escape Markdown table-breaking characters in cell text
+#' @keywords internal
+#' @noRd
+.md_escape <- function(v) {
+  v <- gsub("|", "\\|", v, fixed = TRUE)
+  gsub("[\r\n]+", " ", v)
+}
+
+#' Render footnotes as trailing Markdown lines (empty if none)
+#' @keywords internal
+#' @noRd
+.md_footnotes <- function(footnotes) {
+  if (!length(footnotes)) {
+    return(character())
+  }
+  c("", "**Footnotes:**", vapply(footnotes, function(f) paste0("- ", f), character(1)))
+}
+
+# ---------------------------------------------------------------------------
 # Enrichment (non-mutating overlay)
 # ---------------------------------------------------------------------------
 
