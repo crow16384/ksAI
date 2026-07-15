@@ -99,12 +99,8 @@ ks_list_skills <- function() {
     character()
   }
   builtin_names <- sub("\\.md$", "", builtin_files)
-  # system.md, system_single.md and study_index.md are infrastructure, not
-  # user-facing skills.
-  builtin_names <- setdiff(
-    builtin_names,
-    c(.KS_SYSTEM_PROMPT, .KS_SINGLE_SYSTEM_PROMPT, .KS_STUDY_INDEX_PROMPT)
-  )
+  # system.md and system_single.md are infrastructure prompts.
+  builtin_names <- setdiff(builtin_names, c(.KS_SYSTEM_PROMPT, "system_single"))
 
   df <- data.frame(
     name = builtin_names,
@@ -136,136 +132,253 @@ ks_list_skills <- function() {
 }
 
 # ---------------------------------------------------------------------------
+# Prompt assembly helpers
+# ---------------------------------------------------------------------------
+
+#' Resolve study + chat connection from ks_study/kschat input
+#' @keywords internal
+#' @noRd
+.resolve_chat_session <- function(x,
+                                  model,
+                                  provider,
+                                  base_url,
+                                  echo,
+                                  dots) {
+  if (is_kschat(x)) {
+    return(list(
+      chat = x$chat,
+      study = x$study,
+      model = x$model,
+      provider = x$provider
+    ))
+  }
+
+  if (!is_ks_study(x)) {
+    cli::cli_abort("{.arg x} must be a {.cls ks_study} or {.cls kschat} object.")
+  }
+
+  if (is.null(model)) {
+    cli::cli_abort(c(
+      "{.arg model} is required when {.arg x} is a {.cls ks_study}.",
+      i = "Pass {.code model = ...} or provide a {.cls kschat} object."
+    ))
+  }
+
+  resolved_provider <- provider %||% ks_get_option("provider")
+  chat <- do.call(
+    .make_ellmer_chat,
+    c(
+      list(
+        provider = resolved_provider,
+        model = model,
+        system_prompt = .build_single_system_prompt(),
+        base_url = base_url,
+        echo = echo
+      ),
+      dots
+    )
+  )
+
+  list(chat = chat, study = x, model = model, provider = resolved_provider)
+}
+
+#' Resolve and validate requested IDs against a study
+#' @keywords internal
+#' @noRd
+.resolve_contexts_by_ids <- function(study, ids) {
+  checkmate::assert_character(ids, min.len = 1, any.missing = FALSE, unique = TRUE)
+
+  contexts <- lapply(ids, function(id) study[[id]])
+  names(contexts) <- ids
+  missing <- ids[vapply(contexts, is.null, logical(1))]
+  if (length(missing) > 0) {
+    cli::cli_abort(c(
+      "Some requested outputs were not found in the loaded study.",
+      x = "Missing id{?s}: {.val {missing}}"
+    ))
+  }
+  contexts
+}
+
+#' Render multiple output contexts as labelled Markdown blocks
+#' @keywords internal
+#' @noRd
+.concat_markdown_contexts <- function(contexts) {
+  if (length(contexts) == 0) {
+    return("_(No context loaded.)_")
+  }
+  blocks <- vapply(names(contexts), function(id) {
+    paste0("### Output ", id, "\n\n", as_markdown(contexts[[id]]))
+  }, character(1))
+  paste(blocks, collapse = "\n\n")
+}
+
+#' Build final request text from base prompt + optional prior + user prompt
+#' @keywords internal
+#' @noRd
+.compose_request <- function(base_prompt, prompt = NULL, prior = NULL) {
+  out <- base_prompt
+
+  if (!is.null(prompt) && nzchar(prompt)) {
+    out <- paste0(out, "\n\nAdditional user request:\n", prompt)
+  }
+
+  if (!is.null(prior)) {
+    out <- paste0(
+      "Prior analysis:\n\n",
+      prior$response,
+      "\n\n---\n\n",
+      out
+    )
+  }
+
+  out
+}
+
+# ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
 
-#' Run a CSR-Writing Skill Against a Study or Table
+#' Run a Skill or Free Prompt Against Selected Outputs
 #'
-#' Loads a skill prompt template, fills its `{{placeholders}}` from the given
-#' context, and sends it to the LLM. Skills are Markdown templates; built-ins
-#' include `"describe"`, `"summarize"`, `"csr_section"`, and `"review"`. Add
-#' your own by pointing `ks_set_option("skills_dir", ...)` at a folder of
-#' `.md` files.
+#' Runs one of the registered skill templates (or a free prompt) against one or
+#' more loaded output ids. Returns a [ks_result] that can be saved via
+#' [save_result()] and loaded later via [load_result()].
 #'
-#' The `{{context}}` placeholder is filled automatically from `x`:
+#' @param x A [ks_study] or `kschat` object.
+#' @param ids Character vector of output ids to include as context.
+#' @param skill Optional skill name. Defaults to `"describe"`.
+#' @param prompt Optional free-form user instructions. If `skill` is `NULL`,
+#'   this is the main prompt body.
+#' @param prior Optional [ks_result] from a previous run. Its response is
+#'   prepended as prior analysis context.
+#' @param model Optional model name when `x` is a [ks_study]. Ignored for
+#'   `kschat` input.
+#' @param provider Optional provider when `x` is a [ks_study]. Ignored for
+#'   `kschat` input.
+#' @param base_url Optional provider URL override when `x` is a [ks_study].
+#' @param echo Echo mode forwarded to ellmer when `x` is a [ks_study].
+#' @param ... Named placeholders for the selected skill template.
 #'
-#' - a single output (a [ks_context], or a [ks_study]/`kschat` with `id`) is
-#'   rendered as a human-readable Markdown table and run on a *focused* chat,
-#'   so the model sees only that output and is not flooded with the whole
-#'   study;
-#' - a [ks_study]/`kschat` without `id` concatenates all table contexts as
-#'   JSON and reuses the existing chat session.
-#'
-#' Any additional named arguments in `...` (e.g. `audience`, `title`) fill the
-#' matching placeholders in the template.
-#'
-#' @param x A [ks_study], [ks_context], or `kschat` object.
-#' @param skill Character scalar. Skill name. Default `"describe"`.
-#' @param id Optional character scalar. Table id when `x` is a study.
-#' @param chat Optional `kschat`. Supplies the connection settings; required
-#'   when `x` is a [ks_study] or bare [ks_context].
-#' @param ... Named values filling additional template placeholders.
-#'
-#' @return The LLM's text response (character scalar).
+#' @return A [ks_result] object.
 #'
 #' @examples
 #' \dontrun{
-#' study <- load_study("path/to/outputs/meta")
-#' ks_llm(study, skill = "describe", id = "14-3.01")
-#' ks_llm(study, skill = "summarize", id = "14-3.01", audience = "clinician")
-#' ks_llm(study, skill = "csr_section", id = "14-3.01", title = "ADAS-Cog")
+#' study <- ks_load("path/to/outputs/meta", ids = c("14-3.01", "14-3.02"))
+#' out <- ks_llm(study, ids = "14-3.01", skill = "describe", model = "qwen3:14b")
+#' out2 <- ks_llm(study, ids = c("14-3.01", "14-3.02"), prompt = "Compare trends")
 #' }
 #'
 #' @export
-ks_llm <- function(x, skill = "describe", id = NULL, chat = NULL, ...) {
-  checkmate::assert_string(skill)
+ks_llm <- function(x,
+                   ids,
+                   skill = "describe",
+                   prompt = NULL,
+                   prior = NULL,
+                   model = NULL,
+                   provider = ks_get_option("provider"),
+                   base_url = NULL,
+                   echo = "none",
+                   ...) {
+  checkmate::assert_character(ids, min.len = 1, any.missing = FALSE, unique = TRUE)
+  checkmate::assert_string(skill, null.ok = TRUE)
+  checkmate::assert_string(prompt, null.ok = TRUE)
+  if (!is.null(prior) && !is_ks_result(prior)) {
+    cli::cli_abort("{.arg prior} must be a {.cls ks_result} object.")
+  }
+  if (is.null(skill) && is.null(prompt)) {
+    cli::cli_abort("Provide at least one of {.arg skill} or {.arg prompt}.")
+  }
 
-  # Resolve the chat session and the context to run the skill against.
-  resolved <- .resolve_chat_and_context(x, chat, id)
+  dots <- rlang::list2(...)
+  if (length(dots) && (is.null(names(dots)) || any(names(dots) == ""))) {
+    cli::cli_abort("All extra substitutions passed to {.fn ks_llm} must be named.")
+  }
 
-  template <- .load_prompt(skill)
-  prompt <- .assemble_skill_prompt(template, context = resolved$context, id = resolved$id, ...)
-
-  resolved$chat$chat(prompt)
-}
-
-#' Fill a skill template with its context, id, and extra placeholders
-#'
-#' Split out from [ks_llm()] so the assembled prompt can be inspected in tests
-#' without contacting a model.
-#' @keywords internal
-#' @noRd
-.assemble_skill_prompt <- function(template, context, id, ...) {
-  .fill_prompt(
-    template,
-    context = context,
-    id = id %||% "",
-    ...
+  session <- .resolve_chat_session(
+    x = x,
+    model = model,
+    provider = provider,
+    base_url = base_url,
+    echo = echo,
+    dots = dots
   )
-}
+  contexts <- .resolve_contexts_by_ids(session$study, ids)
 
-#' Resolve x + chat + id into a chat session and a context string
-#'
-#' Single-output targeting (an `id`, or a bare [ks_context]) renders the target
-#' as human-readable Markdown and runs it on a *focused* chat: a fresh session
-#' whose system prompt carries only the constraints, so the model is never
-#' flooded with the whole study nor sent the target table twice. Study-wide
-#' calls (no `id`) reuse the existing session and its full JSON contexts.
-#' @keywords internal
-#' @noRd
-.resolve_chat_and_context <- function(x, chat, id) {
-  if (is_kschat(x)) {
-    return(.resolve_from_kschat(x, id))
-  }
-
-  if (is_ks_context(x)) {
-    if (is.null(chat)) {
-      cli::cli_abort(c(
-        "A chat session is required to run a skill on a bare {.cls ks_context}.",
-        i = "Pass {.arg chat = ks_chat(study, model = ...)}."
-      ))
+  if (!is.null(skill) && identical(skill, "describe")) {
+    template <- .load_prompt(skill)
+    chunks <- lapply(ids, function(id) {
+      base_prompt <- .fill_prompt(
+        template,
+        id = id,
+        ids = paste(ids, collapse = ", "),
+        context = as_markdown(contexts[[id]]),
+        !!!dots
+      )
+      req <- .compose_request(base_prompt, prompt = prompt, prior = prior)
+      text <- as.character(session$chat$chat(req))
+      paste0("## ", id, "\n\n", text)
+    })
+    response <- paste(unlist(chunks, use.names = FALSE), collapse = "\n\n")
+  } else if (!is.null(skill) && identical(skill, "review")) {
+    if (length(ids) != 2L) {
+      cli::cli_abort("Skill {.val review} requires exactly two IDs.")
     }
-    if (!is_kschat(chat)) {
-      cli::cli_abort("{.arg chat} must be a {.cls kschat} object.")
+    template <- .load_prompt(skill)
+    base_prompt <- .fill_prompt(
+      template,
+      id = paste(ids, collapse = ", "),
+      ids = paste(ids, collapse = ", "),
+      id1 = ids[[1]],
+      id2 = ids[[2]],
+      context = .concat_markdown_contexts(contexts),
+      context1 = as_markdown(contexts[[1]]),
+      context2 = as_markdown(contexts[[2]]),
+      !!!dots
+    )
+    req <- .compose_request(base_prompt, prompt = prompt, prior = prior)
+    response <- as.character(session$chat$chat(req))
+  } else if (!is.null(skill)) {
+    template <- .load_prompt(skill)
+    context_block <- if (length(ids) == 1L) {
+      as_markdown(contexts[[1]])
+    } else {
+      .concat_markdown_contexts(contexts)
     }
-    return(list(chat = .make_focused_chat(chat), context = as_markdown(x), id = x$id))
-  }
-
-  if (is_ks_study(x)) {
-    if (is.null(chat) || !is_kschat(chat)) {
-      cli::cli_abort(c(
-        "A chat session is required to run a skill.",
-        i = "Pass {.arg chat = ks_chat(study, model = ...)} or call {.fn ks_chat} first."
-      ))
+    id_value <- if (length(ids) == 1L) ids[[1]] else paste(ids, collapse = ", ")
+    base_prompt <- .fill_prompt(
+      template,
+      id = id_value,
+      ids = paste(ids, collapse = ", "),
+      context = context_block,
+      !!!dots
+    )
+    req <- .compose_request(base_prompt, prompt = prompt, prior = prior)
+    response <- as.character(session$chat$chat(req))
+  } else {
+    context_block <- if (length(ids) == 1L) {
+      as_markdown(contexts[[1]])
+    } else {
+      .concat_markdown_contexts(contexts)
     }
-    return(.resolve_from_kschat(chat, id, study = x))
+    base_prompt <- paste0(
+      "Use the following output context",
+      if (length(ids) > 1L) "s" else "",
+      ":\n\n",
+      context_block,
+      "\n\nUser request:\n",
+      prompt
+    )
+    req <- .compose_request(base_prompt, prompt = NULL, prior = prior)
+    response <- as.character(session$chat$chat(req))
   }
 
-  cli::cli_abort("{.arg x} must be a {.cls ks_study}, {.cls ks_context}, or {.cls kschat}.")
-}
-
-#' Resolve a chat + context from a `kschat` (and optional overriding study)
-#' @keywords internal
-#' @noRd
-.resolve_from_kschat <- function(ks, id, study = ks$study) {
-  if (!is.null(id)) {
-    ctx <- study[[id]]
-    if (is.null(ctx)) {
-      cli::cli_abort("Output {.val {id}} not found in the study.")
-    }
-    return(list(chat = .make_focused_chat(ks), context = as_markdown(ctx), id = id))
-  }
-  # Study-wide: reuse the existing session and the full JSON contexts.
-  list(chat = ks$chat, context = .concat_contexts(study$tables), id = NULL)
-}
-
-#' Concatenate multiple contexts into one JSON-array-ish string
-#' @keywords internal
-#' @noRd
-.concat_contexts <- function(contexts) {
-  if (length(contexts) == 0) {
-    return("[]")
-  }
-  parts <- vapply(contexts, as_json, character(1))
-  paste0("[\n", paste(parts, collapse = ",\n"), "\n]")
+  new_ks_result(
+    ids = ids,
+    skill = skill,
+    prompt = prompt,
+    response = response,
+    model = session$model,
+    provider = session$provider
+  )
 }

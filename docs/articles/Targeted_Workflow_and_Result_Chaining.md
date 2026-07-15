@@ -1,0 +1,125 @@
+# Targeted Workflow and Result Chaining
+
+## Why targeted loading
+
+Clinical studies can produce many outputs, while most writing tasks need
+only a small subset. The targeted workflow in ksAI lets you:
+
+- discover available output IDs quickly
+- load only the relevant IDs into context
+- run skills or free prompts on one or multiple IDs
+- save generated analysis in markdown and JSON
+- reuse prior analysis in later prompts
+
+## 1. Discover and load only needed IDs
+
+``` r
+
+library(ksAI)
+
+# Inspect available outputs in a ksTFL meta folder.
+ids <- ks_list_ids("path/to/outputs/meta")
+ids
+
+# Load only the outputs required for the current task.
+study <- ks_load(
+  "path/to/outputs/meta",
+  ids = c("14-3.01", "14-3.02", "14-7.02")
+)
+study
+```
+
+You can also reload a previously persisted study and optionally filter
+IDs:
+
+``` r
+
+study_all <- ks_load("my_study.ks")
+study_subset <- ks_load("my_study.ks", ids = c("14-3.01", "14-7.02"))
+```
+
+## 2. Run skills on single or multiple IDs
+
+``` r
+
+chat <- ks_chat(study, model = "qwen3:14b", provider = "ollama")
+
+# Single-ID skill call.
+out_describe <- ks_llm(
+  chat,
+  ids = "14-3.01",
+  skill = "describe"
+)
+
+# Multi-ID review call (review requires exactly two IDs).
+out_review <- ks_llm(
+  chat,
+  ids = c("14-3.01", "14-3.02"),
+  skill = "review"
+)
+
+# Skill + extra user instruction. The model follows the language in prompt.
+out_spanish <- ks_llm(
+  chat,
+  ids = "14-7.02",
+  skill = "summarize",
+  prompt = "Write the final answer in Spanish.",
+  audience = "clinician"
+)
+
+# Free-form mode (no skill template).
+out_free <- ks_llm(
+  chat,
+  ids = c("14-3.01", "14-7.02"),
+  skill = NULL,
+  prompt = "Compare efficacy and safety signals and keep the tone regulatory."
+)
+```
+
+## 3. Save and reload generated outputs
+
+[`ks_llm()`](https://crow16384.github.io/ksAI/reference/ks_llm.md)
+returns a `ks_result` object. Save it in both markdown and JSON with
+[`save_result()`](https://crow16384.github.io/ksAI/reference/save_result.md):
+
+``` r
+
+paths <- save_result(out_spanish, "analysis/out-14-7-02")
+paths
+
+# Reload later by base path, .json, or .md path.
+out_loaded <- load_result("analysis/out-14-7-02")
+out_loaded
+```
+
+## 4. Chain prior analysis into a new run
+
+Pass a previous `ks_result` to `prior` so the next run can build on it:
+
+``` r
+
+out_refined <- ks_llm(
+  chat,
+  ids = "14-7.02",
+  skill = "csr_section",
+  title = "Safety Overview",
+  prompt = "Keep only statements supported by explicit values.",
+  prior = out_loaded
+)
+```
+
+## 5. Suggested project flow
+
+A practical sequence for writing tasks:
+
+1.  [`ks_list_ids()`](https://crow16384.github.io/ksAI/reference/ks_list_ids.md)
+    to identify relevant outputs
+2.  `ks_load(ids = ...)` to create a focused study object
+3.  [`ks_chat()`](https://crow16384.github.io/ksAI/reference/ks_chat.md)
+    for model session setup
+4.  [`ks_llm()`](https://crow16384.github.io/ksAI/reference/ks_llm.md)
+    for skill-based and free-form generation
+5.  [`save_result()`](https://crow16384.github.io/ksAI/reference/save_result.md)
+    for traceable deliverables
+6.  [`load_result()`](https://crow16384.github.io/ksAI/reference/load_result.md) +
+    `prior =` for iterative refinement

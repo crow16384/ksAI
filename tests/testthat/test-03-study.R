@@ -1,12 +1,12 @@
-test_that("save_study / load_study round-trip preserves contents", {
+test_that("save_study / ks_load round-trip preserves contents", {
   dir <- make_fixture_study(n_tables = 2L, n_rows = 4L)
-  study <- load_study(dir)
+  study <- ks_load(dir, ids = NULL)
 
   ks_path <- tempfile(fileext = ".ks")
   save_study(study, ks_path)
   expect_true(file.exists(ks_path))
 
-  study2 <- load_study(ks_path)
+  study2 <- ks_load(ks_path)
   expect_true(is_ks_study(study2))
   expect_equal(names(study$tables), names(study2$tables))
   expect_equal(
@@ -18,7 +18,7 @@ test_that("save_study / load_study round-trip preserves contents", {
 
 test_that("save_study adds the .ks extension", {
   dir <- make_fixture_study(n_tables = 1L)
-  study <- load_study(dir)
+  study <- ks_load(dir, ids = NULL)
   base <- tempfile()
   out <- save_study(study, base)
   expect_match(out, "\\.ks$")
@@ -27,7 +27,7 @@ test_that("save_study adds the .ks extension", {
 
 test_that("[[ accessor finds outputs by id across all types", {
   dir <- make_fixture_study(n_tables = 2L)
-  study <- load_study(dir)
+  study <- ks_load(dir, ids = NULL)
   expect_true(is_ks_context(study[["14-3.02"]]))
   expect_null(study[["does-not-exist"]])
 })

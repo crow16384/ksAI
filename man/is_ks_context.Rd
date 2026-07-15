@@ -17,5 +17,5 @@ is_ks_context(x)
 A \code{ks_context} is the render-join of one ksTFL output's specification and
 its data: a self-contained, LLM-ready object holding the title, analysis
 population, columns, span headers, rendered rows, and footnotes. Obtain
-them via \code{\link[=load_study]{load_study()}}. \code{is_ks_context()} tests for the class.
+them via \code{\link[=ks_load]{ks_load()}}. \code{is_ks_context()} tests for the class.
 }

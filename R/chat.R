@@ -1,68 +1,40 @@
-## ks_chat: wrap an ellmer Chat around a study, choosing a context strategy
-## based on study size.
-##
-## Small studies (<= ks_get_option("study_threshold")) inject every table
-## context directly into the system prompt. Larger studies inject a compact
-## index and register tools so the model can retrieve details on demand.
+## ks_chat: wrap an ellmer Chat around a targeted subset of study outputs.
 
 # ---------------------------------------------------------------------------
-# Compact study index
+# Prompt builders
 # ---------------------------------------------------------------------------
 
-#' Build a compact markdown index of all study outputs
-#'
-#' @param study A `ks_study`.
-#' @return A length-1 markdown string with one table row per output.
+#' Render all loaded outputs as one Markdown context block
 #' @keywords internal
 #' @noRd
-.build_compact_index <- function(study) {
+.study_context_markdown <- function(study) {
   all <- .study_all(study)
   if (length(all) == 0) {
-    return("_(empty study)_")
+    return("_(No outputs loaded.)_")
   }
-  header <- "| ID | Title | Type | Population | Rows |\n|----|-------|------|------------|------|"
-  lines <- vapply(all, function(ctx) {
-    title <- if (length(ctx$title)) paste(ctx$title, collapse = " ") else ctx$id
-    title <- gsub("|", "/", title, fixed = TRUE)
-    pop <- if (is.na(ctx$population)) "" else ctx$population
-    sprintf(
-      "| %s | %s | %s | %s | %d |",
-      ctx$id, title, ctx$type, pop, ctx$n_rows_total
-    )
+  blocks <- vapply(all, function(ctx) {
+    paste0("### Output ", ctx$id, "\n\n", as_markdown(ctx))
   }, character(1))
-  paste(c(header, lines), collapse = "\n")
+  paste(blocks, collapse = "\n\n")
 }
 
-#' Build the full system prompt for a study, given the chosen mode
+#' Build the system prompt for a targeted study session
 #' @keywords internal
 #' @noRd
-.build_system_prompt <- function(study, mode) {
+.build_system_prompt <- function(study) {
   base <- .load_prompt(.KS_SYSTEM_PROMPT)
-
-  if (identical(mode, "small")) {
-    contexts <- .concat_contexts(.study_all(study))
-    study_context <- paste0(
-      "## Study outputs (full contexts)\n\n",
-      "All ", .study_n_outputs(study), " study outputs are provided below as JSON.\n\n",
-      "```json\n", contexts, "\n```"
-    )
-  } else {
-    index_tmpl <- .load_prompt(.KS_STUDY_INDEX_PROMPT)
-    study_context <- .fill_prompt(index_tmpl, index = .build_compact_index(study))
-  }
-
+  study_context <- paste0(
+    "## Loaded output contexts\n\n",
+    .study_context_markdown(study)
+  )
   .fill_prompt(base, study_context = study_context)
 }
 
-#' Build the focused system prompt for a single-output skill
-#'
-#' Contains only the hard constraints, with no embedded study context. The
-#' target table is supplied as rendered Markdown in the user turn, so the
-#' model is never flooded with the whole study.
+#' Build the focused system prompt for skill calls
 #' @keywords internal
 #' @noRd
 .build_single_system_prompt <- function() {
-  .load_prompt(.KS_SINGLE_SYSTEM_PROMPT)
+  .load_prompt("system_single")
 }
 
 # ---------------------------------------------------------------------------
@@ -105,13 +77,10 @@
 # Public constructor
 # ---------------------------------------------------------------------------
 
-#' Open an AI Chat Session Over a Study
+#' Open an AI Chat Session Over Loaded Outputs
 #'
-#' Creates an [ellmer][ellmer::ellmer] chat wired to a study. The context
-#' strategy is chosen automatically: small studies embed every table context
-#' in the system prompt; larger studies embed a compact index and register
-#' tools so the model can fetch details on demand. The switch-over point is
-#' `ks_get_option("study_threshold")`.
+#' Creates an [ellmer][ellmer::ellmer] chat wired to the currently loaded
+#' [ks_study] subset.
 #'
 #' @param study A [ks_study] object.
 #' @param model Character scalar. The model name for the chosen provider.
@@ -124,13 +93,12 @@
 #'   streaming output. Default `"none"`.
 #' @param ... Additional arguments forwarded to the ellmer chat constructor.
 #'
-#' @return A `kschat` object wrapping the ellmer chat and the study.
+#' @return A `kschat` object wrapping the ellmer chat and the loaded study.
 #'
 #' @examples
 #' \dontrun{
-#' study <- load_study("path/to/outputs/meta")
+#' study <- ks_load("path/to/outputs/meta", ids = c("14-3.01"))
 #' chat <- ks_chat(study, model = "qwen3:14b")
-#' ask(chat, "Which populations are used across the efficacy tables?")
 #' }
 #'
 #' @export
@@ -146,58 +114,21 @@ ks_chat <- function(study,
   checkmate::assert_string(model)
   checkmate::assert_string(provider)
 
-  threshold <- ks_get_option("study_threshold")
-  mode <- if (.study_n_outputs(study) <= threshold) "small" else "large"
-
-  system_prompt <- .build_system_prompt(study, mode)
+  system_prompt <- .build_system_prompt(study)
   ellmer_chat <- .make_ellmer_chat(provider, model, system_prompt, base_url, echo, ...)
 
-  ks <- structure(
+  structure(
     list(
       chat = ellmer_chat,
       study = study,
-      mode = mode,
+      mode = "targeted",
       provider = provider,
-      # Constructor params, retained so focused single-output sessions can be
-      # rebuilt with a minimal system prompt (see .make_focused_chat()).
       model = model,
       base_url = base_url,
       echo = echo,
       dots = list(...)
     ),
     class = c("kschat", "list")
-  )
-
-  if (identical(mode, "large")) {
-    .register_tools(ks)
-  }
-
-  ks
-}
-
-#' Build a focused ellmer chat for single-output skills
-#'
-#' Reuses the provider/model/connection settings of an existing `kschat` but
-#' with the focused single-output system prompt, so a single-table skill runs
-#' without the whole-study context and without conversation history.
-#'
-#' @param ks A `kschat` object.
-#' @return A bare ellmer chat object.
-#' @keywords internal
-#' @noRd
-.make_focused_chat <- function(ks) {
-  do.call(
-    .make_ellmer_chat,
-    c(
-      list(
-        provider = ks$provider,
-        model = ks$model,
-        system_prompt = .build_single_system_prompt(),
-        base_url = ks$base_url,
-        echo = ks$echo %||% "none"
-      ),
-      ks$dots %||% list()
-    )
   )
 }
 
@@ -215,10 +146,7 @@ print.kschat <- function(x, ...) {
   cli::cli_h1("kschat")
   cli::cli_text("{.strong Provider}: {x$provider}   {.strong Mode}: {x$mode}")
   cli::cli_text(
-    "{.strong Study}: {length(x$study$tables)} table{?s}, {length(x$study$figures)} figure{?s}"
+    "{.strong Study}: {length(x$study$tables)} table{?s}, {length(x$study$figures)} figure{?s}, {length(x$study$texts)} text{?s}"
   )
-  if (identical(x$mode, "large")) {
-    cli::cli_text("Tools registered for on-demand retrieval.")
-  }
   invisible(x)
 }

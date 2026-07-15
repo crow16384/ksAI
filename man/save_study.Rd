@@ -17,14 +17,14 @@ Invisibly, the normalised path written.
 }
 \description{
 Serialises a \link{ks_study} (with all embedded contexts) to a self-contained
-JSON file. Reload with \code{\link[=load_study]{load_study()}}. The original ksTFL meta folder is
+JSON file. Reload with \code{\link[=ks_load]{ks_load()}}. The original ksTFL meta folder is
 not needed to reload.
 }
 \examples{
 \dontrun{
-study <- load_study("path/to/outputs/meta")
+study <- ks_load("path/to/outputs/meta", ids = c("14-3.01"))
 save_study(study, "my_study.ks")
-study2 <- load_study("my_study.ks")
+study2 <- ks_load("my_study.ks")
 }
 
 }

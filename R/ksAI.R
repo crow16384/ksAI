@@ -3,9 +3,9 @@
 #' ksAI reads the metadata and data JSON artefacts produced by
 #' [ksTFL::save_report()], compiles them into a self-contained study registry
 #' of table contexts ([ks_study] of [ks_context] objects), and provides an
-#' [ellmer][ellmer::ellmer]-backed chat with registered tools so a medical
-#' writer can reason across the whole set of study statistical results and
-#' draft clinical study report (CSR) narratives.
+#' [ellmer][ellmer::ellmer]-backed chat plus skill-driven prompting over a
+#' targeted subset of outputs so a medical writer can reason across selected
+#' study statistical results and draft clinical study report (CSR) narratives.
 #'
 #' @keywords internal
 "_PACKAGE"
@@ -21,9 +21,7 @@
 #' @noRd
 .ksai_default_options <- function() {
   list(
-    # Studies with more outputs than this switch ks_chat() to tool-based mode.
-    study_threshold = SMALL_STUDY_THRESHOLD,
-    # Maximum data rows embedded per table context (rest available via tools).
+    # Maximum data rows embedded per table context.
     max_rows = 200L,
     # Directory of user-defined skill prompts (.md). NULL = built-ins only.
     skills_dir = NULL,
@@ -48,16 +46,16 @@
 #' `ks_get_option()` retrieves a package option; `ks_set_option()` updates one
 #' or more options for the current session.
 #'
-#' @param key Character scalar. Option name. One of `"study_threshold"`,
-#'   `"max_rows"`, `"skills_dir"`, `"provider"`.
+#' @param key Character scalar. Option name. One of `"max_rows"`,
+#'   `"skills_dir"`, `"provider"`.
 #' @param ... Named `key = value` pairs to set (for `ks_set_option()`).
 #'
 #' @return `ks_get_option()` returns the option value. `ks_set_option()`
 #'   invisibly returns the previous values of the changed options.
 #'
 #' @examples
-#' ks_get_option("study_threshold")
-#' old <- ks_set_option(study_threshold = 30L)
+#' ks_get_option("max_rows")
+#' old <- ks_set_option(max_rows = 300L)
 #' ks_set_option(!!!old)
 #'
 #' @export

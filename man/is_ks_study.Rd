@@ -16,6 +16,6 @@ is_ks_study(x)
 \description{
 A \code{ks_study} is the registry of all compiled outputs of a study, split into
 \verb{$tables}, \verb{$figures}, and \verb{$texts} (each a named list of \link{ks_context}
-objects). Build one with \code{\link[=load_study]{load_study()}}; persist with \code{\link[=save_study]{save_study()}}.
+objects). Build one with \code{\link[=ks_load]{ks_load()}}; persist with \code{\link[=save_study]{save_study()}}.
 \code{is_ks_study()} tests for the class.
 }

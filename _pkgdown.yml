@@ -1,0 +1,57 @@
+template:
+  bootstrap: 5
+
+destination: docs
+
+url: https://crow16384.github.io/ksAI/
+
+home:
+  title: ksAI
+  description: AI-native reasoning layer for targeted ksTFL outputs.
+
+navbar:
+  structure:
+    left: [home, reference, articles]
+    right: [github]
+  components:
+    github:
+      icon: fab fa-github
+      aria-label: GitHub repository
+      href: https://github.com/crow16384/ksAI
+
+reference:
+- title: Study Loading and Persistence
+  contents:
+  - ks_list_ids
+  - ks_load
+  - save_study
+- title: Chat and Skills
+  contents:
+  - ks_chat
+  - ks_llm
+  - ks_list_skills
+- title: Result Persistence
+  contents:
+  - is_ks_result
+  - save_result
+  - load_result
+- title: Context Utilities
+  contents:
+  - is_ks_context
+  - as_json
+  - as_markdown
+  - enrich_context
+- title: Study and Session Utilities
+  contents:
+  - is_ks_study
+  - "[[.ks_study"
+  - is_kschat
+  - ks_get_option
+  - ks_set_option
+
+articles:
+- title: Guides
+  navbar: ~
+  contents:
+  - Getting_Started_ksAI
+  - Targeted_Workflow_and_Result_Chaining

@@ -2,7 +2,7 @@
 % Please edit documentation in R/chat.R
 \name{ks_chat}
 \alias{ks_chat}
-\title{Open an AI Chat Session Over a Study}
+\title{Open an AI Chat Session Over Loaded Outputs}
 \usage{
 ks_chat(
   study,
@@ -31,20 +31,16 @@ streaming output. Default \code{"none"}.}
 \item{...}{Additional arguments forwarded to the ellmer chat constructor.}
 }
 \value{
-A \code{kschat} object wrapping the ellmer chat and the study.
+A \code{kschat} object wrapping the ellmer chat and the loaded study.
 }
 \description{
-Creates an \link[ellmer:ellmer]{ellmer} chat wired to a study. The context
-strategy is chosen automatically: small studies embed every table context
-in the system prompt; larger studies embed a compact index and register
-tools so the model can fetch details on demand. The switch-over point is
-\code{ks_get_option("study_threshold")}.
+Creates an \link[ellmer:ellmer]{ellmer} chat wired to the currently loaded
+\link{ks_study} subset.
 }
 \examples{
 \dontrun{
-study <- load_study("path/to/outputs/meta")
+study <- ks_load("path/to/outputs/meta", ids = c("14-3.01"))
 chat <- ks_chat(study, model = "qwen3:14b")
-ask(chat, "Which populations are used across the efficacy tables?")
 }
 
 }

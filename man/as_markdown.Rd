@@ -23,7 +23,7 @@ machine-shaped JSON produced by \code{\link[=as_json]{as_json()}}.
 }
 \examples{
 \dontrun{
-study <- load_study("path/to/outputs/meta")
+study <- ks_load("path/to/outputs/meta", ids = c("14-3.01"))
 cat(as_markdown(study[["14-3.01"]]))
 }
 

@@ -12,7 +12,7 @@
 #' Create a `ks_context` Object
 #'
 #' Low-level constructor. Most users obtain `ks_context` objects via
-#' [load_study()] rather than calling this directly.
+#' [ks_load()] rather than calling this directly.
 #'
 #' @param id Character scalar. Stable output identifier (e.g. `"14-3.01"`).
 #' @param type Character scalar. One of `"Table"`, `"Figure"`, `"Text"`.
@@ -72,7 +72,7 @@ new_ks_context <- function(id,
 #' A `ks_context` is the render-join of one ksTFL output's specification and
 #' its data: a self-contained, LLM-ready object holding the title, analysis
 #' population, columns, span headers, rendered rows, and footnotes. Obtain
-#' them via [load_study()]. `is_ks_context()` tests for the class.
+#' them via [ks_load()]. `is_ks_context()` tests for the class.
 #'
 #' @param x An object.
 #' @return `TRUE` if `x` is a `ks_context`, otherwise `FALSE`.
@@ -157,7 +157,7 @@ as_json.ks_context <- function(x, pretty = FALSE) {
 #'
 #' @examples
 #' \dontrun{
-#' study <- load_study("path/to/outputs/meta")
+#' study <- ks_load("path/to/outputs/meta", ids = c("14-3.01"))
 #' cat(as_markdown(study[["14-3.01"]]))
 #' }
 #'

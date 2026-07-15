@@ -1,6 +1,6 @@
 ## ks_study: a registry of ks_context objects for a whole study, split by
 ## output type. This is the primary unit passed to ks_chat() and the
-## interactive API, and the unit that save_study()/load_study() persist.
+## ks_llm workflow, and the unit that save_study()/ks_load() persist.
 
 # ---------------------------------------------------------------------------
 # Constructor
@@ -38,7 +38,7 @@ new_ks_study <- function(contexts, meta_dir = NULL) {
 #'
 #' A `ks_study` is the registry of all compiled outputs of a study, split into
 #' `$tables`, `$figures`, and `$texts` (each a named list of [ks_context]
-#' objects). Build one with [load_study()]; persist with [save_study()].
+#' objects). Build one with [ks_load()]; persist with [save_study()].
 #' `is_ks_study()` tests for the class.
 #'
 #' @param x An object.
@@ -109,7 +109,7 @@ print.ks_study <- function(x, ...) {
 #' Save a Study to a `.ks` File
 #'
 #' Serialises a [ks_study] (with all embedded contexts) to a self-contained
-#' JSON file. Reload with [load_study()]. The original ksTFL meta folder is
+#' JSON file. Reload with [ks_load()]. The original ksTFL meta folder is
 #' not needed to reload.
 #'
 #' @param study A [ks_study] object.
@@ -120,9 +120,9 @@ print.ks_study <- function(x, ...) {
 #'
 #' @examples
 #' \dontrun{
-#' study <- load_study("path/to/outputs/meta")
+#' study <- ks_load("path/to/outputs/meta", ids = c("14-3.01"))
 #' save_study(study, "my_study.ks")
-#' study2 <- load_study("my_study.ks")
+#' study2 <- ks_load("my_study.ks")
 #' }
 #'
 #' @export

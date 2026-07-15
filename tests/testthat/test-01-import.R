@@ -75,48 +75,34 @@ test_that(".build_rows truncates and warns", {
   expect_length(built$warnings, 1L)
 })
 
-test_that("load_study imports a fixture meta folder", {
+test_that("ks_list_ids discovers available outputs without loading data", {
   dir <- make_fixture_study(n_tables = 2L, n_rows = 3L)
-  study <- load_study(dir)
+  ids <- ks_list_ids(dir)
+
+  expect_true(all(c("id", "type", "title") %in% names(ids)))
+  expect_equal(nrow(ids), 2L)
+  expect_setequal(ids$id, c("14-3.01", "14-3.02"))
+})
+
+test_that("ks_load imports only requested IDs", {
+  dir <- make_fixture_study(n_tables = 3L, n_rows = 3L)
+  study <- ks_load(dir, ids = c("14-3.03", "14-3.01"))
+
   expect_true(is_ks_study(study))
-  expect_equal(length(study$tables), 2L)
+  expect_equal(names(study$tables), c("14-3.03", "14-3.01"))
   t1 <- study[["14-3.01"]]
   expect_true(is_ks_context(t1))
   expect_equal(t1$population, "Efficacy")
-  expect_equal(t1$title[[1]], "Table 14-3.01")
   expect_equal(t1$columns$PLACEBO$label, "Placebo (N=79)")
 })
 
-test_that("load_study filters outputs by regex over ids", {
-  dir <- make_fixture_study(n_tables = 3L, n_rows = 2L)
-
-  study <- load_study(dir, pattern = "14-3\\.0[12]$")
-  expect_true(is_ks_study(study))
-  expect_equal(length(study$tables), 2L)
-  expect_setequal(names(study$tables), c("14-3.01", "14-3.02"))
-})
-
-test_that("load_study filters outputs by regex over output type", {
-  dir <- make_fixture_study(n_tables = 2L, n_rows = 2L)
-
-  # Flip one fixture from Table to Figure so type-based matching is exercised.
-  spec_path <- file.path(dir, "spec_data_ref_02.json")
-  spec <- jsonlite::fromJSON(spec_path, simplifyVector = FALSE)
-  spec_key <- setdiff(names(spec), "_metadata")[[1]]
-  spec[[spec_key]]$document$docType <- "Figure"
-  writeLines(
-    jsonlite::toJSON(spec, auto_unbox = TRUE, null = "null"),
-    spec_path
-  )
-
-  study <- load_study(dir, pattern = "Figure")
-  expect_equal(length(study$tables), 0L)
-  expect_equal(length(study$figures), 1L)
-  expect_equal(names(study$figures), "14-3.02")
-})
-
-test_that("load_study validates regex patterns", {
+test_that("ks_load errors on unknown requested IDs", {
   dir <- make_fixture_study(n_tables = 1L, n_rows = 2L)
+  expect_error(ks_load(dir, ids = c("14-3.01", "no-such-id")), "Missing id")
+})
 
-  expect_error(load_study(dir, pattern = "("), "Invalid .*pattern")
+test_that("ks_load(ids = NULL) loads all outputs", {
+  dir <- make_fixture_study(n_tables = 2L, n_rows = 2L)
+  study <- ks_load(dir, ids = NULL)
+  expect_equal(length(study$tables), 2L)
 })

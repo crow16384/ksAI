@@ -9,9 +9,18 @@
 ksAI reads the metadata and data JSON artefacts produced by
 \code{\link[ksTFL:save_report]{ksTFL::save_report()}}, compiles them into a self-contained study registry
 of table contexts (\link{ks_study} of \link{ks_context} objects), and provides an
-\link[ellmer:ellmer]{ellmer}-backed chat with registered tools so a medical
-writer can reason across the whole set of study statistical results and
-draft clinical study report (CSR) narratives.
+\link[ellmer:ellmer]{ellmer}-backed chat plus skill-driven prompting over a
+targeted subset of outputs so a medical writer can reason across selected
+study statistical results and draft clinical study report (CSR) narratives.
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://crow16384.github.io/ksAI/}
+  \item \url{https://github.com/crow16384/ksAI}
+  \item Report bugs at \url{https://github.com/crow16384/ksAI/issues}
+}
+
 }
 \author{
 \strong{Maintainer}: Vladimir Larchenko \email{crow16384@gmail.com}

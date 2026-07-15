@@ -7,3 +7,5 @@
 ^\.serena$
 ^tmp$
 ^tools$
+^_pkgdown\.yml$
+^docs$

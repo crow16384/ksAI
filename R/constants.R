@@ -4,16 +4,6 @@
 ## across the import, chat, tools, and skills modules.
 
 # ---------------------------------------------------------------------------
-# Study sizing
-# ---------------------------------------------------------------------------
-
-# Studies with this many outputs or fewer inject all table contexts directly
-# into the system prompt (small-study mode). Larger studies switch to
-# tool-based retrieval (large-study mode). Overridable via
-# ks_set_option("study_threshold", N).
-SMALL_STUDY_THRESHOLD <- 20L
-
-# ---------------------------------------------------------------------------
 # ksTFL document types (mirror of ksTFL::.const_doc_types)
 # ---------------------------------------------------------------------------
 
@@ -33,9 +23,6 @@ SMALL_STUDY_THRESHOLD <- 20L
 
 # The system prompt is a special template, not a user-facing skill.
 .KS_SYSTEM_PROMPT <- "system"
-.KS_STUDY_INDEX_PROMPT <- "study_index"
-# Focused system prompt for single-output skills (no whole-study context).
-.KS_SINGLE_SYSTEM_PROMPT <- "system_single"
 
 # ---------------------------------------------------------------------------
 # Invisible control columns emitted by ksTFL table programs

@@ -10,8 +10,8 @@ ks_get_option(key)
 ks_set_option(...)
 }
 \arguments{
-\item{key}{Character scalar. Option name. One of \code{"study_threshold"},
-\code{"max_rows"}, \code{"skills_dir"}, \code{"provider"}.}
+\item{key}{Character scalar. Option name. One of \code{"max_rows"},
+\code{"skills_dir"}, \code{"provider"}.}
 
 \item{...}{Named \code{key = value} pairs to set (for \code{ks_set_option()}).}
 }
@@ -24,8 +24,8 @@ invisibly returns the previous values of the changed options.
 or more options for the current session.
 }
 \examples{
-ks_get_option("study_threshold")
-old <- ks_set_option(study_threshold = 30L)
+ks_get_option("max_rows")
+old <- ks_set_option(max_rows = 300L)
 ks_set_option(!!!old)
 
 }

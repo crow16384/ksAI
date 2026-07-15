@@ -31,7 +31,7 @@ test_that("enrich_context validates inputs", {
 
 test_that("as_markdown renders human labels, sections and footnotes", {
   dir <- make_fixture_study(n_tables = 1L, n_rows = 3L)
-  study <- load_study(dir)
+  study <- ks_load(dir, ids = "14-3.01")
   md <- as_markdown(study[["14-3.01"]])
 
   expect_type(md, "character")

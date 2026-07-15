@@ -450,61 +450,165 @@
 }
 
 # ---------------------------------------------------------------------------
-# Public entry point (folder branch)
+# Targeted loading
 # ---------------------------------------------------------------------------
 
-#' Load a Study from a ksTFL Meta Folder or a Saved `.ks` File
+#' Read and filter ksTFL report index
+#' @keywords internal
+#' @noRd
+.read_report_index <- function(path, latest_only = TRUE) {
+  index <- ksTFL::list_reports(path)
+  if (is.null(index) || nrow(index) == 0) {
+    cli::cli_abort("No reports found in meta folder {.path {path}}.")
+  }
+  if (latest_only && "is_latest" %in% names(index)) {
+    keep <- !is.na(index$is_latest) & index$is_latest %in% TRUE
+    index <- index[keep, , drop = FALSE]
+  }
+  index
+}
+
+#' Parse lightweight output descriptors from one spec JSON file
 #'
-#' Reads the metadata and data JSON artefacts produced by
-#' [ksTFL::save_report()] and compiles them into a [ks_study] registry of
-#' [ks_context] objects. Alternatively, reloads a study previously written by
-#' [save_study()].
+#' Reads only metadata/title/type and does not touch data JSON files.
+#' @keywords internal
+#' @noRd
+.spec_descriptors <- function(spec_json_path) {
+  doc <- tryCatch(
+    jsonlite::fromJSON(spec_json_path, simplifyVector = FALSE),
+    error = function(e) NULL
+  )
+  if (is.null(doc) || is.null(doc[["_metadata"]])) {
+    return(data.frame(
+      id = character(),
+      type = character(),
+      title = character(),
+      spec_file = character(),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  base_id <- .doc_id(doc[["_metadata"]][["docFileName"]])
+  spec_keys <- setdiff(names(doc), "_metadata")
+  if (length(spec_keys) == 0) {
+    return(data.frame(
+      id = character(),
+      type = character(),
+      title = character(),
+      spec_file = character(),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  ids <- if (length(spec_keys) == 1) {
+    rep(base_id, 1L)
+  } else {
+    paste0(base_id, "_", seq_along(spec_keys))
+  }
+
+  types <- vapply(spec_keys, function(key) {
+    as.character(doc[[key]]$document$docType %||% "Table")
+  }, character(1))
+
+  titles <- vapply(seq_along(spec_keys), function(i) {
+    key <- spec_keys[[i]]
+    text <- .extract_text_entries(doc[[key]]$titles)
+    if (length(text)) {
+      paste(text, collapse = " ")
+    } else {
+      ids[[i]]
+    }
+  }, character(1))
+
+  data.frame(
+    id = ids,
+    type = types,
+    title = titles,
+    spec_file = basename(spec_json_path),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' List available outputs with their backing spec files
+#' @keywords internal
+#' @noRd
+.available_outputs_meta <- function(path, latest_only = TRUE) {
+  if (!dir.exists(path)) {
+    cli::cli_abort(c(
+      "Meta folder not found: {.path {path}}.",
+      i = "Pass a ksTFL meta folder or a {.file .ks} file."
+    ))
+  }
+
+  index <- .read_report_index(path, latest_only = latest_only)
+  spec_files <- unique(as.character(index$spec_file))
+  parts <- lapply(spec_files, function(sf) {
+    spec_path <- file.path(path, sf)
+    if (!file.exists(spec_path)) {
+      return(NULL)
+    }
+    .spec_descriptors(spec_path)
+  })
+  parts <- Filter(Negate(is.null), parts)
+
+  if (length(parts) == 0) {
+    return(data.frame(
+      id = character(),
+      type = character(),
+      title = character(),
+      spec_file = character(),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  out <- do.call(rbind, parts)
+  out <- out[!duplicated(out$id), c("id", "type", "title", "spec_file"), drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+#' List Available Output IDs in a Meta Folder or `.ks` File
 #'
-#' @param path Character scalar. Either a ksTFL meta folder (containing
-#'   `_index.json` and the spec/data JSON files) or a `.ks` file produced by
-#'   [save_study()].
-#' @param latest_only Logical. When reading a meta folder, keep only the most
-#'   recent spec per document (via `is_latest`). Default `TRUE`.
-#' @param max_rows Integer. Maximum data rows embedded per table context.
-#'   Defaults to `ks_get_option("max_rows")`.
-#' @param pattern Optional regular expression. When set, keeps only outputs
-#'   whose id, type, or title matches the pattern.
-#' @param ignore_case Logical. Passed to [base::grepl()] when matching
-#'   `pattern`. Default `TRUE`.
+#' For a ksTFL meta folder, this scans spec metadata and returns available
+#' output ids without loading table data. For a saved `.ks` file, ids are read
+#' from the serialized study payload.
 #'
-#' @return A [ks_study] object.
+#' @param path Character scalar. ksTFL meta folder or `.ks` file.
+#' @param latest_only Logical. When reading a meta folder, keep only reports
+#'   marked as latest if the index carries `is_latest`.
+#'
+#' @return Data frame with columns `id`, `type`, and `title`.
 #'
 #' @examples
 #' \dontrun{
-#' study <- load_study("path/to/outputs/meta")
-#' study
-#' study$tables[["14-3.01"]]
+#' ids <- ks_list_ids("path/to/outputs/meta")
+#' ids
 #' }
 #'
 #' @export
-load_study <- function(path,
-                       latest_only = TRUE,
-                       max_rows = ks_get_option("max_rows"),
-                       pattern = NULL,
-                       ignore_case = TRUE) {
+ks_list_ids <- function(path, latest_only = TRUE) {
   checkmate::assert_string(path)
-  checkmate::assert_string(pattern, null.ok = TRUE)
-  checkmate::assert_flag(ignore_case)
+  checkmate::assert_flag(latest_only)
 
-  # .ks file branch (defined in study.R).
   if (grepl(paste0("\\.", .KS_STUDY_EXT, "$"), path)) {
     loaded <- .load_study_file(path)
-    contexts <- .study_all(loaded)
-    contexts <- .filter_contexts(contexts, pattern = pattern, ignore_case = ignore_case)
-
-    if (length(contexts) == 0) {
-      cli::cli_abort(c(
-        "No outputs matched {.arg pattern} in {.file {path}}.",
-        i = "Try a broader regular expression or set {.code pattern = NULL}."
+    all <- .study_all(loaded)
+    if (length(all) == 0) {
+      return(data.frame(
+        id = character(),
+        type = character(),
+        title = character(),
+        stringsAsFactors = FALSE
       ))
     }
-
-    return(new_ks_study(contexts, meta_dir = loaded$meta_dir))
+    return(data.frame(
+      id = vapply(all, function(ctx) as.character(ctx$id %||% ""), character(1)),
+      type = vapply(all, function(ctx) as.character(ctx$type %||% "Table"), character(1)),
+      title = vapply(all, function(ctx) {
+        if (length(ctx$title)) paste(ctx$title, collapse = " ") else as.character(ctx$id %||% "")
+      }, character(1)),
+      stringsAsFactors = FALSE
+    ))
   }
 
   if (!dir.exists(path)) {
@@ -514,34 +618,99 @@ load_study <- function(path,
     ))
   }
 
-  index <- ksTFL::list_reports(path)
-  if (is.null(index) || nrow(index) == 0) {
-    cli::cli_abort("No reports found in meta folder {.path {path}}.")
-  }
-  if (latest_only && "is_latest" %in% names(index)) {
-    index <- index[isTRUE(index$is_latest) | index$is_latest %in% TRUE, , drop = FALSE]
+  out <- .available_outputs_meta(path, latest_only = latest_only)
+  out[, c("id", "type", "title"), drop = FALSE]
+}
+
+#' Load Selected Outputs from a ksTFL Meta Folder or `.ks` File
+#'
+#' Loads only the requested output ids into a [ks_study] object.
+#'
+#' @param path Character scalar. ksTFL meta folder or `.ks` file.
+#' @param ids Optional character vector of output ids to load. If `NULL`, all
+#'   available outputs are loaded.
+#' @param latest_only Logical. When reading a meta folder, keep only reports
+#'   marked as latest if the index carries `is_latest`.
+#' @param max_rows Integer. Maximum table rows embedded per context.
+#'
+#' @return A [ks_study] object containing only the selected outputs.
+#'
+#' @examples
+#' \dontrun{
+#' study <- ks_load("path/to/outputs/meta", ids = c("14-3.01", "14-3.02"))
+#' }
+#'
+#' @export
+ks_load <- function(path,
+                    ids = NULL,
+                    latest_only = TRUE,
+                    max_rows = ks_get_option("max_rows")) {
+  checkmate::assert_string(path)
+  checkmate::assert_character(ids, null.ok = TRUE, min.len = 1, any.missing = FALSE)
+  checkmate::assert_flag(latest_only)
+  checkmate::assert_int(max_rows, lower = 1L)
+
+  if (grepl(paste0("\\.", .KS_STUDY_EXT, "$"), path)) {
+    loaded <- .load_study_file(path)
+    contexts <- .study_all(loaded)
+
+    if (!is.null(ids)) {
+      missing <- setdiff(ids, names(contexts))
+      if (length(missing) > 0) {
+        cli::cli_abort(c(
+          "Some requested outputs were not found in {.file {path}}.",
+          x = "Missing id{?s}: {.val {missing}}"
+        ))
+      }
+      contexts <- contexts[ids]
+    }
+
+    return(new_ks_study(contexts, meta_dir = loaded$meta_dir))
   }
 
-  spec_files <- unique(as.character(index$spec_file))
+  available <- .available_outputs_meta(path, latest_only = latest_only)
+  if (nrow(available) == 0) {
+    cli::cli_abort("No parseable outputs found in meta folder {.path {path}}.")
+  }
+
+  if (!is.null(ids)) {
+    missing <- setdiff(ids, available$id)
+    if (length(missing) > 0) {
+      cli::cli_abort(c(
+        "Some requested outputs were not found in meta folder {.path {path}}.",
+        x = "Missing id{?s}: {.val {missing}}"
+      ))
+    }
+    available <- available[available$id %in% ids, , drop = FALSE]
+  }
+
+  spec_files <- unique(available$spec_file)
   contexts <- list()
   for (sf in spec_files) {
     spec_path <- file.path(path, sf)
-    if (!file.exists(spec_path)) next
+    if (!file.exists(spec_path)) {
+      next
+    }
     parsed <- .parse_spec_json(spec_path, path, max_rows = max_rows)
+    if (!is.null(ids)) {
+      parsed <- parsed[intersect(ids, names(parsed))]
+    }
     contexts <- c(contexts, parsed)
   }
 
-  contexts <- .filter_contexts(contexts, pattern = pattern, ignore_case = ignore_case)
-
-  if (length(contexts) == 0) {
-    if (is.null(pattern)) {
-      cli::cli_abort("No table/figure/text specs could be parsed from {.path {path}}.")
-    } else {
+  if (!is.null(ids)) {
+    missing_loaded <- setdiff(ids, names(contexts))
+    if (length(missing_loaded) > 0) {
       cli::cli_abort(c(
-        "No outputs matched {.arg pattern} in {.path {path}}.",
-        i = "Try a broader regular expression or set {.code pattern = NULL}."
+        "Some requested outputs could not be loaded from specs.",
+        x = "Missing id{?s}: {.val {missing_loaded}}"
       ))
     }
+    contexts <- contexts[ids]
+  }
+
+  if (length(contexts) == 0) {
+    cli::cli_abort("No outputs were loaded from {.path {path}}.")
   }
 
   new_ks_study(contexts, meta_dir = path)

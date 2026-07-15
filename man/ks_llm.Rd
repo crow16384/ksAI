@@ -2,52 +2,59 @@
 % Please edit documentation in R/skills.R
 \name{ks_llm}
 \alias{ks_llm}
-\title{Run a CSR-Writing Skill Against a Study or Table}
+\title{Run a Skill or Free Prompt Against Selected Outputs}
 \usage{
-ks_llm(x, skill = "describe", id = NULL, chat = NULL, ...)
+ks_llm(
+  x,
+  ids,
+  skill = "describe",
+  prompt = NULL,
+  prior = NULL,
+  model = NULL,
+  provider = ks_get_option("provider"),
+  base_url = NULL,
+  echo = "none",
+  ...
+)
 }
 \arguments{
-\item{x}{A \link{ks_study}, \link{ks_context}, or \code{kschat} object.}
+\item{x}{A \link{ks_study} or \code{kschat} object.}
 
-\item{skill}{Character scalar. Skill name. Default \code{"describe"}.}
+\item{ids}{Character vector of output ids to include as context.}
 
-\item{id}{Optional character scalar. Table id when \code{x} is a study.}
+\item{skill}{Optional skill name. Defaults to \code{"describe"}.}
 
-\item{chat}{Optional \code{kschat}. Supplies the connection settings; required
-when \code{x} is a \link{ks_study} or bare \link{ks_context}.}
+\item{prompt}{Optional free-form user instructions. If \code{skill} is \code{NULL},
+this is the main prompt body.}
 
-\item{...}{Named values filling additional template placeholders.}
+\item{prior}{Optional \link{ks_result} from a previous run. Its response is
+prepended as prior analysis context.}
+
+\item{model}{Optional model name when \code{x} is a \link{ks_study}. Ignored for
+\code{kschat} input.}
+
+\item{provider}{Optional provider when \code{x} is a \link{ks_study}. Ignored for
+\code{kschat} input.}
+
+\item{base_url}{Optional provider URL override when \code{x} is a \link{ks_study}.}
+
+\item{echo}{Echo mode forwarded to ellmer when \code{x} is a \link{ks_study}.}
+
+\item{...}{Named placeholders for the selected skill template.}
 }
 \value{
-The LLM's text response (character scalar).
+A \link{ks_result} object.
 }
 \description{
-Loads a skill prompt template, fills its \code{{{placeholders}}} from the given
-context, and sends it to the LLM. Skills are Markdown templates; built-ins
-include \code{"describe"}, \code{"summarize"}, \code{"csr_section"}, and \code{"review"}. Add
-your own by pointing \code{ks_set_option("skills_dir", ...)} at a folder of
-\code{.md} files.
-}
-\details{
-The \code{{{context}}} placeholder is filled automatically from \code{x}:
-\itemize{
-\item a single output (a \link{ks_context}, or a \link{ks_study}/\code{kschat} with \code{id}) is
-rendered as a human-readable Markdown table and run on a \emph{focused} chat,
-so the model sees only that output and is not flooded with the whole
-study;
-\item a \link{ks_study}/\code{kschat} without \code{id} concatenates all table contexts as
-JSON and reuses the existing chat session.
-}
-
-Any additional named arguments in \code{...} (e.g. \code{audience}, \code{title}) fill the
-matching placeholders in the template.
+Runs one of the registered skill templates (or a free prompt) against one or
+more loaded output ids. Returns a \link{ks_result} that can be saved via
+\code{\link[=save_result]{save_result()}} and loaded later via \code{\link[=load_result]{load_result()}}.
 }
 \examples{
 \dontrun{
-study <- load_study("path/to/outputs/meta")
-ks_llm(study, skill = "describe", id = "14-3.01")
-ks_llm(study, skill = "summarize", id = "14-3.01", audience = "clinician")
-ks_llm(study, skill = "csr_section", id = "14-3.01", title = "ADAS-Cog")
+study <- ks_load("path/to/outputs/meta", ids = c("14-3.01", "14-3.02"))
+out <- ks_llm(study, ids = "14-3.01", skill = "describe", model = "qwen3:14b")
+out2 <- ks_llm(study, ids = c("14-3.01", "14-3.02"), prompt = "Compare trends")
 }
 
 }

@@ -3,7 +3,7 @@
 ## Phase 3 benchmark harness (exploratory; NOT part of the package).
 ##
 ## Answers the decision-gate question for a possible C++23 JSON reader:
-## when load_study() is slow, is the time spent in raw JSON *parsing* (which a
+## when ks_load() is slow, is the time spent in raw JSON *parsing* (which a
 ## C++ parser like simdjson/glaze would accelerate) or in R-side *row assembly*
 ## (which pure-R vectorisation would fix more cheaply)?
 ##
@@ -12,7 +12,7 @@
 ## Defaults: 40 tables, 500 rows/table, 5 reps.
 ##
 ## It generates a synthetic ksTFL-shaped meta folder, then times:
-##   1. full load_study()
+##   1. full ks_load()
 ##   2. raw jsonlite parse of every spec + data JSON
 ##   3. .build_rows() row assembly over pre-parsed data
 ## and prints a breakdown plus a pure-R vectorisation headroom probe.
@@ -162,8 +162,8 @@ meta_dir <- generate_meta(n_tables, n_rows)
 spec_files <- list.files(meta_dir, pattern = "^spec_.*\\.json$", full.names = TRUE)
 data_files <- list.files(meta_dir, pattern = "^data_ref_.*\\.json$", full.names = TRUE)
 
-# 1. Full load_study()
-t_total <- bench(function() load_study(meta_dir, max_rows = max_rows), reps)
+# 1. Full ks_load()
+t_total <- bench(function() ks_load(meta_dir, ids = NULL, max_rows = max_rows), reps)
 
 # 2. Raw JSON parse only (spec + data files).
 t_parse <- bench(function() {
@@ -193,7 +193,7 @@ med_asm   <- median(t_assemble)
 med_other <- max(med_total - med_parse - med_asm, 0)
 
 cat("Stage breakdown (median of ", reps, " reps):\n", sep = "")
-cat("  full load_study()   ", ms(med_total), "\n")
+cat("  full ks_load()      ", ms(med_total), "\n")
 cat("  raw JSON parse      ", ms(med_parse),
     sprintf("  (%4.1f%% of total)\n", 100 * med_parse / med_total))
 cat("  row assembly        ", ms(med_asm),

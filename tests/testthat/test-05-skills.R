@@ -16,11 +16,11 @@ test_that("built-in skills resolve and load", {
   }
 })
 
-test_that("ks_list_skills lists the built-in skills without infrastructure prompts", {
+test_that("ks_list_skills lists only user-facing built-in skills", {
   skills <- ks_list_skills()
   expect_setequal(skills$name, c("describe", "summarize", "csr_section", "review"))
   expect_false("system" %in% skills$name)
-  expect_false("study_index" %in% skills$name)
+  expect_false("system_single" %in% skills$name)
 })
 
 test_that("user skills_dir shadows built-ins and adds new skills", {
@@ -34,7 +34,6 @@ test_that("user skills_dir shadows built-ins and adds new skills", {
 
   skills <- ks_list_skills()
   expect_true("my_intro" %in% skills$name)
-  # describe now sourced from the user dir
   d <- skills[skills$name == "describe", ]
   expect_equal(d$source, "user")
   expect_match(ksAI:::.load_prompt("describe"), "overridden")
@@ -44,79 +43,131 @@ test_that("unknown skill raises a clear error", {
   expect_error(ksAI:::.resolve_skill_path("no_such_skill"), "not found")
 })
 
-test_that(".concat_contexts wraps multiple contexts as a JSON array", {
+test_that(".concat_markdown_contexts renders labelled blocks", {
   dir <- make_fixture_study(n_tables = 2L)
-  study <- load_study(dir)
-  out <- ksAI:::.concat_contexts(study$tables)
-  parsed <- jsonlite::fromJSON(out, simplifyVector = FALSE)
-  expect_length(parsed, 2L)
-})
-
-test_that("ks_list_skills excludes the focused single-output prompt", {
-  skills <- ks_list_skills()
-  expect_false("system_single" %in% skills$name)
-})
-
-test_that(".assemble_skill_prompt fills context and id placeholders", {
-  out <- ksAI:::.assemble_skill_prompt(
-    "id={{id}} ctx={{context}}",
-    context = "TBL", id = "X1"
-  )
-  expect_equal(out, "id=X1 ctx=TBL")
-  # A NULL id becomes an empty string rather than erroring.
-  out2 <- ksAI:::.assemble_skill_prompt("[{{id}}]", context = "c", id = NULL)
-  expect_equal(out2, "[]")
-})
-
-test_that("single-id skill context is the rendered table, not whole-study JSON", {
-  dir <- make_fixture_study(n_tables = 3L)
-  study <- load_study(dir)
-  ks <- structure(
-    list(chat = NULL, study = study, mode = "small", provider = "ollama",
-         model = "m", base_url = NULL, echo = "none", dots = list()),
-    class = c("kschat", "list")
-  )
-  # Avoid constructing a real ellmer/ollama session in tests.
-  testthat::local_mocked_bindings(.make_focused_chat = function(ks) list(chat = identity))
-
-  resolved <- ksAI:::.resolve_chat_and_context(ks, chat = NULL, id = "14-3.01")
-
-  # Rendered Markdown for the single table (human label present)...
-  expect_true(grepl("Placebo (N=79)", resolved$context, fixed = TRUE))
-  # ...not the whole-study machine JSON, and not the sibling tables.
-  expect_false(grepl("\"n_rows_total\"", resolved$context, fixed = TRUE))
-  expect_false(grepl("14-3.02", resolved$context, fixed = TRUE))
-  expect_equal(resolved$id, "14-3.01")
-})
-
-test_that("study-wide skill reuses the session and concatenates JSON", {
-  dir <- make_fixture_study(n_tables = 2L)
-  study <- load_study(dir)
-  sentinel <- list(chat = function(p) p)
-  ks <- structure(
-    list(chat = sentinel, study = study, mode = "small", provider = "ollama",
-         model = "m", base_url = NULL, echo = "none", dots = list()),
-    class = c("kschat", "list")
+  study <- ks_load(dir, ids = c("14-3.01", "14-3.02"))
+  contexts <- list(
+    "14-3.01" = study[["14-3.01"]],
+    "14-3.02" = study[["14-3.02"]]
   )
 
-  resolved <- ksAI:::.resolve_chat_and_context(ks, chat = NULL, id = NULL)
-
-  expect_identical(resolved$chat, sentinel)
-  parsed <- jsonlite::fromJSON(resolved$context, simplifyVector = FALSE)
-  expect_length(parsed, 2L)
-  expect_null(resolved$id)
+  out <- ksAI:::.concat_markdown_contexts(contexts)
+  expect_match(out, "### Output 14-3.01", fixed = TRUE)
+  expect_match(out, "### Output 14-3.02", fixed = TRUE)
 })
 
-test_that("single-id skill on an unknown id raises a clear error", {
+test_that("ks_llm returns ks_result for describe and appends user prompt", {
   dir <- make_fixture_study(n_tables = 1L)
-  study <- load_study(dir)
-  ks <- structure(
-    list(study = study, provider = "ollama", model = "m", base_url = NULL,
-         echo = "none", dots = list()),
-    class = c("kschat", "list")
+  study <- ks_load(dir, ids = "14-3.01")
+
+  captured <- NULL
+  fake_chat <- list(chat = function(p) {
+    captured <<- p
+    "ok"
+  })
+
+  testthat::local_mocked_bindings(
+    .resolve_chat_session = function(...) {
+      list(chat = fake_chat, study = study, model = "m", provider = "ollama")
+    }
   )
-  expect_error(
-    ksAI:::.resolve_chat_and_context(ks, chat = NULL, id = "no-such-id"),
-    "not found"
+
+  out <- ks_llm(
+    study,
+    ids = "14-3.01",
+    skill = "describe",
+    prompt = "Please answer in Spanish"
   )
+
+  expect_true(is_ks_result(out))
+  expect_equal(out$ids, "14-3.01")
+  expect_equal(out$skill, "describe")
+  expect_match(out$response, "## 14-3.01", fixed = TRUE)
+  expect_match(captured, "Additional user request", fixed = TRUE)
+  expect_match(captured, "Please answer in Spanish", fixed = TRUE)
+})
+
+test_that("ks_llm describe supports multiple IDs", {
+  dir <- make_fixture_study(n_tables = 2L)
+  study <- ks_load(dir, ids = c("14-3.01", "14-3.02"))
+
+  calls <- 0L
+  fake_chat <- list(chat = function(p) {
+    calls <<- calls + 1L
+    paste0("answer-", calls)
+  })
+
+  testthat::local_mocked_bindings(
+    .resolve_chat_session = function(...) {
+      list(chat = fake_chat, study = study, model = "m", provider = "ollama")
+    }
+  )
+
+  out <- ks_llm(study, ids = c("14-3.01", "14-3.02"), skill = "describe")
+  expect_match(out$response, "## 14-3.01", fixed = TRUE)
+  expect_match(out$response, "## 14-3.02", fixed = TRUE)
+  expect_equal(calls, 2L)
+})
+
+test_that("ks_llm review requires exactly two IDs", {
+  dir <- make_fixture_study(n_tables = 1L)
+  study <- ks_load(dir, ids = "14-3.01")
+
+  fake_chat <- list(chat = function(p) p)
+  testthat::local_mocked_bindings(
+    .resolve_chat_session = function(...) {
+      list(chat = fake_chat, study = study, model = "m", provider = "ollama")
+    }
+  )
+
+  expect_error(ks_llm(study, ids = "14-3.01", skill = "review"), "exactly two IDs")
+})
+
+test_that("ks_llm accepts free prompt with multiple IDs", {
+  dir <- make_fixture_study(n_tables = 2L)
+  study <- ks_load(dir, ids = c("14-3.01", "14-3.02"))
+
+  fake_chat <- list(chat = function(p) p)
+  testthat::local_mocked_bindings(
+    .resolve_chat_session = function(...) {
+      list(chat = fake_chat, study = study, model = "m", provider = "ollama")
+    }
+  )
+
+  out <- ks_llm(
+    study,
+    ids = c("14-3.01", "14-3.02"),
+    skill = NULL,
+    prompt = "Compare these tables"
+  )
+
+  expect_true(is_ks_result(out))
+  expect_match(out$response, "### Output 14-3.01", fixed = TRUE)
+  expect_match(out$response, "### Output 14-3.02", fixed = TRUE)
+  expect_match(out$response, "User request:", fixed = TRUE)
+})
+
+test_that("ks_llm prepends prior analysis when prior result is provided", {
+  dir <- make_fixture_study(n_tables = 1L)
+  study <- ks_load(dir, ids = "14-3.01")
+
+  fake_chat <- list(chat = function(p) p)
+  testthat::local_mocked_bindings(
+    .resolve_chat_session = function(...) {
+      list(chat = fake_chat, study = study, model = "m", provider = "ollama")
+    }
+  )
+
+  prior <- ksAI:::new_ks_result(
+    ids = "14-3.01",
+    skill = "describe",
+    prompt = NULL,
+    response = "Old analysis",
+    model = "m",
+    provider = "ollama"
+  )
+
+  out <- ks_llm(study, ids = "14-3.01", skill = "describe", prior = prior)
+  expect_match(out$response, "Prior analysis:", fixed = TRUE)
+  expect_match(out$response, "Old analysis", fixed = TRUE)
 })

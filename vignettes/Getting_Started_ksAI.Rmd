@@ -30,15 +30,16 @@ provider.
 
 No live ksTFL session is required: `ksAI` works entirely from the saved JSON.
 
-## 1. Load a study
+## 1. Discover IDs and load targeted outputs
 
-Point `load_study()` at a ksTFL meta folder (the `metaPath` you passed to
-`ksTFL::save_report()`):
+List output IDs from a ksTFL meta folder (the `metaPath` you passed to
+`ksTFL::save_report()`), then load only the tables you want in context:
 
 ```{r}
 library(ksAI)
 
-study <- load_study("path/to/outputs/meta")
+ks_list_ids("path/to/outputs/meta")
+study <- ks_load("path/to/outputs/meta", ids = c("14-3.01", "14-3.02"))
 study
 ```
 
@@ -56,46 +57,36 @@ and whether it is a detail or a label row.
 
 ## 2. Open a chat session
 
-`ks_chat()` wires the study to a model. The context strategy is chosen
-automatically from the study size: small studies embed every table directly in
-the system prompt; larger studies embed a compact index and register tools so
-the model can pull details on demand.
+`ks_chat()` wires the loaded subset to a model.
 
 ```{r}
 chat <- ks_chat(study, model = "qwen3:14b", provider = "ollama")
 ```
 
-## 3. Ask questions across the whole study
-
-`ask()` is free-form and conversational. This is where cross-table reasoning
-happens — relating efficacy, safety, vital signs, and quality-of-life outputs:
-
-```{r}
-ask(chat, "How do the vital sign changes relate to the adverse event profile?")
-ask(chat, "Which tables support the primary efficacy conclusion, and what do they show?")
-ask(chat, "Are the analysis populations consistent across the efficacy tables?")
-```
-
-## 4. Draft CSR text with skills
+## 3. Draft CSR text with skills
 
 Skills are reusable prompt templates. `ks_llm()` fills a skill's placeholders
-from the study context and returns the model's response.
+from the selected IDs and returns a `ks_result` object.
 
 ```{r}
 # Describe one table
-ks_llm(chat, skill = "describe", id = "14-3.01")
+ks_llm(chat, ids = "14-3.01", skill = "describe")
 
 # Audience-tailored summary
-ks_llm(chat, skill = "summarize", id = "14-3.01", audience = "clinician")
+ks_llm(chat, ids = "14-3.01", skill = "summarize", audience = "clinician")
 
 # Draft a CSR results section
-ks_llm(chat, skill = "csr_section", id = "14-3.01", title = "ADAS-Cog (11)")
+ks_llm(chat, ids = "14-3.01", skill = "csr_section", title = "ADAS-Cog (11)")
 
-# Narrated consistency review of two tables
-compare_tables(chat, "14-3.01", "14-3.02")
+# Review consistency across two tables
+ks_llm(chat, ids = c("14-3.01", "14-3.02"), skill = "review")
+
+# Free-form user prompt on multiple IDs
+ks_llm(chat, ids = c("14-3.01", "14-3.02"), skill = NULL,
+  prompt = "Compare these outputs and answer in Spanish")
 ```
 
-## 5. Customize skills
+## 4. Customize skills
 
 The built-in skills are `describe`, `summarize`, `csr_section`, and `review`.
 Add your own — or override a built-in — by pointing `skills_dir` at a folder of
@@ -107,25 +98,29 @@ ks_set_option(skills_dir = "~/my-study-prompts")
 ks_list_skills()
 
 # A file ~/my-study-prompts/exec_summary.md becomes a skill:
-ks_llm(chat, skill = "exec_summary", id = "14-3.01")
+ks_llm(chat, ids = "14-3.01", skill = "exec_summary")
 ```
 
-## 6. Persist the study
+## 5. Persist studies and generated results
 
 Compile once, reuse across sessions. `save_study()` writes a self-contained
-`.ks` file (rendered rows embedded), and `load_study()` reloads it without the
-original ksTFL folder.
+`.ks` file (rendered rows embedded), and `ks_load()` reloads it without the
+original ksTFL folder. Model outputs can be persisted with `save_result()`.
 
 ```{r}
 save_study(study, "my_study.ks")
 
 # Next session
-study <- load_study("my_study.ks")
+study <- ks_load("my_study.ks")
 study$tables[["14-3.01"]] <- enrich_context(
   study$tables[["14-3.01"]],
   population = "ITT",
   annotations = list(sap_ref = "Section 9.2")
 )
+
+out <- ks_llm(study, ids = "14-3.01", skill = "describe", model = "qwen3:14b")
+save_result(out, "analysis/table-14-3-01")
+load_result("analysis/table-14-3-01")
 ```
 
 ## Guardrails

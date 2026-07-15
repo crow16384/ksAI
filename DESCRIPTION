@@ -13,13 +13,16 @@ Authors@R:
     )
 Description: Builds an offline, AI-native reasoning layer on top of the
     'ksTFL' clinical tables framework. Reads the metadata and data JSON
-    artefacts produced by 'ksTFL' save_report(), compiles them into a
-    self-contained study registry of table contexts, and provides an
-    'ellmer'-backed chat with registered tools so a medical writer can ask
-    questions across the whole set of study statistical results and draft
-    clinical study report (CSR) narratives. Works with local models via
-    Ollama or LM Studio, or hosted OpenAI-compatible providers.
+    artefacts produced by 'ksTFL' save_report(), compiles selected outputs
+    into a self-contained study registry of table contexts, and provides an
+    'ellmer'-backed chat and skill workflow so a medical writer can draft
+    clinical study report (CSR) narratives from targeted IDs. Supports
+    persisted LLM outputs in markdown/JSON for later reuse and chaining.
+    Works with local models via Ollama or LM Studio, or hosted
+    OpenAI-compatible providers.
 License: GPL-3
+URL: https://crow16384.github.io/ksAI/, https://github.com/crow16384/ksAI
+BugReports: https://github.com/crow16384/ksAI/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:
@@ -32,7 +35,8 @@ Imports:
 Suggests:
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown
+    rmarkdown,
+    pkgdown
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 Config/roxygen2/version: 8.0.0
