@@ -106,3 +106,31 @@ test_that("ks_load(ids = NULL) loads all outputs", {
   study <- ks_load(dir, ids = NULL)
   expect_equal(length(study$tables), 2L)
 })
+
+test_that("ks_load preserves is_grouping and subtitles", {
+  dir <- make_fixture_demographics()
+  study <- ks_load(dir, ids = "14-3.01")
+  ctx <- study[["14-3.01"]]
+
+  expect_equal(ctx$subtitles, "Randomized Subjects")
+  expect_true(isTRUE(ctx$columns$VISIT$is_grouping))
+  expect_false(isTRUE(ctx$columns$ROW_LABEL$is_grouping))
+  expect_false(isTRUE(ctx$columns$MEAN_A$is_grouping))
+  expect_equal(length(ctx$span_headers), 2L)
+  expect_equal(ctx$span_headers[[1]]$label, "Drug A (N=121)")
+})
+
+test_that(".extract_columns keeps is_grouping flag", {
+  columns <- list(
+    ROW_LABEL = list(colOrder = 1, label = "", isVisible = TRUE,
+                     format = list(type = "string", format = "%s")),
+    VISIT = list(colOrder = 2, label = "Visit", isVisible = TRUE, isGrouping = TRUE,
+                 format = list(type = "string", format = "%s")),
+    MEAN = list(colOrder = 3, label = "Mean", isVisible = TRUE, isGrouping = FALSE,
+                format = list(type = "string", format = "%s"))
+  )
+  out <- ksAI:::.extract_columns(columns)
+  expect_false(out$ROW_LABEL$is_grouping)
+  expect_true(out$VISIT$is_grouping)
+  expect_false(out$MEAN$is_grouping)
+})

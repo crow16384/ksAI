@@ -117,7 +117,7 @@
 #' Keeps only columns with `isVisible == TRUE`, preserving `colOrder`.
 #'
 #' @param columns_spec Named list of column definitions.
-#' @return List of `list(name, label, type, format_string)`.
+#' @return List of `list(name, label, type, format_string, is_grouping)`.
 #' @keywords internal
 #' @noRd
 .extract_columns <- function(columns_spec) {
@@ -146,7 +146,8 @@
       name = nms[[i]],
       label = .clean_label(col$label %||% nms[[i]]),
       type = col$format$type %||% "string",
-      format_string = col$format$format %||% "%s"
+      format_string = col$format$format %||% "%s",
+      is_grouping = isTRUE(col$isGrouping)
     )
   })
   names(out) <- nms
@@ -311,6 +312,7 @@
   columns <- .extract_columns(spec_entry$columns)
   span_headers <- .extract_span_headers(spec_entry$stubColumns)
   title <- .extract_text_entries(spec_entry$titles)
+  subtitles <- .extract_text_entries(spec_entry$subtitles)
   footnotes <- .extract_text_entries(spec_entry$footnotes)
   population <- .parse_population(spec_entry$headers)
   source <- .parse_source(spec_entry$footers)
@@ -329,6 +331,7 @@
     id = id,
     type = type,
     title = title,
+    subtitles = subtitles,
     population = population,
     source = source,
     columns = columns,

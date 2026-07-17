@@ -17,10 +17,11 @@
 #' @param id Character scalar. Stable output identifier (e.g. `"14-3.01"`).
 #' @param type Character scalar. One of `"Table"`, `"Figure"`, `"Text"`.
 #' @param title Character vector. Title lines.
+#' @param subtitles Character vector. Subtitle lines.
 #' @param population Character scalar. Analysis population, or `NA`.
 #' @param source Character scalar. Source program, or `NA`.
 #' @param columns List of visible-column descriptors, each a list with
-#'   `name`, `label`, `type`, `format_string`.
+#'   `name`, `label`, `type`, `format_string`, `is_grouping`.
 #' @param span_headers List of span-header descriptors, each with `label`
 #'   and `cols`.
 #' @param rows List of rendered rows, each with `cells`, `section`, `kind`.
@@ -35,6 +36,7 @@
 new_ks_context <- function(id,
                            type,
                            title = character(),
+                           subtitles = character(),
                            population = NA_character_,
                            source = NA_character_,
                            columns = list(),
@@ -49,6 +51,7 @@ new_ks_context <- function(id,
       id = id,
       type = type,
       title = title,
+      subtitles = subtitles,
       population = population,
       source = source,
       columns = columns,
@@ -87,6 +90,9 @@ print.ks_context <- function(x, ...) {
   cli::cli_h1("ks_context: {x$id} ({x$type})")
   if (length(x$title)) {
     cli::cli_text("{.strong Title}: {paste(x$title, collapse = ' \u2014 ')}")
+  }
+  if (length(x$subtitles)) {
+    cli::cli_text("{.strong Subtitles}: {paste(x$subtitles, collapse = ' \u2014 ')}")
   }
   if (!is.na(x$population)) {
     cli::cli_text("{.strong Population}: {x$population}")
@@ -255,6 +261,206 @@ as_markdown.ks_context <- function(x, ...) {
 
   lines <- c(lines, .md_footnotes(x$footnotes))
   paste(lines, collapse = "\n")
+}
+
+# ---------------------------------------------------------------------------
+# Compact DSL view (token-efficient prompt injection)
+# ---------------------------------------------------------------------------
+
+#' Render a `ks_context` as Compact DSL Text
+#'
+#' Produces a token-efficient text representation of a table context for LLM
+#' prompt injection. Column names are not repeated per cell; span headers group
+#' measure columns, and sections appear as bracketed headers.
+#'
+#' @param x A `ks_context` (or later `ks_facts`) object.
+#' @param ... Unused; for S3 compatibility.
+#'
+#' @return A length-1 character string.
+#'
+#' @examples
+#' \dontrun{
+#' study <- ks_load("path/to/outputs/meta", ids = c("14-3.01"))
+#' cat(as_compact(study[["14-3.01"]]))
+#' }
+#'
+#' @export
+as_compact <- function(x, ...) {
+  UseMethod("as_compact")
+}
+
+#' @export
+as_compact.ks_context <- function(x, ...) {
+  lines <- .compact_header_block(x)
+
+  cols <- x$columns
+  has_table <- length(cols) > 0 && length(x$rows) > 0
+
+  if (!has_table) {
+    note <- if (!identical(x$type, "Table")) {
+      paste0("(", x$type, " output; no tabular data embedded.)")
+    } else {
+      "(No data rows available.)"
+    }
+    lines <- c(lines, "", note)
+    lines <- c(lines, .compact_footnotes(x$footnotes))
+    return(paste(lines, collapse = "\n"))
+  }
+
+  lines <- c(lines, "", .compact_rows_block(x))
+  lines <- c(lines, .compact_footnotes(x$footnotes))
+  paste(lines, collapse = "\n")
+}
+
+#' Compact header: TABLE / TITLE / SUBTITLE lines
+#' @keywords internal
+#' @noRd
+.compact_header_block <- function(x) {
+  header <- paste0("TABLE: ", x$id)
+  if (!is.na(x$population) && nzchar(x$population)) {
+    header <- paste0(header, " | Population: ", x$population)
+  }
+  lines <- header
+
+  if (length(x$title)) {
+    lines <- c(lines, paste0("TITLE: ", paste(x$title, collapse = " \u2014 ")))
+  }
+  if (length(x$subtitles)) {
+    lines <- c(lines, paste0("SUBTITLE: ", paste(x$subtitles, collapse = " \u2014 ")))
+  }
+  lines
+}
+
+#' Compact body rows with optional span grouping
+#' @keywords internal
+#' @noRd
+.compact_rows_block <- function(x) {
+  cols <- x$columns
+  col_names <- vapply(cols, function(c) c$name, character(1))
+  col_labels <- vapply(cols, function(c) {
+    lab <- c$label
+    if (is.null(lab) || !nzchar(lab)) c$name else lab
+  }, character(1))
+
+  row_label_col <- col_names[[1]]
+  measure_cols <- if (length(col_names) > 1L) col_names[-1] else character()
+  measure_labels <- if (length(col_labels) > 1L) col_labels[-1] else character()
+  name_to_label <- stats::setNames(col_labels, col_names)
+
+  cell_val <- function(row, nm) {
+    v <- row$cells[[nm]]
+    if (is.null(v) || (length(v) == 1 && is.na(v))) "" else as.character(v)
+  }
+
+  if (length(x$span_headers)) {
+    .compact_rows_spanned(
+      x$rows, row_label_col, x$span_headers, name_to_label, cell_val
+    )
+  } else {
+    .compact_rows_flat(
+      x$rows, row_label_col, measure_cols, measure_labels, cell_val
+    )
+  }
+}
+
+#' Span-grouped compact rows
+#'
+#' Emits a one-time SPANS/COLS legend, then short keys per row so long arm
+#' labels are not repeated on every line.
+#' @keywords internal
+#' @noRd
+.compact_rows_spanned <- function(rows, row_label_col, span_headers,
+                                  name_to_label, cell_val) {
+  n_spans <- length(span_headers)
+  keys <- if (n_spans <= 26L) {
+    LETTERS[seq_len(n_spans)]
+  } else {
+    paste0("S", seq_len(n_spans))
+  }
+
+  lines <- character()
+  # Legend: A = Placebo (N=86); B = ...
+  legend <- paste(
+    vapply(seq_len(n_spans), function(i) {
+      paste0(keys[[i]], "=", span_headers[[i]]$label)
+    }, character(1)),
+    collapse = "; "
+  )
+  lines <- c(lines, paste0("SPANS: ", legend))
+
+  # Shared measure labels within the first span (typical stub layout).
+  # If spans differ, list COLS per span key.
+  col_sets <- lapply(span_headers, function(span) {
+    vapply(span$cols, function(nm) {
+      lab <- name_to_label[[nm]]
+      if (is.null(lab) || is.na(lab) || !nzchar(lab)) nm else lab
+    }, character(1))
+  })
+  same_cols <- length(unique(lapply(col_sets, paste, collapse = "\1"))) == 1L
+  if (same_cols && length(col_sets[[1]])) {
+    lines <- c(lines, paste0("COLS: ", paste(col_sets[[1]], collapse = ", ")))
+  } else {
+    per <- vapply(seq_len(n_spans), function(i) {
+      paste0(keys[[i]], ":(", paste(col_sets[[i]], collapse = ", "), ")")
+    }, character(1))
+    lines <- c(lines, paste0("COLS: ", paste(per, collapse = "; ")))
+  }
+
+  prev_section <- NULL
+  for (row in rows) {
+    sec <- row$section
+    if (!is.null(sec) && !is.na(sec) && nzchar(sec) && !identical(prev_section, sec)) {
+      lines <- c(lines, paste0("[", sec, "]"))
+      prev_section <- sec
+    }
+
+    label <- cell_val(row, row_label_col)
+    span_parts <- vapply(seq_len(n_spans), function(i) {
+      vals <- vapply(span_headers[[i]]$cols, function(nm) cell_val(row, nm), character(1))
+      paste0(keys[[i]], ": ", paste(vals, collapse = ", "))
+    }, character(1))
+
+    lines <- c(lines, paste0(label, ":  ", paste(span_parts, collapse = "  |  ")))
+  }
+  lines
+}
+
+#' Flat (no span) compact rows
+#' @keywords internal
+#' @noRd
+.compact_rows_flat <- function(rows, row_label_col, measure_cols,
+                               measure_labels, cell_val) {
+  lines <- character()
+  if (length(measure_labels)) {
+    lines <- c(lines, paste0("COLS: ", paste(measure_labels, collapse = " | ")))
+  }
+
+  prev_section <- NULL
+  for (row in rows) {
+    sec <- row$section
+    if (!is.null(sec) && !is.na(sec) && nzchar(sec) && !identical(prev_section, sec)) {
+      lines <- c(lines, paste0("[", sec, "]"))
+      prev_section <- sec
+    }
+    label <- cell_val(row, row_label_col)
+    vals <- vapply(measure_cols, function(nm) cell_val(row, nm), character(1))
+    if (length(vals)) {
+      lines <- c(lines, paste0(label, ": ", paste(vals, collapse = " | ")))
+    } else {
+      lines <- c(lines, label)
+    }
+  }
+  lines
+}
+
+#' Compact footnote block
+#' @keywords internal
+#' @noRd
+.compact_footnotes <- function(footnotes) {
+  if (!length(footnotes)) {
+    return(character())
+  }
+  c("", "Footnotes:", vapply(footnotes, function(f) paste0("- ", f), character(1)))
 }
 
 #' Escape Markdown table-breaking characters in cell text

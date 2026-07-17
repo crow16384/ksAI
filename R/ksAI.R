@@ -8,6 +8,8 @@
 #' study statistical results and draft clinical study report (CSR) narratives.
 #'
 #' @keywords internal
+#' @useDynLib ksAI, .registration = TRUE
+#' @importFrom Rcpp evalCpp
 "_PACKAGE"
 
 # ---------------------------------------------------------------------------
@@ -26,7 +28,9 @@
     # Directory of user-defined skill prompts (.md). NULL = built-ins only.
     skills_dir = NULL,
     # Default LLM provider for ks_chat().
-    provider = "ollama"
+    provider = "ollama",
+    # Context serialization for LLM injection: "markdown", "compact", or "json".
+    context_format = "markdown"
   )
 }
 
@@ -47,7 +51,7 @@
 #' or more options for the current session.
 #'
 #' @param key Character scalar. Option name. One of `"max_rows"`,
-#'   `"skills_dir"`, `"provider"`.
+#'   `"skills_dir"`, `"provider"`, `"context_format"`.
 #' @param ... Named `key = value` pairs to set (for `ks_set_option()`).
 #'
 #' @return `ks_get_option()` returns the option value. `ks_set_option()`

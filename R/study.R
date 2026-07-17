@@ -186,6 +186,7 @@ save_study <- function(study, path) {
     id = as.character(lst$id %||% NA_character_),
     type = as.character(lst$type %||% "Table"),
     title = as.character(unlist(lst$title) %||% character()),
+    subtitles = as.character(unlist(lst$subtitles) %||% character()),
     population = as.character(lst$population %||% NA_character_),
     source = as.character(lst$source %||% NA_character_),
     columns = lst$columns %||% list(),

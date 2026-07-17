@@ -4,7 +4,7 @@
 # Prompt builders
 # ---------------------------------------------------------------------------
 
-#' Render all loaded outputs as one Markdown context block
+#' Render all loaded outputs as one context block
 #' @keywords internal
 #' @noRd
 .study_context_markdown <- function(study) {
@@ -12,10 +12,10 @@
   if (length(all) == 0) {
     return("_(No outputs loaded.)_")
   }
-  blocks <- vapply(all, function(ctx) {
-    paste0("### Output ", ctx$id, "\n\n", as_markdown(ctx))
-  }, character(1))
-  paste(blocks, collapse = "\n\n")
+  format <- ks_get_option("context_format")
+  # Named list keyed by id for .render_contexts().
+  contexts <- stats::setNames(all, vapply(all, function(ctx) ctx$id, character(1)))
+  .render_contexts(contexts, format = format)
 }
 
 #' Build the system prompt for a targeted study session

@@ -200,17 +200,42 @@ ks_list_skills <- function() {
   contexts
 }
 
-#' Render multiple output contexts as labelled Markdown blocks
+#' Render one or more output contexts in the chosen format
 #' @keywords internal
 #' @noRd
-.concat_markdown_contexts <- function(contexts) {
+.render_contexts <- function(contexts, format = "markdown") {
   if (length(contexts) == 0) {
     return("_(No context loaded.)_")
   }
+  format <- match.arg(format, c("markdown", "compact", "json"))
+  renderer <- switch(
+    format,
+    markdown = as_markdown,
+    compact = as_compact,
+    json = as_json
+  )
   blocks <- vapply(names(contexts), function(id) {
-    paste0("### Output ", id, "\n\n", as_markdown(contexts[[id]]))
+    body <- renderer(contexts[[id]])
+    if (identical(format, "compact")) {
+      paste0("---\n\n", body)
+    } else {
+      paste0("### Output ", id, "\n\n", body)
+    }
   }, character(1))
   paste(blocks, collapse = "\n\n")
+}
+
+#' Render a single context with the chosen format
+#' @keywords internal
+#' @noRd
+.render_one_context <- function(ctx, format = "markdown") {
+  format <- match.arg(format, c("markdown", "compact", "json"))
+  switch(
+    format,
+    markdown = as_markdown(ctx),
+    compact = as_compact(ctx),
+    json = as_json(ctx)
+  )
 }
 
 #' Build final request text from base prompt + optional prior + user prompt
@@ -258,6 +283,8 @@ ks_list_skills <- function() {
 #'   `kschat` input.
 #' @param base_url Optional provider URL override when `x` is a [ks_study].
 #' @param echo Echo mode forwarded to ellmer when `x` is a [ks_study].
+#' @param context_format Context serialization format: `"markdown"` (default),
+#'   `"compact"`, or `"json"`. Defaults to the `"context_format"` package option.
 #' @param ... Named placeholders for the selected skill template.
 #'
 #' @return A [ks_result] object.
@@ -279,10 +306,12 @@ ks_llm <- function(x,
                    provider = ks_get_option("provider"),
                    base_url = NULL,
                    echo = "none",
+                   context_format = ks_get_option("context_format"),
                    ...) {
   checkmate::assert_character(ids, min.len = 1, any.missing = FALSE, unique = TRUE)
   checkmate::assert_string(skill, null.ok = TRUE)
   checkmate::assert_string(prompt, null.ok = TRUE)
+  context_format <- match.arg(context_format, c("markdown", "compact", "json"))
   if (!is.null(prior) && !is_ks_result(prior)) {
     cli::cli_abort("{.arg prior} must be a {.cls ks_result} object.")
   }
@@ -312,7 +341,7 @@ ks_llm <- function(x,
         template,
         id = id,
         ids = paste(ids, collapse = ", "),
-        context = as_markdown(contexts[[id]]),
+        context = .render_one_context(contexts[[id]], context_format),
         !!!dots
       )
       req <- .compose_request(base_prompt, prompt = prompt, prior = prior)
@@ -331,9 +360,9 @@ ks_llm <- function(x,
       ids = paste(ids, collapse = ", "),
       id1 = ids[[1]],
       id2 = ids[[2]],
-      context = .concat_markdown_contexts(contexts),
-      context1 = as_markdown(contexts[[1]]),
-      context2 = as_markdown(contexts[[2]]),
+      context = .render_contexts(contexts, context_format),
+      context1 = .render_one_context(contexts[[1]], context_format),
+      context2 = .render_one_context(contexts[[2]], context_format),
       !!!dots
     )
     req <- .compose_request(base_prompt, prompt = prompt, prior = prior)
@@ -341,9 +370,9 @@ ks_llm <- function(x,
   } else if (!is.null(skill)) {
     template <- .load_prompt(skill)
     context_block <- if (length(ids) == 1L) {
-      as_markdown(contexts[[1]])
+      .render_one_context(contexts[[1]], context_format)
     } else {
-      .concat_markdown_contexts(contexts)
+      .render_contexts(contexts, context_format)
     }
     id_value <- if (length(ids) == 1L) ids[[1]] else paste(ids, collapse = ", ")
     base_prompt <- .fill_prompt(
@@ -357,9 +386,9 @@ ks_llm <- function(x,
     response <- as.character(session$chat$chat(req))
   } else {
     context_block <- if (length(ids) == 1L) {
-      as_markdown(contexts[[1]])
+      .render_one_context(contexts[[1]], context_format)
     } else {
-      .concat_markdown_contexts(contexts)
+      .render_contexts(contexts, context_format)
     }
     base_prompt <- paste0(
       "Use the following output context",

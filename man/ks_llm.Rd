@@ -14,6 +14,7 @@ ks_llm(
   provider = ks_get_option("provider"),
   base_url = NULL,
   echo = "none",
+  context_format = ks_get_option("context_format"),
   ...
 )
 }
@@ -39,6 +40,9 @@ prepended as prior analysis context.}
 \item{base_url}{Optional provider URL override when \code{x} is a \link{ks_study}.}
 
 \item{echo}{Echo mode forwarded to ellmer when \code{x} is a \link{ks_study}.}
+
+\item{context_format}{Context serialization format: \code{"markdown"} (default),
+\code{"compact"}, or \code{"json"}. Defaults to the \code{"context_format"} package option.}
 
 \item{...}{Named placeholders for the selected skill template.}
 }

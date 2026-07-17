@@ -43,7 +43,7 @@ test_that("unknown skill raises a clear error", {
   expect_error(ksAI:::.resolve_skill_path("no_such_skill"), "not found")
 })
 
-test_that(".concat_markdown_contexts renders labelled blocks", {
+test_that(".render_contexts renders labelled markdown blocks by default", {
   dir <- make_fixture_study(n_tables = 2L)
   study <- ks_load(dir, ids = c("14-3.01", "14-3.02"))
   contexts <- list(
@@ -51,9 +51,63 @@ test_that(".concat_markdown_contexts renders labelled blocks", {
     "14-3.02" = study[["14-3.02"]]
   )
 
-  out <- ksAI:::.concat_markdown_contexts(contexts)
+  out <- ksAI:::.render_contexts(contexts, format = "markdown")
   expect_match(out, "### Output 14-3.01", fixed = TRUE)
   expect_match(out, "### Output 14-3.02", fixed = TRUE)
+})
+
+test_that(".render_contexts uses compact separators", {
+  dir <- make_fixture_study(n_tables = 2L)
+  study <- ks_load(dir, ids = c("14-3.01", "14-3.02"))
+  contexts <- list(
+    "14-3.01" = study[["14-3.01"]],
+    "14-3.02" = study[["14-3.02"]]
+  )
+  out <- ksAI:::.render_contexts(contexts, format = "compact")
+  expect_match(out, "---", fixed = TRUE)
+  expect_match(out, "TABLE: 14-3.01", fixed = TRUE)
+  expect_false(grepl("### Output", out, fixed = TRUE))
+})
+
+test_that("ks_llm context_format compact injects as_compact text", {
+  dir <- make_fixture_study(n_tables = 1L)
+  study <- ks_load(dir, ids = "14-3.01")
+
+  captured <- NULL
+  fake_chat <- list(chat = function(p) {
+    captured <<- p
+    "ok"
+  })
+
+  testthat::local_mocked_bindings(
+    .resolve_chat_session = function(...) {
+      list(chat = fake_chat, study = study, model = "m", provider = "ollama")
+    }
+  )
+
+  ks_llm(study, ids = "14-3.01", skill = "describe", context_format = "compact")
+  expect_match(captured, "TABLE: 14-3.01", fixed = TRUE)
+  expect_false(grepl("\\| --- \\|", captured))
+})
+
+test_that("ks_llm defaults to markdown context format", {
+  dir <- make_fixture_study(n_tables = 1L)
+  study <- ks_load(dir, ids = "14-3.01")
+
+  captured <- NULL
+  fake_chat <- list(chat = function(p) {
+    captured <<- p
+    "ok"
+  })
+
+  testthat::local_mocked_bindings(
+    .resolve_chat_session = function(...) {
+      list(chat = fake_chat, study = study, model = "m", provider = "ollama")
+    }
+  )
+
+  ks_llm(study, ids = "14-3.01", skill = "describe")
+  expect_match(captured, "**ID**:", fixed = TRUE)
 })
 
 test_that("ks_llm returns ks_result for describe and appends user prompt", {
