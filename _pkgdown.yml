@@ -25,6 +25,7 @@ articles:
   contents:
   - Getting_Started_ksAI
   - Architecture_and_Pipeline
+  - Capsule_Pipeline_Pilot_Example
   - Targeted_Workflow_and_Result_Chaining
 
 reference:

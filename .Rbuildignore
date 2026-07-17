@@ -9,3 +9,5 @@
 ^tools$
 ^_pkgdown\.yml$
 ^docs$
+^vignettes/.*_files$
+^vignettes/_quarto\.yml$

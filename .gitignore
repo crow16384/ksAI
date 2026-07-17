@@ -8,3 +8,5 @@ src/*.o
 src/*.so
 src/*.dll
 src/symbols.rds
+vignettes/*_files
+vignettes/*.html

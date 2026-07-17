@@ -250,15 +250,14 @@ sequenceDiagram
 
 ### Skills
 
-Skills are Markdown templates in `inst/prompts/` with
-`{{placeholders}}`:
+Skills are Markdown templates in `inst/prompts/` with `{placeholders}`:
 
-| Skill | Placeholders | Use |
-|----|----|----|
-| `describe` | `{{context}}`, `{{id}}` | Neutral table description |
-| `summarize` | `{{audience}}`, `{{context}}` | Audience-tailored summary |
-| `csr_section` | `{{title}}`, `{{context}}` | CSR results narrative |
-| `review` | `{{context1}}`, `{{context2}}` | Cross-table consistency (2 ids) |
+| Skill         | Placeholders               | Use                             |
+|---------------|----------------------------|---------------------------------|
+| `describe`    | `{context}`, `{id}`        | Neutral table description       |
+| `summarize`   | `{audience}`, `{context}`  | Audience-tailored summary       |
+| `csr_section` | `{title}`, `{context}`     | CSR results narrative           |
+| `review`      | `{context1}`, `{context2}` | Cross-table consistency (2 ids) |
 
 User skills in `ks_set_option(skills_dir = ...)` shadow built-ins by
 name.
@@ -538,11 +537,12 @@ A full walkthrough of all four workflows (direct, facts, capsule,
 chaining) ships with the package:
 
 ``` r
+
 # Development checkout
-Rscript inst/examples/pilot-study-workflows.R
+# Rscript inst/examples/pilot-study-workflows.R
 
 # Installed package
-Rscript system.file("examples", "pilot-study-workflows.R", package = "ksAI")
+# Rscript system.file("examples", "pilot-study-workflows.R", package = "ksAI")
 ```
 
 Bundled pilot-study meta data lives in `inst/examples/pilot-study/meta`.

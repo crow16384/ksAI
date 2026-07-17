@@ -3,9 +3,10 @@ pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   Architecture_and_Pipeline: Architecture_and_Pipeline.html
+  Capsule_Pipeline_Pilot_Example: Capsule_Pipeline_Pilot_Example.html
   Getting_Started_ksAI: Getting_Started_ksAI.html
   Targeted_Workflow_and_Result_Chaining: Targeted_Workflow_and_Result_Chaining.html
-last_built: 2026-07-17T09:36Z
+last_built: 2026-07-17T12:57Z
 urls:
   reference: https://crow16384.github.io/ksAI/reference
   article: https://crow16384.github.io/ksAI/articles

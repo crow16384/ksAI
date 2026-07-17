@@ -1,0 +1,26 @@
+/* Mermaid diagrams: readable light theme (pkgdown defaults paint clusters
+   with body-text opacity, which reads as dark charcoal). */
+
+:root {
+  --mermaid-bg-color: transparent;
+  --mermaid-edge-color: #64748b;
+  --mermaid-fg-color: #1e293b;
+  --mermaid-fg-color--lighter: #94a3b8;
+  --mermaid-fg-color--lightest: #f1f5f9;
+  --mermaid-font-family: var(--bs-body-font-family);
+  --mermaid-label-bg-color: #ffffff;
+  --mermaid-label-fg-color: #1e293b;
+  --mermaid-node-bg-color: #e2e8f0;
+  --mermaid-node-fg-color: #475569;
+}
+
+[data-bs-theme="dark"] {
+  --mermaid-edge-color: #94a3b8;
+  --mermaid-fg-color: #e2e8f0;
+  --mermaid-fg-color--lighter: #64748b;
+  --mermaid-fg-color--lightest: #1e293b;
+  --mermaid-label-bg-color: #0f172a;
+  --mermaid-label-fg-color: #e2e8f0;
+  --mermaid-node-bg-color: #334155;
+  --mermaid-node-fg-color: #94a3b8;
+}

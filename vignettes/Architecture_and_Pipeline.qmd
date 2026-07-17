@@ -1,13 +1,16 @@
 ---
 title: "Architecture and Pipeline"
-output: rmarkdown::html_vignette
+format:
+  html:
+    toc: true
 vignette: >
   %\VignetteIndexEntry{Architecture and Pipeline}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r}
+#| include: false
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -39,7 +42,7 @@ structure is built before the reasoning model runs.
 
 ## End-to-end data flow
 
-```mermaid
+```{mermaid}
 flowchart TB
   subgraph ksTFL["ksTFL (upstream)"]
     SPEC["Spec JSON<br/>(layout, columns, titles)"]
@@ -232,7 +235,8 @@ renders only the matched slice.
 **When to use:** you know the structural filter (one SOC, one visit, one
 parameter row) and want zero LLM tokens spent on irrelevant rows.
 
-```r
+```{r}
+#| eval: false
 facts_ae <- as_facts(study[["14-5.01"]])
 retrieve(facts_ae, rows = "CARDIAC DISORDERS") |> as_compact()
 ```
@@ -243,7 +247,7 @@ retrieve(facts_ae, rows = "CARDIAC DISORDERS") |> as_compact()
 
 The direct pipeline is the fastest path from loaded outputs to CSR text.
 
-```mermaid
+```{mermaid}
 sequenceDiagram
   participant W as Writer
   participant K as ksAI
@@ -323,7 +327,7 @@ For large studies or exploratory questions, ksAI decomposes outputs into
 **clinical capsules** — concept-centric, traceable semantic units — then
 runs a four-stage agent pipeline.
 
-```mermaid
+```{mermaid}
 flowchart LR
   subgraph structure["Structure agent"]
     AC["as_capsules()"]
@@ -411,7 +415,8 @@ Returns a `ks_capsule_subset` with ranked capsules and score breakdown.
 
 Filters narrow candidates before scoring:
 
-```r
+```{r}
+#| eval: false
 ks_retrieve(store,
   query = "cardiac bradycardia high dose",
   n = 5,
@@ -433,7 +438,8 @@ Combines retrieval and generation:
 The reasoning model **never sees the full study** — only retrieved capsule
 summaries. This is the capsule pipeline's primary token advantage.
 
-```r
+```{r}
+#| eval: false
 ks_reason(store,
   query = "Summarize cardiac findings with n(%) per arm",
   n = 5,
@@ -540,12 +546,13 @@ analysis/
 A full walkthrough of all four workflows (direct, facts, capsule, chaining)
 ships with the package:
 
-```r
+```{r}
+#| eval: false
 # Development checkout
-Rscript inst/examples/pilot-study-workflows.R
+# Rscript inst/examples/pilot-study-workflows.R
 
 # Installed package
-Rscript system.file("examples", "pilot-study-workflows.R", package = "ksAI")
+# Rscript system.file("examples", "pilot-study-workflows.R", package = "ksAI")
 ```
 
 Bundled pilot-study meta data lives in `inst/examples/pilot-study/meta`.

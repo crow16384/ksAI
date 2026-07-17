@@ -6,11 +6,21 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Architecture and Pipeline • ksAI</title>
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+<link rel="icon" sizes="any" href="../favicon.ico">
+<link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Architecture and Pipeline">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><script src="Architecture_and_Pipeline_files/libs/quarto-html/popper.min.js"></script><script src="Architecture_and_Pipeline_files/libs/quarto-html/tippy.umd.min.js"></script><link href="Architecture_and_Pipeline_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Architecture_and_Pipeline_files/libs/quarto-html/light-border.css" rel="stylesheet">
+<script src="Architecture_and_Pipeline_files/libs/quarto-diagram/mermaid.min.js"></script><script src="Architecture_and_Pipeline_files/libs/quarto-diagram/mermaid-init.js"></script><link href="Architecture_and_Pipeline_files/libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
+<meta property="og:title" content="Architecture and Pipeline">
+<meta property="og:image" content="https://crow16384.github.io/ksAI/logo.png">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -35,6 +45,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/Getting_Started_ksAI.html">Getting Started with ksAI</a></li>
     <li><a class="dropdown-item" href="../articles/Architecture_and_Pipeline.html">Architecture and Pipeline</a></li>
+    <li><a class="dropdown-item" href="../articles/Capsule_Pipeline_Pilot_Example.html">Clinical Capsule Pipeline — Extended Pilot Study Example</a></li>
     <li><a class="dropdown-item" href="../articles/Targeted_Workflow_and_Result_Chaining.html">Targeted Workflow, Clinical Capsules, and Result Chaining</a></li>
   </ul>
 </li>
@@ -46,51 +57,42 @@
 
 
   </div>
-</nav><div class="container template-article">
-
-
-
-
+</nav><div class="container template-quarto">
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
+      <img src="../logo.png" class="logo" alt=""><h1>Architecture and Pipeline</h1>
 
-      <h1>Architecture and Pipeline</h1>
-            
-      
-      <small class="dont-index">Source: <a href="https://github.com/crow16384/ksAI/blob/HEAD/vignettes/Architecture_and_Pipeline.Rmd" class="external-link"><code>vignettes/Architecture_and_Pipeline.Rmd</code></a></small>
-      <div class="d-none name"><code>Architecture_and_Pipeline.Rmd</code></div>
+
+
+
+      <small class="dont-index">Source: <a href="https://github.com/crow16384/ksAI/blob/HEAD/vignettes/Architecture_and_Pipeline.qmd" class="external-link"><code>vignettes/Architecture_and_Pipeline.qmd</code></a></small>
+      <div class="d-none name"><code></code></div>
     </div>
 
-    
-    
-<div class="section level2">
-<h2 id="purpose">Purpose<a class="anchor" aria-label="anchor" href="#purpose"></a>
+
+
+
+
+
+    <section class="level2"><h2 id="purpose">Purpose<a class="anchor" aria-label="anchor" href="#purpose"></a>
 </h2>
-<p>ksAI is an offline reasoning layer on top of <a href="https://crow16384.github.io/ksTFL/" class="external-link">ksTFL</a> clinical outputs.
-ksTFL computes tables, figures, and listings deterministically and
-writes them to a <strong>meta folder</strong> as JSON (structural
-specification plus rendered data). ksAI reads that folder, compiles
-outputs into self-contained <strong>context objects</strong>, and routes
-them to a language model through two complementary pipelines:</p>
-<ol style="list-style-type: decimal">
+<p>ksAI is an offline reasoning layer on top of <a href="https://crow16384.github.io/ksTFL/" class="external-link">ksTFL</a> clinical outputs. ksTFL computes tables, figures, and listings deterministically and writes them to a <strong>meta folder</strong> as JSON (structural specification plus rendered data). ksAI reads that folder, compiles outputs into self-contained <strong>context objects</strong>, and routes them to a language model through two complementary pipelines:</p>
+<ol type="1">
 <li>
-<strong>Direct context pipeline</strong> — when you already know
-which outputs matter and they fit in the model window.</li>
+<strong>Direct context pipeline</strong> — when you already know which outputs matter and they fit in the model window.</li>
 <li>
-<strong>Clinical capsule pipeline</strong> — when the study is
-large, exploratory, or token-constrained; decompose, enrich, retrieve,
-then reason over a minimal evidence set.</li>
+<strong>Clinical capsule pipeline</strong> — when the study is large, exploratory, or token-constrained; decompose, enrich, retrieve, then reason over a minimal evidence set.</li>
 </ol>
-<p>Both pipelines share the same import layer and the same
-<strong>CKR</strong> (Clinical Knowledge Representation) serialization
-formats. They differ in how much structure is built before the reasoning
-model runs.</p>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="end-to-end-data-flow">End-to-end data flow<a class="anchor" aria-label="anchor" href="#end-to-end-data-flow"></a>
+<p>Both pipelines share the same import layer and the same <strong>CKR</strong> (Clinical Knowledge Representation) serialization formats. They differ in how much structure is built before the reasoning model runs.</p>
+<hr></section><section class="level2"><h2 id="end-to-end-data-flow">End-to-end data flow<a class="anchor" aria-label="anchor" href="#end-to-end-data-flow"></a>
 </h2>
-<pre class="mermaid"><code>flowchart TB
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p>
+<figure class=""><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart TB
   subgraph ksTFL["ksTFL (upstream)"]
     SPEC["Spec JSON&lt;br/&gt;(layout, columns, titles)"]
     DATA["Data JSON&lt;br/&gt;(cell values)"]
@@ -145,20 +147,21 @@ model runs.</p>
   CAPS --&gt; ANN --&gt; EMB --&gt; RET --&gt; REA
   REA --&gt; RES
 
-  RES --&gt; SAVE["save_result()"]</code></pre>
-<p>At runtime <strong>no live ksTFL session</strong> is required.
-Everything ksAI needs is in the saved JSON artefacts (or in a persisted
-<code>.ks</code> / <code>.ksc</code> file).</p>
-<hr>
+  RES --&gt; SAVE["save_result()"]
+</pre>
 </div>
-<div class="section level2">
-<h2 id="layer-0-kstfl-artefacts">Layer 0: ksTFL artefacts<a class="anchor" aria-label="anchor" href="#layer-0-kstfl-artefacts"></a>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>At runtime <strong>no live ksTFL session</strong> is required. Everything ksAI needs is in the saved JSON artefacts (or in a persisted <code>.ks</code> / <code>.ksc</code> file).</p>
+<hr></section><section class="level2"><h2 id="layer-0-kstfl-artefacts">Layer 0: ksTFL artefacts<a class="anchor" aria-label="anchor" href="#layer-0-kstfl-artefacts"></a>
 </h2>
 <p>ksTFL’s <code>save_report()</code> writes to a meta folder:</p>
-<table class="table">
+<table class="table caption-top">
 <colgroup>
-<col width="62%">
-<col width="37%">
+<col style="width: 62%">
+<col style="width: 37%">
 </colgroup>
 <thead><tr class="header">
 <th>Artefact</th>
@@ -167,13 +170,11 @@ Everything ksAI needs is in the saved JSON artefacts (or in a persisted
 <tbody>
 <tr class="odd">
 <td><code>_index.json</code></td>
-<td>Report catalogue: spec file names, versions, <code>is_latest</code>
-flags</td>
+<td>Report catalogue: spec file names, versions, <code>is_latest</code> flags</td>
 </tr>
 <tr class="even">
 <td><code>{hash}.json</code></td>
-<td>Specification: titles, columns, span headers, footnotes,
-<code>dataRef</code>
+<td>Specification: titles, columns, span headers, footnotes, <code>dataRef</code>
 </td>
 </tr>
 <tr class="odd">
@@ -184,21 +185,11 @@ flags</td>
 </tr>
 </tbody>
 </table>
-<p>Each spec JSON may contain one or more outputs. ksAI resolves stable
-<strong>output ids</strong> (for example <code>14-3.01</code>,
-<code>14-5.01</code>) from document filenames and spec keys.</p>
-<p><code>ks_list_ids(meta_path)</code> scans the index and returns id,
-type, and title without loading data.
-<code>ks_load(meta_path, ids = ...)</code> parses only the requested
-outputs and assembles a <code>ks_study</code>.</p>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="layer-1-ks_context-the-render-join">Layer 1: <code>ks_context</code> — the render-join<a class="anchor" aria-label="anchor" href="#layer-1-ks_context-the-render-join"></a>
+<p>Each spec JSON may contain one or more outputs. ksAI resolves stable <strong>output ids</strong> (for example <code>14-3.01</code>, <code>14-5.01</code>) from document filenames and spec keys.</p>
+<p><code>ks_list_ids(meta_path)</code> scans the index and returns id, type, and title without loading data. <code>ks_load(meta_path, ids = ...)</code> parses only the requested outputs and assembles a <code>ks_study</code>.</p>
+<hr></section><section class="level2"><h2 id="layer-1-ks_context-the-render-join">Layer 1: <code>ks_context</code> — the render-join<a class="anchor" aria-label="anchor" href="#layer-1-ks_context-the-render-join"></a>
 </h2>
-<p>A <code>ks_context</code> is the central value object. It is
-<strong>not</strong> a thin metadata extract; it is the full render-join
-of specification and data:</p>
+<p>A <code>ks_context</code> is the central value object. It is <strong>not</strong> a thin metadata extract; it is the full render-join of specification and data:</p>
 <pre><code>ks_context
 ├── id, type, title, subtitles
 ├── population, source
@@ -208,25 +199,19 @@ of specification and data:</p>
 ├── n_rows_total       # before max_rows truncation
 ├── footnotes[]
 └── annotations{}      # user overlays via enrich_context()</code></pre>
-<p><strong>Row metadata</strong> lifted from invisible control columns
-during import:</p>
+<p><strong>Row metadata</strong> lifted from invisible control columns during import:</p>
 <ul>
 <li>
-<code>section</code> — for example <code>Baseline</code>,
-<code>Week 24</code>, <code>Change from Baseline</code>
+<code>section</code> — for example <code>Baseline</code>, <code>Week 24</code>, <code>Change from Baseline</code>
 </li>
 <li>
-<code>kind</code> — for AE tables: <code>SOC</code>,
-<code>PT</code>, <code>OVERALL</code>; for continuous endpoints:
-<code>PARAM</code>
+<code>kind</code> — for AE tables: <code>SOC</code>, <code>PT</code>, <code>OVERALL</code>; for continuous endpoints: <code>PARAM</code>
 </li>
 </ul>
-<p>This metadata drives both CSR writing (“describe Week 24 vs
-Baseline”) and capsule hierarchy inference.</p>
-<div class="section level3">
-<h3 id="import-options">Import options<a class="anchor" aria-label="anchor" href="#import-options"></a>
+<p>This metadata drives both CSR writing (“describe Week 24 vs Baseline”) and capsule hierarchy inference.</p>
+<section class="level3"><h3 id="import-options">Import options<a class="anchor" aria-label="anchor" href="#import-options"></a>
 </h3>
-<table class="table">
+<table class="table caption-top">
 <thead><tr class="header">
 <th>Option</th>
 <th>Default</th>
@@ -245,14 +230,8 @@ Baseline”) and capsule hierarchy inference.</p>
 </tr>
 </tbody>
 </table>
-<p>Truncation is intentional: it protects model context windows. Use
-<code><a href="../reference/as_facts.html">as_facts()</a></code> / capsules for structured access to specific
-rows without sending the full table.</p>
-<hr>
-</div>
-</div>
-<div class="section level2">
-<h2 id="layer-2-ks_study-targeted-registry">Layer 2: <code>ks_study</code> — targeted registry<a class="anchor" aria-label="anchor" href="#layer-2-ks_study-targeted-registry"></a>
+<p>Truncation is intentional: it protects model context windows. Use <code><a href="../reference/as_facts.html">as_facts()</a></code> / capsules for structured access to specific rows without sending the full table.</p>
+<hr></section></section><section class="level2"><h2 id="layer-2-ks_study-targeted-registry">Layer 2: <code>ks_study</code> — targeted registry<a class="anchor" aria-label="anchor" href="#layer-2-ks_study-targeted-registry"></a>
 </h2>
 <p><code>ks_study</code> partitions contexts by output type:</p>
 <pre><code>ks_study
@@ -260,53 +239,30 @@ rows without sending the full table.</p>
 ├── figures{}
 ├── texts{}
 └── meta_dir    # source path</code></pre>
-<p>Indexing <code>study[["14-3.01"]]</code> returns a single context
-across all types. <code><a href="../reference/save_study.html">save_study()</a></code> /
-<code>ks_load("file.ks")</code> persist a compiled subset for reuse
-without the original ksTFL folder.</p>
-<p><strong>Design intent:</strong> medical writers work on
-<strong>targeted subsets</strong> — efficacy tables for one CSR section,
-safety tables for another — not necessarily the entire study at
-once.</p>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="layer-3-ckr-clinical-knowledge-representation">Layer 3: CKR — Clinical Knowledge Representation<a class="anchor" aria-label="anchor" href="#layer-3-ckr-clinical-knowledge-representation"></a>
+<p>Indexing <code>study[["14-3.01"]]</code> returns a single context across all types. <code><a href="../reference/save_study.html">save_study()</a></code> / <code>ks_load("file.ks")</code> persist a compiled subset for reuse without the original ksTFL folder.</p>
+<p><strong>Design intent:</strong> medical writers work on <strong>targeted subsets</strong> — efficacy tables for one CSR section, safety tables for another — not necessarily the entire study at once.</p>
+<hr></section><section class="level2"><h2 id="layer-3-ckr-clinical-knowledge-representation">Layer 3: CKR — Clinical Knowledge Representation<a class="anchor" aria-label="anchor" href="#layer-3-ckr-clinical-knowledge-representation"></a>
 </h2>
-<p>CKR is the token-efficient, retrieval-capable representation stack
-over <code>ks_context</code>. Three formats, increasing structure:</p>
-<div class="section level3">
-<h3 id="a--as_markdown-human-readable">3a. <code>as_markdown()</code> — human-readable<a class="anchor" aria-label="anchor" href="#a--as_markdown-human-readable"></a>
+<p>CKR is the token-efficient, retrieval-capable representation stack over <code>ks_context</code>. Three formats, increasing structure:</p>
+<section class="level3"><h3 id="a--as_markdown-human-readable">3a. <code>as_markdown()</code> — human-readable<a class="anchor" aria-label="anchor" href="#a--as_markdown-human-readable"></a>
 </h3>
-<p>Default for reading and for models that benefit from familiar table
-layout. Repeats column headers and arm labels per row group. Highest
-token cost.</p>
-</div>
-<div class="section level3">
-<h3 id="b--as_compact-compact-dsl">3b. <code>as_compact()</code> — compact DSL<a class="anchor" aria-label="anchor" href="#b--as_compact-compact-dsl"></a>
+<p>Default for reading and for models that benefit from familiar table layout. Repeats column headers and arm labels per row group. Highest token cost.</p>
+</section><section class="level3"><h3 id="b--as_compact-compact-dsl">3b. <code>as_compact()</code> — compact DSL<a class="anchor" aria-label="anchor" href="#b--as_compact-compact-dsl"></a>
 </h3>
-<p>Pure R. Target: <strong>~50–70% fewer tokens</strong> than markdown
-for span-heavy tables.</p>
-<p><strong>Span tables</strong> emit a one-time legend plus short keys
-per row:</p>
+<p>Pure R. Target: <strong>~50–70% fewer tokens</strong> than markdown for span-heavy tables.</p>
+<p><strong>Span tables</strong> emit a one-time legend plus short keys per row:</p>
 <pre><code>TABLE: 14-5.01 | Population: Safety
 TITLE: ...
 SPANS: A=Placebo (N=86); B=Xanomeline Low (N=84); C=Xanomeline High (N=84)
 COLS: n(%), [AEs]
 [CARDIAC DISORDERS]
 SINUS BRADYCARDIA:  A: 2 (2.3%), [2]  |  B: 7 (8.3%), [10]  |  C: 8 (9.5%), [12]</code></pre>
-<p><strong>Non-span tables</strong> use a column header line plus
-pipe-delimited rows.</p>
-<p>Controlled by <code>ks_set_option(context_format = "compact")</code>
-before <code><a href="../reference/ks_llm.html">ks_llm()</a></code> or <code><a href="../reference/ks_chat.html">ks_chat()</a></code>.</p>
-</div>
-<div class="section level3">
-<h3 id="c--as_facts-retrieve-columnar-fact-store">3c. <code>as_facts()</code> + <code>retrieve()</code> — columnar
-fact store<a class="anchor" aria-label="anchor" href="#c--as_facts-retrieve-columnar-fact-store"></a>
+<p><strong>Non-span tables</strong> use a column header line plus pipe-delimited rows.</p>
+<p>Controlled by <code>ks_set_option(context_format = "compact")</code> before <code><a href="../reference/ks_llm.html">ks_llm()</a></code> or <code><a href="../reference/ks_chat.html">ks_chat()</a></code>.</p>
+</section><section class="level3"><h3 id="c--as_facts-retrieve-columnar-fact-store">3c. <code>as_facts()</code> + <code>retrieve()</code> — columnar fact store<a class="anchor" aria-label="anchor" href="#c--as_facts-retrieve-columnar-fact-store"></a>
 </h3>
-<p>C++23 <code>FactTable</code> + <code>InvertedIndex</code> (Rcpp
-<code>XPtr</code>). One table becomes a columnar store:</p>
-<table class="table">
+<p>C++23 <code>FactTable</code> + <code>InvertedIndex</code> (Rcpp <code>XPtr</code>). One table becomes a columnar store:</p>
+<table class="table caption-top">
 <thead><tr class="header">
 <th>Column class</th>
 <th>Examples</th>
@@ -315,8 +271,7 @@ fact store<a class="anchor" aria-label="anchor" href="#c--as_facts-retrieve-colu
 <tr class="odd">
 <td><code>row_label</code></td>
 <td>
-<code>Age (y)</code>, <code>CARDIAC DISORDERS</code>,
-<code>Bsln</code>
+<code>Age (y)</code>, <code>CARDIAC DISORDERS</code>, <code>Bsln</code>
 </td>
 </tr>
 <tr class="even">
@@ -340,24 +295,23 @@ fact store<a class="anchor" aria-label="anchor" href="#c--as_facts-retrieve-colu
 </tr>
 </tbody>
 </table>
-<p><code>retrieve(facts, rows = ..., sections = ..., spans = ...)</code>
-subsets rows and optionally filters to treatment-arm span columns, then
-<code>as_compact.ks_facts()</code> renders only the matched slice.</p>
-<p><strong>When to use:</strong> you know the structural filter (one
-SOC, one visit, one parameter row) and want zero LLM tokens spent on
-irrelevant rows.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p><code>retrieve(facts, rows = ..., sections = ..., spans = ...)</code> subsets rows and optionally filters to treatment-arm span columns, then <code>as_compact.ks_facts()</code> renders only the matched slice.</p>
+<p><strong>When to use:</strong> you know the structural filter (one SOC, one visit, one parameter row) and want zero LLM tokens spent on irrelevant rows.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">facts_ae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_facts.html">as_facts</a></span><span class="op">(</span><span class="va">study</span><span class="op">[[</span><span class="st">"14-5.01"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/retrieve.html">retrieve</a></span><span class="op">(</span><span class="va">facts_ae</span>, rows <span class="op">=</span> <span class="st">"CARDIAC DISORDERS"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/as_compact.html">as_compact</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<hr>
 </div>
-</div>
-<div class="section level2">
-<h2 id="direct-context-pipeline">Direct context pipeline<a class="anchor" aria-label="anchor" href="#direct-context-pipeline"></a>
+<hr></section></section><section class="level2"><h2 id="direct-context-pipeline">Direct context pipeline<a class="anchor" aria-label="anchor" href="#direct-context-pipeline"></a>
 </h2>
-<p>The direct pipeline is the fastest path from loaded outputs to CSR
-text.</p>
-<pre class="mermaid"><code>sequenceDiagram
+<p>The direct pipeline is the fastest path from loaded outputs to CSR text.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p>
+<figure class=""><p></p>
+<div>
+<pre class="mermaid mermaid-js">sequenceDiagram
   participant W as Writer
   participant K as ksAI
   participant E as ellmer / LLM
@@ -371,17 +325,21 @@ text.</p>
   K-&gt;&gt;E: chat(system + filled prompt)
   E--&gt;&gt;K: response text
   K--&gt;&gt;W: ks_result
-  W-&gt;&gt;K: save_result(out, path)</code></pre>
-<div class="section level3">
-<h3 id="skills">Skills<a class="anchor" aria-label="anchor" href="#skills"></a>
+  W-&gt;&gt;K: save_result(out, path)
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<section class="level3"><h3 id="skills">Skills<a class="anchor" aria-label="anchor" href="#skills"></a>
 </h3>
-<p>Skills are Markdown templates in <code>inst/prompts/</code> with
-<code>{{placeholders}}</code>:</p>
-<table class="table">
+<p>Skills are Markdown templates in <code>inst/prompts/</code> with <code>{placeholders}</code>:</p>
+<table class="table caption-top">
 <colgroup>
-<col width="26%">
-<col width="53%">
-<col width="19%">
+<col style="width: 26%">
+<col style="width: 53%">
+<col style="width: 19%">
 </colgroup>
 <thead><tr class="header">
 <th>Skill</th>
@@ -392,50 +350,44 @@ text.</p>
 <tr class="odd">
 <td><code>describe</code></td>
 <td>
-<code>{{context}}</code>, <code>{{id}}</code>
+<code>{context}</code>, <code>{id}</code>
 </td>
 <td>Neutral table description</td>
 </tr>
 <tr class="even">
 <td><code>summarize</code></td>
 <td>
-<code>{{audience}}</code>, <code>{{context}}</code>
+<code>{audience}</code>, <code>{context}</code>
 </td>
 <td>Audience-tailored summary</td>
 </tr>
 <tr class="odd">
 <td><code>csr_section</code></td>
 <td>
-<code>{{title}}</code>, <code>{{context}}</code>
+<code>{title}</code>, <code>{context}</code>
 </td>
 <td>CSR results narrative</td>
 </tr>
 <tr class="even">
 <td><code>review</code></td>
 <td>
-<code>{{context1}}</code>, <code>{{context2}}</code>
+<code>{context1}</code>, <code>{context2}</code>
 </td>
 <td>Cross-table consistency (2 ids)</td>
 </tr>
 </tbody>
 </table>
-<p>User skills in <code>ks_set_option(skills_dir = ...)</code> shadow
-built-ins by name.</p>
-<p><code><a href="../reference/ks_llm.html">ks_llm()</a></code> accepts either a <code>ks_study</code> (creates
-a per-call chat with <code>system_single</code> prompt) or a
-<code>kschat</code> (reuses session). Placeholders like
-<code>title</code> and <code>audience</code> fill the skill template —
-they are <strong>not</strong> passed to the ellmer constructor.</p>
-</div>
-<div class="section level3">
-<h3 id="ks_chat-vs-ks_llmstudy----">
-<code>ks_chat()</code> vs <code>ks_llm(study, ...)</code><a class="anchor" aria-label="anchor" href="#ks_chat-vs-ks_llmstudy----"></a>
+<p>User skills in <code>ks_set_option(skills_dir = ...)</code> shadow built-ins by name.</p>
+<p><code><a href="../reference/ks_llm.html">ks_llm()</a></code> accepts either a <code>ks_study</code> (creates a per-call chat with <code>system_single</code> prompt) or a <code>kschat</code> (reuses session). Placeholders like <code>title</code> and <code>audience</code> fill the skill template — they are <strong>not</strong> passed to the ellmer constructor.</p>
+</section><section class="level3"><h3 id="ks_chat-vs-ks_llmstudy----">
+<code>ks_chat()</code> vs <code>ks_llm(study, ...)</code>
+<a class="anchor" aria-label="anchor" href="#ks_chat-vs-ks_llmstudy----"></a>
 </h3>
-<table class="table">
+<table class="table caption-top">
 <colgroup>
-<col width="15%">
-<col width="37%">
-<col width="47%">
+<col style="width: 15%">
+<col style="width: 37%">
+<col style="width: 47%">
 </colgroup>
 <thead><tr class="header">
 <th>Mode</th>
@@ -463,45 +415,33 @@ they are <strong>not</strong> passed to the ellmer constructor.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Rule:</strong> <code><a href="../reference/ks_chat.html">ks_chat()</a></code> embeds every loaded
-output. Keep the loaded subset small (one or two tables). For
-multi-table studies, prefer <code>ks_llm(study, ...)</code> or the
-capsule pipeline.</p>
-</div>
-<div class="section level3">
-<h3 id="result-chaining">Result chaining<a class="anchor" aria-label="anchor" href="#result-chaining"></a>
+<p><strong>Rule:</strong> <code><a href="../reference/ks_chat.html">ks_chat()</a></code> embeds every loaded output. Keep the loaded subset small (one or two tables). For multi-table studies, prefer <code>ks_llm(study, ...)</code> or the capsule pipeline.</p>
+</section><section class="level3"><h3 id="result-chaining">Result chaining<a class="anchor" aria-label="anchor" href="#result-chaining"></a>
 </h3>
-<p><code>ks_result</code> stores ids, skill, prompt, model, provider,
-timestamp, and response. <code><a href="../reference/save_result.html">save_result()</a></code> writes
-<code>.md</code> + <code>.json</code>. Pass a prior result to
-<code>prior =</code> in <code><a href="../reference/ks_llm.html">ks_llm()</a></code> to refine iteratively:</p>
+<p><code>ks_result</code> stores ids, skill, prompt, model, provider, timestamp, and response. <code><a href="../reference/save_result.html">save_result()</a></code> writes <code>.md</code> + <code>.json</code>. Pass a prior result to <code>prior =</code> in <code><a href="../reference/ks_llm.html">ks_llm()</a></code> to refine iteratively:</p>
 <pre><code>Prior analysis:  &lt;previous response&gt;
 ---
 &lt;skill prompt with fresh table context&gt;
 Additional user request: &lt;refinement instructions&gt;</code></pre>
-<p>Chaining doubles prompt size (table + prior). Use compact tables or
-lower <code>max_rows</code> when refining locally with 8k-context
-models.</p>
-</div>
-<div class="section level3">
-<h3 id="guardrails">Guardrails<a class="anchor" aria-label="anchor" href="#guardrails"></a>
+<p>Chaining doubles prompt size (table + prior). Use compact tables or lower <code>max_rows</code> when refining locally with 8k-context models.</p>
+</section><section class="level3"><h3 id="guardrails">Guardrails<a class="anchor" aria-label="anchor" href="#guardrails"></a>
 </h3>
 <p>Built-in system prompts instruct the model to:</p>
-<ol style="list-style-type: decimal">
+<ol type="1">
 <li>Never compute or invent statistics</li>
 <li>Cite population, arm, and row for every value</li>
 <li>State plainly when evidence is missing</li>
 </ol>
-<hr>
-</div>
-</div>
-<div class="section level2">
-<h2 id="clinical-capsule-pipeline">Clinical capsule pipeline<a class="anchor" aria-label="anchor" href="#clinical-capsule-pipeline"></a>
+<hr></section></section><section class="level2"><h2 id="clinical-capsule-pipeline">Clinical capsule pipeline<a class="anchor" aria-label="anchor" href="#clinical-capsule-pipeline"></a>
 </h2>
-<p>For large studies or exploratory questions, ksAI decomposes outputs
-into <strong>clinical capsules</strong> — concept-centric, traceable
-semantic units — then runs a four-stage agent pipeline.</p>
-<pre class="mermaid"><code>flowchart LR
+<p>For large studies or exploratory questions, ksAI decomposes outputs into <strong>clinical capsules</strong> — concept-centric, traceable semantic units — then runs a four-stage agent pipeline.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p>
+<figure class=""><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
   subgraph structure["Structure agent"]
     AC["as_capsules()"]
   end
@@ -520,12 +460,17 @@ semantic units — then runs a four-stage agent pipeline.</p>
   STORE --&gt; AN --&gt; STORE
   STORE --&gt; EM --&gt; STORE
   STORE --&gt; RT --&gt; SUB["ks_capsule_subset"]
-  SUB --&gt; RS --&gt; OUT["ks_result"]</code></pre>
-<div class="section level3">
-<h3 id="structure-agent-as_capsules">Structure agent: <code>as_capsules()</code><a class="anchor" aria-label="anchor" href="#structure-agent-as_capsules"></a>
+  SUB --&gt; RS --&gt; OUT["ks_result"]
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<section class="level3"><h3 id="structure-agent-as_capsules">Structure agent: <code>as_capsules()</code>
+<a class="anchor" aria-label="anchor" href="#structure-agent-as_capsules"></a>
 </h3>
-<p>Splits each <code>ks_context</code> into hierarchical row groups and
-builds a <code>ks_capsule_store</code>.</p>
+<p>Splits each <code>ks_context</code> into hierarchical row groups and builds a <code>ks_capsule_store</code>.</p>
 <p><strong>Capsule anatomy:</strong></p>
 <pre><code>ks_capsule
 ├── capsule_id          # e.g. 14-5.01::SOC::CARDIAC_DISORDERS
@@ -540,9 +485,8 @@ builds a <code>ks_capsule_store</code>.</p>
 ├── compact_text        # token-efficient summary for the LLM
 ├── concepts, keywords, synonyms
 └── embedding           # numeric vector (after ks_embed)</code></pre>
-<p><strong>Hierarchy inference</strong> uses <code>ROW_KIND</code>,
-<code>SECTION</code>, and row labels:</p>
-<table class="table">
+<p><strong>Hierarchy inference</strong> uses <code>ROW_KIND</code>, <code>SECTION</code>, and row labels:</p>
+<table class="table caption-top">
 <thead><tr class="header">
 <th>Table type</th>
 <th>Typical levels</th>
@@ -562,45 +506,29 @@ builds a <code>ks_capsule_store</code>.</p>
 </tr>
 </tbody>
 </table>
-<p>Synthetic SOC capsules are created for section blocks when the source
-table uses section headers without explicit
-<code>ROW_KIND = SOC</code>.</p>
-<p>Persist with <code>save_capsules(store, "study.ksc")</code> /
-<code><a href="../reference/load_capsules.html">load_capsules()</a></code>.</p>
-</div>
-<div class="section level3">
-<h3 id="semantic-agent-ks_annotate">Semantic agent: <code>ks_annotate()</code><a class="anchor" aria-label="anchor" href="#semantic-agent-ks_annotate"></a>
+<p>Synthetic SOC capsules are created for section blocks when the source table uses section headers without explicit <code>ROW_KIND = SOC</code>.</p>
+<p>Persist with <code>save_capsules(store, "study.ksc")</code> / <code><a href="../reference/load_capsules.html">load_capsules()</a></code>.</p>
+</section><section class="level3"><h3 id="semantic-agent-ks_annotate">Semantic agent: <code>ks_annotate()</code>
+<a class="anchor" aria-label="anchor" href="#semantic-agent-ks_annotate"></a>
 </h3>
 <p>Two-pass enrichment:</p>
-<ol style="list-style-type: decimal">
+<ol type="1">
 <li>
-<strong>Pure R pass</strong> (always): tokenize <code>label</code> +
-<code>compact_text</code>, strip stop words, detect clinical
-abbreviations (<code>TEAE</code>, <code>SOC</code>, <code>PT</code>,
-<code>LOCF</code>, …).</li>
+<strong>Pure R pass</strong> (always): tokenize <code>label</code> + <code>compact_text</code>, strip stop words, detect clinical abbreviations (<code>TEAE</code>, <code>SOC</code>, <code>PT</code>, <code>LOCF</code>, …).</li>
 <li>
-<strong>Optional small-LLM pass</strong>: structured JSON extraction
-of <code>concepts</code>, <code>synonyms</code>, <code>keywords</code>.
-A 4B local model (for example <code>google/gemma-4-e4b</code> in LM
-Studio) is sufficient.</li>
+<strong>Optional small-LLM pass</strong>: structured JSON extraction of <code>concepts</code>, <code>synonyms</code>, <code>keywords</code>. A 4B local model (for example <code>google/gemma-4-e4b</code> in LM Studio) is sufficient.</li>
 </ol>
-<p>Run once per study; reuse the <code>.ksc</code> file across writing
-sessions.</p>
-</div>
-<div class="section level3">
-<h3 id="retrieval-agent-ks_embed-ks_retrieve">Retrieval agent: <code>ks_embed()</code> +
-<code>ks_retrieve()</code><a class="anchor" aria-label="anchor" href="#retrieval-agent-ks_embed-ks_retrieve"></a>
+<p>Run once per study; reuse the <code>.ksc</code> file across writing sessions.</p>
+</section><section class="level3"><h3 id="retrieval-agent-ks_embed-ks_retrieve">Retrieval agent: <code>ks_embed()</code> + <code>ks_retrieve()</code>
+<a class="anchor" aria-label="anchor" href="#retrieval-agent-ks_embed-ks_retrieve"></a>
 </h3>
-<p><code><a href="../reference/ks_embed.html">ks_embed()</a></code> calls an OpenAI-compatible
-<code>/v1/embeddings</code> endpoint and stores vectors in
-<code>capsule$embedding</code>.</p>
-<p><code>ks_retrieve(store, query, n, filter, weights)</code> scores
-every capsule:</p>
-<table class="table">
+<p><code><a href="../reference/ks_embed.html">ks_embed()</a></code> calls an OpenAI-compatible <code>/v1/embeddings</code> endpoint and stores vectors in <code>capsule$embedding</code>.</p>
+<p><code>ks_retrieve(store, query, n, filter, weights)</code> scores every capsule:</p>
+<table class="table caption-top">
 <colgroup>
-<col width="23%">
-<col width="44%">
-<col width="32%">
+<col style="width: 23%">
+<col style="width: 44%">
+<col style="width: 32%">
 </colgroup>
 <thead><tr class="header">
 <th>Signal</th>
@@ -622,40 +550,35 @@ every capsule:</p>
 <tr class="odd">
 <td>Metadata</td>
 <td>0.1</td>
-<td>Exact match on <code>domain</code>, <code>level</code>,
-<code>population</code>
+<td>Exact match on <code>domain</code>, <code>level</code>, <code>population</code>
 </td>
 </tr>
 </tbody>
 </table>
-<p>Returns a <code>ks_capsule_subset</code> with ranked capsules and
-score breakdown.</p>
+<p>Returns a <code>ks_capsule_subset</code> with ranked capsules and score breakdown.</p>
 <p>Filters narrow candidates before scoring:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_retrieve.html">ks_retrieve</a></span><span class="op">(</span><span class="va">store</span>,</span>
 <span>  query <span class="op">=</span> <span class="st">"cardiac bradycardia high dose"</span>,</span>
 <span>  n <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"AE"</span>, level <span class="op">=</span> <span class="st">"SOC"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>If embeddings are absent, semantic score falls back to 0 and
-keyword/metadata signals still rank results.</p>
 </div>
-<div class="section level3">
-<h3 id="reasoning-agent-ks_reason">Reasoning agent: <code>ks_reason()</code><a class="anchor" aria-label="anchor" href="#reasoning-agent-ks_reason"></a>
+<p>If embeddings are absent, semantic score falls back to 0 and keyword/metadata signals still rank results.</p>
+</section><section class="level3"><h3 id="reasoning-agent-ks_reason">Reasoning agent: <code>ks_reason()</code>
+<a class="anchor" aria-label="anchor" href="#reasoning-agent-ks_reason"></a>
 </h3>
 <p>Combines retrieval and generation:</p>
-<ol style="list-style-type: decimal">
+<ol type="1">
 <li>
 <code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> → top <em>n</em> capsules</li>
-<li>Optionally <code>expand = TRUE</code> → include child PT capsules
-(progressive disclosure)</li>
-<li>Format capsule <code>compact_text</code> + metadata into a context
-block</li>
+<li>Optionally <code>expand = TRUE</code> → include child PT capsules (progressive disclosure)</li>
+<li>Format capsule <code>compact_text</code> + metadata into a context block</li>
 <li>Send to a larger reasoning model with a focused system prompt</li>
 </ol>
-<p>The reasoning model <strong>never sees the full study</strong> — only
-retrieved capsule summaries. This is the capsule pipeline’s primary
-token advantage.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<p>The reasoning model <strong>never sees the full study</strong> — only retrieved capsule summaries. This is the capsule pipeline’s primary token advantage.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span><span class="va">store</span>,</span>
 <span>  query <span class="op">=</span> <span class="st">"Summarize cardiac findings with n(%) per arm"</span>,</span>
 <span>  n <span class="op">=</span> <span class="fl">5</span>,</span>
@@ -663,29 +586,21 @@ token advantage.</p>
 <span>  model <span class="op">=</span> <span class="st">"gemma-4-26b-a4b-it-mlx"</span>,</span>
 <span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span><span class="op">)</span></span></code></pre></div>
 </div>
-<div class="section level3">
-<h3 id="progressive-disclosure">Progressive disclosure<a class="anchor" aria-label="anchor" href="#progressive-disclosure"></a>
+</section><section class="level3"><h3 id="progressive-disclosure">Progressive disclosure<a class="anchor" aria-label="anchor" href="#progressive-disclosure"></a>
 </h3>
 <pre><code>Query → retrieve SOC capsules (compact summaries)
       → reason at SOC level
       → expand = TRUE pulls PT children on demand
       → linked_ids connect to patient listings (same domain)</code></pre>
-<p>High-level reasoning happens over SOC summaries; detail rows are
-fetched only when the query or <code>expand</code> flag requires
-them.</p>
-<hr>
-</div>
-</div>
-<div class="section level2">
-<h2 id="llm-integration">LLM integration<a class="anchor" aria-label="anchor" href="#llm-integration"></a>
+<p>High-level reasoning happens over SOC summaries; detail rows are fetched only when the query or <code>expand</code> flag requires them.</p>
+<hr></section></section><section class="level2"><h2 id="llm-integration">LLM integration<a class="anchor" aria-label="anchor" href="#llm-integration"></a>
 </h2>
-<p>ksAI uses <a href="https://ellmer.tidyverse.org/" class="external-link">ellmer</a> for
-provider abstraction.</p>
-<table class="table">
+<p>ksAI uses <a href="https://ellmer.tidyverse.org/" class="external-link">ellmer</a> for provider abstraction.</p>
+<table class="table caption-top">
 <colgroup>
-<col width="34%">
-<col width="41%">
-<col width="24%">
+<col style="width: 34%">
+<col style="width: 41%">
+<col style="width: 24%">
 </colgroup>
 <thead><tr class="header">
 <th>Provider</th>
@@ -717,17 +632,14 @@ provider abstraction.</p>
 </tr>
 </tbody>
 </table>
-<p>Embeddings (<code>ks_embed</code>, query vectors in
-<code>ks_retrieve</code>) use the <strong>OpenAI-compatible</strong>
-path: <code>http://127.0.0.1:1234/v1</code> in LM Studio.</p>
-<div class="section level3">
-<h3 id="recommended-model-split-local">Recommended model split (local)<a class="anchor" aria-label="anchor" href="#recommended-model-split-local"></a>
+<p>Embeddings (<code>ks_embed</code>, query vectors in <code>ks_retrieve</code>) use the <strong>OpenAI-compatible</strong> path: <code>http://127.0.0.1:1234/v1</code> in LM Studio.</p>
+<section class="level3"><h3 id="recommended-model-split-local">Recommended model split (local)<a class="anchor" aria-label="anchor" href="#recommended-model-split-local"></a>
 </h3>
-<table class="table">
+<table class="table caption-top">
 <colgroup>
-<col width="21%">
-<col width="42%">
-<col width="35%">
+<col style="width: 21%">
+<col style="width: 42%">
+<col style="width: 35%">
 </colgroup>
 <thead><tr class="header">
 <th>Task</th>
@@ -754,19 +666,14 @@ path: <code>http://127.0.0.1:1234/v1</code> in LM Studio.</p>
 </tr>
 </tbody>
 </table>
-<p>Unload large models before loading small ones in LM Studio when
-memory is constrained.</p>
-<hr>
-</div>
-</div>
-<div class="section level2">
-<h2 id="package-options">Package options<a class="anchor" aria-label="anchor" href="#package-options"></a>
+<p>Unload large models before loading small ones in LM Studio when memory is constrained.</p>
+<hr></section></section><section class="level2"><h2 id="package-options">Package options<a class="anchor" aria-label="anchor" href="#package-options"></a>
 </h2>
-<table class="table">
+<table class="table caption-top">
 <colgroup>
-<col width="30%">
-<col width="34%">
-<col width="34%">
+<col style="width: 30%">
+<col style="width: 34%">
+<col style="width: 34%">
 </colgroup>
 <thead><tr class="header">
 <th>Option</th>
@@ -783,8 +690,7 @@ memory is constrained.</p>
 <td><code>context_format</code></td>
 <td><code>"markdown"</code></td>
 <td>
-<code>"markdown"</code>, <code>"compact"</code>, or
-<code>"json"</code> for LLM injection</td>
+<code>"markdown"</code>, <code>"compact"</code>, or <code>"json"</code> for LLM injection</td>
 </tr>
 <tr class="odd">
 <td><code>provider</code></td>
@@ -808,19 +714,14 @@ memory is constrained.</p>
 </tr>
 </tbody>
 </table>
-<p>Set <code>context_format</code> and <code>max_rows</code>
-<strong>before</strong> <code><a href="../reference/ks_chat.html">ks_chat()</a></code> — the chat system prompt
-is built at construction time.</p>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="choosing-a-pipeline">Choosing a pipeline<a class="anchor" aria-label="anchor" href="#choosing-a-pipeline"></a>
+<p>Set <code>context_format</code> and <code>max_rows</code> <strong>before</strong> <code><a href="../reference/ks_chat.html">ks_chat()</a></code> — the chat system prompt is built at construction time.</p>
+<hr></section><section class="level2"><h2 id="choosing-a-pipeline">Choosing a pipeline<a class="anchor" aria-label="anchor" href="#choosing-a-pipeline"></a>
 </h2>
-<table class="table">
+<table class="table caption-top">
 <colgroup>
-<col width="31%">
-<col width="28%">
-<col width="40%">
+<col style="width: 31%">
+<col style="width: 28%">
+<col style="width: 40%">
 </colgroup>
 <thead><tr class="header">
 <th>Situation</th>
@@ -868,22 +769,18 @@ is built at construction time.</p>
 <td>Conversational follow-ups</td>
 <td>Direct chat</td>
 <td>
-<code>ks_chat(small_study)</code> →
-<code>chat$chat$chat()</code>
+<code>ks_chat(small_study)</code> → <code>chat$chat$chat()</code>
 </td>
 </tr>
 </tbody>
 </table>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="persistence-map">Persistence map<a class="anchor" aria-label="anchor" href="#persistence-map"></a>
+<hr></section><section class="level2"><h2 id="persistence-map">Persistence map<a class="anchor" aria-label="anchor" href="#persistence-map"></a>
 </h2>
-<table class="table">
+<table class="table caption-top">
 <colgroup>
-<col width="22%">
-<col width="37%">
-<col width="40%">
+<col style="width: 22%">
+<col style="width: 37%">
+<col style="width: 40%">
 </colgroup>
 <thead><tr class="header">
 <th>File</th>
@@ -932,55 +829,121 @@ my_study.ksc         # capsule store (build once, reuse)
 analysis/
   table-14-3-01.md   # generated CSR fragments
   table-14-3-01.json</code></pre>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="runnable-example">Runnable example<a class="anchor" aria-label="anchor" href="#runnable-example"></a>
+<hr></section><section class="level2"><h2 id="runnable-example">Runnable example<a class="anchor" aria-label="anchor" href="#runnable-example"></a>
 </h2>
-<p>A full walkthrough of all four workflows (direct, facts, capsule,
-chaining) ships with the package:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="co"># Development checkout</span></span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>Rscript inst<span class="sc">/</span>examples<span class="sc">/</span>pilot<span class="sc">-</span>study<span class="sc">-</span>workflows.R</span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co"># Installed package</span></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>Rscript <span class="fu">system.file</span>(<span class="st">"examples"</span>, <span class="st">"pilot-study-workflows.R"</span>, <span class="at">package =</span> <span class="st">"ksAI"</span>)</span></code></pre></div>
-<p>Bundled pilot-study meta data lives in
-<code>inst/examples/pilot-study/meta</code>. Set
-<code>RUN_LLM &lt;- FALSE</code> in the script to exercise import, CKR,
-and capsule building without a live model.</p>
-<hr>
+<p>A full walkthrough of all four workflows (direct, facts, capsule, chaining) ships with the package:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Development checkout</span></span>
+<span><span class="co"># Rscript inst/examples/pilot-study-workflows.R</span></span>
+<span></span>
+<span><span class="co"># Installed package</span></span>
+<span><span class="co"># Rscript system.file("examples", "pilot-study-workflows.R", package = "ksAI")</span></span></code></pre></div>
 </div>
-<div class="section level2">
-<h2 id="design-principles">Design principles<a class="anchor" aria-label="anchor" href="#design-principles"></a>
+<p>Bundled pilot-study meta data lives in <code>inst/examples/pilot-study/meta</code>. Set <code>RUN_LLM &lt;- FALSE</code> in the script to exercise import, CKR, and capsule building without a live model.</p>
+<hr></section><section class="level2"><h2 id="design-principles">Design principles<a class="anchor" aria-label="anchor" href="#design-principles"></a>
 </h2>
-<ol style="list-style-type: decimal">
+<ol type="1">
 <li>
-<strong>Deterministic upstream</strong> — ksTFL numbers are final;
-ksAI never recomputes statistics.</li>
+<strong>Deterministic upstream</strong> — ksTFL numbers are final; ksAI never recomputes statistics.</li>
 <li>
-<strong>Targeted loading</strong> — load only the ids you need;
-scale to full studies via capsules.</li>
+<strong>Targeted loading</strong> — load only the ids you need; scale to full studies via capsules.</li>
 <li>
-<strong>Traceability</strong> — every capsule and fact links back to
-<code>source_id</code> + <code>source_rows</code>.</li>
+<strong>Traceability</strong> — every capsule and fact links back to <code>source_id</code> + <code>source_rows</code>.</li>
 <li>
-<strong>Token economy</strong> — compact DSL, fact filtering, and
-capsule retrieval minimize model input.</li>
+<strong>Token economy</strong> — compact DSL, fact filtering, and capsule retrieval minimize model input.</li>
 <li>
-<strong>Offline-first</strong> — JSON-only import; local models via
-Ollama or LM Studio.</li>
+<strong>Offline-first</strong> — JSON-only import; local models via Ollama or LM Studio.</li>
 <li>
-<strong>Separation of concerns</strong> — structure (R), retrieval
-(C++23), semantics (small LLM), reasoning (large LLM).</li>
+<strong>Separation of concerns</strong> — structure (R), retrieval (C++23), semantics (small LLM), reasoning (large LLM).</li>
 </ol>
-<p>These layers compose: you can use <code><a href="../reference/as_compact.html">as_compact()</a></code> without
-capsules, capsules without embeddings (keyword-only retrieval), or the
-full stack for large-study Q&amp;A.</p>
-</div>
-  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+<p>These layers compose: you can use <code><a href="../reference/as_compact.html">as_compact()</a></code> without capsules, capsules without embeddings (keyword-only retrieval), or the full stack for large-study Q&amp;A.</p>
+</section><script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'light-border',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config);
+    }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script></main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
 </div>
-
 
 
     <footer><div class="pkgdown-footer-left">

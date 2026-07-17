@@ -1,4 +1,4 @@
-# ksAI
+# ksAI <img src="man/figures/logo.png" align="right" height="139" alt="ksAI logo"/>
 
 `ksAI` is an offline, AI-native reasoning layer on top of the
 [ksTFL](https://crow16384.github.io/ksTFL/) clinical tables framework. It reads
