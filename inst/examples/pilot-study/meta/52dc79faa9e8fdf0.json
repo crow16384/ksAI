@@ -1,0 +1,226 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-3.11.docx",
+    "datetime": "2026-07-05T18:36:20",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_7ef674ee4f5db9b8": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "92%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        },
+        "indent_1": {
+          "paragraph": {
+            "indents": {
+              "left": "0.5cm"
+            }
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Efficacy",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-3-11.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_7ef674ee4f5db9b8"
+    ],
+    "columns": {
+      "SECTION": {
+        "colOrder": 1,
+        "label": "SECTION",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "ROW_LABEL": {
+        "colOrder": 2,
+        "label": "",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "45.7%"
+        }
+      },
+      "ROW_KIND": {
+        "colOrder": 3,
+        "label": "ROW_KIND",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "BREAK_BEFORE": {
+        "colOrder": 4,
+        "label": "BREAK_BEFORE",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "PLACEBO": {
+        "colOrder": 5,
+        "label": "Placebo<br>(N=79)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "16.9%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE": {
+        "colOrder": 6,
+        "label": "Xanomeline Low Dose<br>(N=81)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "18.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE": {
+        "colOrder": 7,
+        "label": "Xanomeline High Dose<br>(N=74)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "18.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-3.11",
+          "ADAS Cog (11) - Repeated Measures Analysis of Change from Baseline to Week 24"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "Note: The change from baseline is calculated as the post-baseline score minus the baseline score. The covariates included in the MMRM model are treatment, site group, time and treatment by time interaction, baseline ADAS-Cog (11) score, and baseline ADAS-Cog (11) score by time interaction."
+        ],
+        "order": 1
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

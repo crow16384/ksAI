@@ -1,0 +1,395 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-6.03.docx",
+    "datetime": "2026-07-05T18:36:24",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_59f61834d17a698d": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "100%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        },
+        "indent_1": {
+          "paragraph": {
+            "indents": {
+              "left": "0.5cm"
+            }
+          }
+        },
+        "style_3e27fb4e71b95f95": {
+          "font": {
+            "bold": true
+          },
+          "paragraph": {
+            "alignment": "left"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Safety",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-6.03.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_59f61834d17a698d"
+    ],
+    "stubColumns": {
+      "stub_0001": {
+        "label": "Placebo<br>(N=86)",
+        "stubOrder": 1,
+        "cols": [
+          "PLACEBO_L",
+          "PLACEBO_N",
+          "PLACEBO_H"
+        ]
+      },
+      "stub_0002": {
+        "label": "Xanomeline Low Dose<br>(N=84)",
+        "stubOrder": 1,
+        "cols": [
+          "LOW_DOSE_L",
+          "LOW_DOSE_N",
+          "LOW_DOSE_H"
+        ]
+      },
+      "stub_0003": {
+        "label": "Xanomeline High Dose<br>(N=84)",
+        "stubOrder": 1,
+        "cols": [
+          "HIGH_DOSE_L",
+          "HIGH_DOSE_N",
+          "HIGH_DOSE_H"
+        ]
+      }
+    },
+    "columns": {
+      "DOMAIN": {
+        "colOrder": 1,
+        "label": "DOMAIN",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "PARAM": {
+        "colOrder": 2,
+        "label": "",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "27.7%",
+          "valueStyleRef": [
+            "indent_1"
+          ]
+        }
+      },
+      "PLACEBO_L": {
+        "colOrder": 3,
+        "label": "Low",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "6.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "PLACEBO_N": {
+        "colOrder": 4,
+        "label": "Normal",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "6.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "PLACEBO_H": {
+        "colOrder": 5,
+        "label": "High",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "6.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_L": {
+        "colOrder": 6,
+        "label": "Low",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "7.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_N": {
+        "colOrder": 7,
+        "label": "Normal",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "7.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_H": {
+        "colOrder": 8,
+        "label": "High",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "7.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_L": {
+        "colOrder": 9,
+        "label": "Low",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "8.2%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_N": {
+        "colOrder": 10,
+        "label": "Normal",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "8.2%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_H": {
+        "colOrder": 11,
+        "label": "High",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "8.2%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "P_VALUE": {
+        "colOrder": 12,
+        "label": "p-val<br>[1]",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "5.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{\"add_row\":[{\"pos\":\"above\",\"value_from\":\"DOMAIN\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"value_from\":\"DOMAIN\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-6.03",
+          "Frequency of Normal and Abnormal (Clinically Significant Change from Previous Visit) Laboratory Values During Treatment"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "Note: Percentages are based on the number of subjects with non-missing assessments (i.e., the total of the subjects in the low, normal, and high categories) within each treatment group."
+        ],
+        "order": 1
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

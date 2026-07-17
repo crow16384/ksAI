@@ -163,6 +163,38 @@ test_that("ks_llm describe supports multiple IDs", {
   expect_equal(calls, 2L)
 })
 
+test_that("ks_llm skill placeholders fill the template and are not chat ctor args", {
+  dir <- make_fixture_study(n_tables = 1L)
+  study <- ks_load(dir, ids = "14-3.01")
+
+  captured <- NULL
+  fake_chat <- list(chat = function(p) {
+    captured <<- p
+    "ok"
+  })
+
+  testthat::local_mocked_bindings(
+    .make_ellmer_chat = function(provider, model, system_prompt, base_url, echo, ...) {
+      if (length(list(...))) {
+        stop("unexpected chat ctor args: ", paste(names(list(...)), collapse = ", "))
+      }
+      fake_chat
+    }
+  )
+
+  out <- ks_llm(
+    study,
+    ids = "14-3.01",
+    skill = "csr_section",
+    title = "ADAS-Cog Week 24",
+    model = "m",
+    provider = "ollama"
+  )
+
+  expect_true(is_ks_result(out))
+  expect_match(captured, "Section title / topic: ADAS-Cog Week 24", fixed = TRUE)
+})
+
 test_that("ks_llm review requires exactly two IDs", {
   dir <- make_fixture_study(n_tables = 1L)
   study <- ks_load(dir, ids = "14-3.01")

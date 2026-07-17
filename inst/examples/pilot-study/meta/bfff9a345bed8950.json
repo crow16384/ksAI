@@ -1,0 +1,276 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-4.01.docx",
+    "datetime": "2026-07-05T18:36:21",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_236fb47b8d066ac5": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "100%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Safety",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-4-01.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_236fb47b8d066ac5"
+    ],
+    "stubColumns": {
+      "stub_0001": {
+        "label": "Completers at Week 24",
+        "stubOrder": 1,
+        "cols": [
+          "PLACEBO_C",
+          "LOW_DOSE_C",
+          "HIGH_DOSE_C"
+        ]
+      },
+      "stub_0002": {
+        "label": "Safety Population [1]",
+        "stubOrder": 1,
+        "cols": [
+          "PLACEBO_S",
+          "LOW_DOSE_S",
+          "HIGH_DOSE_S"
+        ]
+      }
+    },
+    "columns": {
+      "PARAM": {
+        "colOrder": 1,
+        "label": "Parameter",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": true,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "28%"
+        }
+      },
+      "STATISTIC": {
+        "colOrder": 2,
+        "label": "Statistic",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "10%"
+        }
+      },
+      "PLACEBO_C": {
+        "colOrder": 3,
+        "label": "Placebo<br>(N=60)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "9.3%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_C": {
+        "colOrder": 4,
+        "label": "Xanomeline Low Dose<br>(N=28)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "10.3%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_C": {
+        "colOrder": 5,
+        "label": "Xanomeline High Dose<br>(N=30)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "11.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "PLACEBO_S": {
+        "colOrder": 6,
+        "label": "Placebo<br>(N=86)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "9.3%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_S": {
+        "colOrder": 7,
+        "label": "Xanomeline Low Dose<br>(N=84)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "10.3%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_S": {
+        "colOrder": 8,
+        "label": "Xanomeline High Dose<br>(N=84)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "11.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-4.01",
+          "Summary of Planned Exposure to Study Drug, as of End of Study"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "[1] Includes completers and early terminators."
+        ],
+        "order": 1
+      },
+      "footnote_0002": {
+        "text": [
+          "[2] End of Study refers to week 26/Early Termination."
+        ],
+        "order": 2
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

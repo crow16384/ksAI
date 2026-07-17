@@ -1,0 +1,86 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "f-14-04_ae_top_terms_bar.docx",
+    "datetime": "2026-07-05T18:36:29",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "figure_spec_84a365df6b3bbaf1": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "92%",
+      "docType": "Figure",
+      "hasData": false,
+      "docOrder": 1
+    },
+    "figure": {
+      "width": "6in",
+      "height": "4in",
+      "figureScaleMode": "fitWidth",
+      "device": "svg"
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Safety",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/f-14-04_ae_top_terms_bar.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_84a365df6b3bbaf1"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Figure 14.04 Top Treatment-Emergent AE Preferred Terms"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "subtitles": {
+      "subtitle_0001": {
+        "text": [
+          "Top 10 preferred terms by overall subject count"
+        ],
+        "order": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "Counts are based on unique subjects with at least one treatment-emergent event in the preferred term."
+        ],
+        "order": 1
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

@@ -45,7 +45,9 @@
 #' @keywords internal
 #' @noRd
 .make_ellmer_chat <- function(provider, model, system_prompt, base_url, echo, ...) {
-  args <- list(
+  # Use list2() so empty !!!list() splices do not inject an unnamed logical(0)
+  # that do.call would bind to ellmer's `params` formal.
+  args <- rlang::list2(
     system_prompt = system_prompt,
     model = model,
     echo = echo,
@@ -70,7 +72,7 @@
       ))
     }
   )
-  do.call(ctor, args)
+  rlang::exec(ctor, !!!args)
 }
 
 # ---------------------------------------------------------------------------

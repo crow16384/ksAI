@@ -142,8 +142,7 @@ ks_list_skills <- function() {
                                   model,
                                   provider,
                                   base_url,
-                                  echo,
-                                  dots) {
+                                  echo) {
   if (is_kschat(x)) {
     return(list(
       chat = x$chat,
@@ -165,18 +164,12 @@ ks_list_skills <- function() {
   }
 
   resolved_provider <- provider %||% ks_get_option("provider")
-  chat <- do.call(
-    .make_ellmer_chat,
-    c(
-      list(
-        provider = resolved_provider,
-        model = model,
-        system_prompt = .build_single_system_prompt(),
-        base_url = base_url,
-        echo = echo
-      ),
-      dots
-    )
+  chat <- .make_ellmer_chat(
+    provider = resolved_provider,
+    model = model,
+    system_prompt = .build_single_system_prompt(),
+    base_url = base_url,
+    echo = echo
   )
 
   list(chat = chat, study = x, model = model, provider = resolved_provider)
@@ -329,8 +322,7 @@ ks_llm <- function(x,
     model = model,
     provider = provider,
     base_url = base_url,
-    echo = echo,
-    dots = dots
+    echo = echo
   )
   contexts <- .resolve_contexts_by_ids(session$study, ids)
 

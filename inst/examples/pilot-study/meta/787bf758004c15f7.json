@@ -1,0 +1,185 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-1.01.docx",
+    "datetime": "2026-07-05T18:36:17",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_70c2fdd5ac8dc177": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "92%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: All Subjects",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-1-01.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_70c2fdd5ac8dc177"
+    ],
+    "columns": {
+      "PARAM": {
+        "colOrder": 1,
+        "label": "Population",
+        "isVisible": true,
+        "isID": true,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "36.3%"
+        }
+      },
+      "ARM_0": {
+        "colOrder": 2,
+        "label": "Placebo<br>(N=86)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "15.5%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "ARM_54": {
+        "colOrder": 3,
+        "label": "Xanomeline Low Dose<br>(N=84)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "15.5%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "ARM_81": {
+        "colOrder": 4,
+        "label": "Xanomeline High Dose<br>(N=84)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "15.5%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "ARM_99": {
+        "colOrder": 5,
+        "label": "Total<br>(N=254)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "17.2%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-1.01",
+          "Summary of Populations"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "Values are shown as n (%)."
+        ],
+        "order": 1
+      },
+      "footnote_0002": {
+        "text": [
+          "NOTE: N in column headers represents number of subjects entered in study (i.e., signed informed consent). The ITT population includes all subjects randomized. The Safety population includes all randomized subjects known to have taken at least one dose of randomized study drug. The Efficacy population includes all subjects in the safety population who also have at least one post-baseline ADAS-Cog and CIBIC+ assessment."
+        ],
+        "order": 2
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

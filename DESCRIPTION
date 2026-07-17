@@ -29,6 +29,7 @@ Imports:
     ksTFL,
     ellmer,
     jsonlite,
+    httr2,
     cli,
     checkmate,
     rlang,

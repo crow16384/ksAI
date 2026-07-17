@@ -1,0 +1,568 @@
+---
+title: "Architecture and Pipeline"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Architecture and Pipeline}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE,
+  purl = FALSE
+)
+```
+
+## Purpose
+
+ksAI is an offline reasoning layer on top of [ksTFL](https://crow16384.github.io/ksTFL/)
+clinical outputs. ksTFL computes tables, figures, and listings deterministically
+and writes them to a **meta folder** as JSON (structural specification plus
+rendered data). ksAI reads that folder, compiles outputs into self-contained
+**context objects**, and routes them to a language model through two
+complementary pipelines:
+
+1. **Direct context pipeline** — when you already know which outputs matter and
+   they fit in the model window.
+2. **Clinical capsule pipeline** — when the study is large, exploratory, or
+   token-constrained; decompose, enrich, retrieve, then reason over a minimal
+   evidence set.
+
+Both pipelines share the same import layer and the same **CKR** (Clinical
+Knowledge Representation) serialization formats. They differ in how much
+structure is built before the reasoning model runs.
+
+---
+
+## End-to-end data flow
+
+```mermaid
+flowchart TB
+  subgraph ksTFL["ksTFL (upstream)"]
+    SPEC["Spec JSON<br/>(layout, columns, titles)"]
+    DATA["Data JSON<br/>(cell values)"]
+    INDEX["_index.json"]
+  end
+
+  subgraph import["ksAI import"]
+    LIST["ks_list_ids()"]
+    LOAD["ks_load()"]
+    CTX["ks_context"]
+    STUDY["ks_study"]
+  end
+
+  subgraph ckr["CKR layers"]
+    MD["as_markdown()"]
+    CMP["as_compact()"]
+    FACTS["as_facts() + retrieve()"]
+    CAPS["as_capsules()"]
+  end
+
+  subgraph direct["Direct pipeline"]
+    CHAT["ks_chat() / ks_llm()"]
+    SKILL["Skill templates"]
+    RES["ks_result"]
+  end
+
+  subgraph capsule["Capsule pipeline"]
+    ANN["ks_annotate()"]
+    EMB["ks_embed()"]
+    RET["ks_retrieve()"]
+    REA["ks_reason()"]
+  end
+
+  SPEC --> LOAD
+  DATA --> LOAD
+  INDEX --> LIST
+  LIST --> LOAD
+  LOAD --> CTX
+  CTX --> STUDY
+
+  CTX --> MD
+  CTX --> CMP
+  CTX --> FACTS
+  CTX --> CAPS
+
+  STUDY --> CHAT
+  MD --> SKILL
+  CMP --> SKILL
+  SKILL --> CHAT
+  CHAT --> RES
+
+  CAPS --> ANN --> EMB --> RET --> REA
+  REA --> RES
+
+  RES --> SAVE["save_result()"]
+```
+
+At runtime **no live ksTFL session** is required. Everything ksAI needs is in
+the saved JSON artefacts (or in a persisted `.ks` / `.ksc` file).
+
+---
+
+## Layer 0: ksTFL artefacts
+
+ksTFL's `save_report()` writes to a meta folder:
+
+| Artefact | Role |
+|----------|------|
+| `_index.json` | Report catalogue: spec file names, versions, `is_latest` flags |
+| `{hash}.json` | Specification: titles, columns, span headers, footnotes, `dataRef` |
+| `{hash}.json` (data) | Rendered cell values filtered to `report_cols` |
+
+Each spec JSON may contain one or more outputs. ksAI resolves stable **output
+ids** (for example `14-3.01`, `14-5.01`) from document filenames and spec keys.
+
+`ks_list_ids(meta_path)` scans the index and returns id, type, and title without
+loading data. `ks_load(meta_path, ids = ...)` parses only the requested outputs
+and assembles a `ks_study`.
+
+---
+
+## Layer 1: `ks_context` — the render-join
+
+A `ks_context` is the central value object. It is **not** a thin metadata
+extract; it is the full render-join of specification and data:
+
+```
+ks_context
+├── id, type, title, subtitles
+├── population, source
+├── columns[]          # visible cols: name, label, type, is_grouping
+├── span_headers[]     # treatment-arm groups
+├── rows[]             # cells + section + kind (ROW_KIND, SECTION, …)
+├── n_rows_total       # before max_rows truncation
+├── footnotes[]
+└── annotations{}      # user overlays via enrich_context()
+```
+
+**Row metadata** lifted from invisible control columns during import:
+
+- `section` — for example `Baseline`, `Week 24`, `Change from Baseline`
+- `kind` — for AE tables: `SOC`, `PT`, `OVERALL`; for continuous endpoints: `PARAM`
+
+This metadata drives both CSR writing ("describe Week 24 vs Baseline") and
+capsule hierarchy inference.
+
+### Import options
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `max_rows` | `200` | Cap rows embedded per table at load time |
+| `latest_only` | `TRUE` | Skip obsolete spec versions in the index |
+
+Truncation is intentional: it protects model context windows. Use
+`as_facts()` / capsules for structured access to specific rows without sending
+the full table.
+
+---
+
+## Layer 2: `ks_study` — targeted registry
+
+`ks_study` partitions contexts by output type:
+
+```
+ks_study
+├── tables{}    # named ks_context
+├── figures{}
+├── texts{}
+└── meta_dir    # source path
+```
+
+Indexing `study[["14-3.01"]]` returns a single context across all types.
+`save_study()` / `ks_load("file.ks")` persist a compiled subset for reuse
+without the original ksTFL folder.
+
+**Design intent:** medical writers work on **targeted subsets** — efficacy
+tables for one CSR section, safety tables for another — not necessarily the
+entire study at once.
+
+---
+
+## Layer 3: CKR — Clinical Knowledge Representation
+
+CKR is the token-efficient, retrieval-capable representation stack over
+`ks_context`. Three formats, increasing structure:
+
+### 3a. `as_markdown()` — human-readable
+
+Default for reading and for models that benefit from familiar table layout.
+Repeats column headers and arm labels per row group. Highest token cost.
+
+### 3b. `as_compact()` — compact DSL
+
+Pure R. Target: **~50–70% fewer tokens** than markdown for span-heavy tables.
+
+**Span tables** emit a one-time legend plus short keys per row:
+
+```
+TABLE: 14-5.01 | Population: Safety
+TITLE: ...
+SPANS: A=Placebo (N=86); B=Xanomeline Low (N=84); C=Xanomeline High (N=84)
+COLS: n(%), [AEs]
+[CARDIAC DISORDERS]
+SINUS BRADYCARDIA:  A: 2 (2.3%), [2]  |  B: 7 (8.3%), [10]  |  C: 8 (9.5%), [12]
+```
+
+**Non-span tables** use a column header line plus pipe-delimited rows.
+
+Controlled by `ks_set_option(context_format = "compact")` before `ks_llm()` or
+`ks_chat()`.
+
+### 3c. `as_facts()` + `retrieve()` — columnar fact store
+
+C++23 `FactTable` + `InvertedIndex` (Rcpp `XPtr`). One table becomes a
+columnar store:
+
+| Column class | Examples |
+|--------------|----------|
+| `row_label` | `Age (y)`, `CARDIAC DISORDERS`, `Bsln` |
+| `section` | `Baseline Characteristics` |
+| `kind` | `SOC`, `PT`, `OVERALL` |
+| `dim` (grouping) | visit, parameter |
+| `measure` | pre-formatted cell strings per arm |
+
+`retrieve(facts, rows = ..., sections = ..., spans = ...)` subsets rows and
+optionally filters to treatment-arm span columns, then `as_compact.ks_facts()`
+renders only the matched slice.
+
+**When to use:** you know the structural filter (one SOC, one visit, one
+parameter row) and want zero LLM tokens spent on irrelevant rows.
+
+```r
+facts_ae <- as_facts(study[["14-5.01"]])
+retrieve(facts_ae, rows = "CARDIAC DISORDERS") |> as_compact()
+```
+
+---
+
+## Direct context pipeline
+
+The direct pipeline is the fastest path from loaded outputs to CSR text.
+
+```mermaid
+sequenceDiagram
+  participant W as Writer
+  participant K as ksAI
+  participant E as ellmer / LLM
+
+  W->>K: ks_load(ids = c("14-3.01"))
+  W->>K: ks_set_option(context_format = "compact")
+  W->>K: ks_llm(study, ids, skill = "csr_section", title = ...)
+  K->>K: .resolve_contexts_by_ids()
+  K->>K: .render_contexts() → as_compact()
+  K->>K: .fill_prompt(skill template)
+  K->>E: chat(system + filled prompt)
+  E-->>K: response text
+  K-->>W: ks_result
+  W->>K: save_result(out, path)
+```
+
+### Skills
+
+Skills are Markdown templates in `inst/prompts/` with `{{placeholders}}`:
+
+| Skill | Placeholders | Use |
+|-------|--------------|-----|
+| `describe` | `{{context}}`, `{{id}}` | Neutral table description |
+| `summarize` | `{{audience}}`, `{{context}}` | Audience-tailored summary |
+| `csr_section` | `{{title}}`, `{{context}}` | CSR results narrative |
+| `review` | `{{context1}}`, `{{context2}}` | Cross-table consistency (2 ids) |
+
+User skills in `ks_set_option(skills_dir = ...)` shadow built-ins by name.
+
+`ks_llm()` accepts either a `ks_study` (creates a per-call chat with
+`system_single` prompt) or a `kschat` (reuses session). Placeholders like
+`title` and `audience` fill the skill template — they are **not** passed to
+the ellmer constructor.
+
+### `ks_chat()` vs `ks_llm(study, ...)`
+
+| Mode | System prompt | Context injection |
+|------|---------------|-------------------|
+| `ks_llm(study, ...)` | `system_single` (one output focus) | Per call, selected ids only |
+| `ks_chat(study, ...)` | `system` + **all loaded outputs** | Embedded once in system prompt |
+| `ks_llm(chat, ...)` | Reuses chat system prompt | Adds selected id context again |
+
+**Rule:** `ks_chat()` embeds every loaded output. Keep the loaded subset
+small (one or two tables). For multi-table studies, prefer `ks_llm(study,
+...)` or the capsule pipeline.
+
+### Result chaining
+
+`ks_result` stores ids, skill, prompt, model, provider, timestamp, and
+response. `save_result()` writes `.md` + `.json`. Pass a prior result to
+`prior =` in `ks_llm()` to refine iteratively:
+
+```
+Prior analysis:  <previous response>
+---
+<skill prompt with fresh table context>
+Additional user request: <refinement instructions>
+```
+
+Chaining doubles prompt size (table + prior). Use compact tables or lower
+`max_rows` when refining locally with 8k-context models.
+
+### Guardrails
+
+Built-in system prompts instruct the model to:
+
+1. Never compute or invent statistics
+2. Cite population, arm, and row for every value
+3. State plainly when evidence is missing
+
+---
+
+## Clinical capsule pipeline
+
+For large studies or exploratory questions, ksAI decomposes outputs into
+**clinical capsules** — concept-centric, traceable semantic units — then
+runs a four-stage agent pipeline.
+
+```mermaid
+flowchart LR
+  subgraph structure["Structure agent"]
+    AC["as_capsules()"]
+  end
+  subgraph semantic["Semantic agent"]
+    AN["ks_annotate()"]
+  end
+  subgraph retrieval["Retrieval agent"]
+    EM["ks_embed()"]
+    RT["ks_retrieve()"]
+  end
+  subgraph reasoning["Reasoning agent"]
+    RS["ks_reason()"]
+  end
+
+  CTX["ks_context"] --> AC --> STORE["ks_capsule_store"]
+  STORE --> AN --> STORE
+  STORE --> EM --> STORE
+  STORE --> RT --> SUB["ks_capsule_subset"]
+  SUB --> RS --> OUT["ks_result"]
+```
+
+### Structure agent: `as_capsules()`
+
+Splits each `ks_context` into hierarchical row groups and builds a
+`ks_capsule_store`.
+
+**Capsule anatomy:**
+
+```
+ks_capsule
+├── capsule_id          # e.g. 14-5.01::SOC::CARDIAC_DISORDERS
+├── source_id           # output id
+├── source_rows         # traceable row indices
+├── domain              # AE, EFFC, DM, LB, VS, …
+├── level               # OVERALL → SOC → PT  (or OVERALL → PARAM)
+├── label, population
+├── parent_id, child_ids
+├── linked_ids          # text listings in same domain
+├── stats               # parsed n(%), means per arm
+├── compact_text        # token-efficient summary for the LLM
+├── concepts, keywords, synonyms
+└── embedding           # numeric vector (after ks_embed)
+```
+
+**Hierarchy inference** uses `ROW_KIND`, `SECTION`, and row labels:
+
+| Table type | Typical levels |
+|------------|----------------|
+| AE incidence | OVERALL → SOC → PT |
+| Continuous / lab | OVERALL → PARAM (per visit or parameter row) |
+| Demographics | OVERALL → PARAM (per characteristic) |
+
+Synthetic SOC capsules are created for section blocks when the source table
+uses section headers without explicit `ROW_KIND = SOC`.
+
+Persist with `save_capsules(store, "study.ksc")` / `load_capsules()`.
+
+### Semantic agent: `ks_annotate()`
+
+Two-pass enrichment:
+
+1. **Pure R pass** (always): tokenize `label` + `compact_text`, strip stop
+   words, detect clinical abbreviations (`TEAE`, `SOC`, `PT`, `LOCF`, …).
+2. **Optional small-LLM pass**: structured JSON extraction of `concepts`,
+   `synonyms`, `keywords`. A 4B local model (for example `google/gemma-4-e4b`
+   in LM Studio) is sufficient.
+
+Run once per study; reuse the `.ksc` file across writing sessions.
+
+### Retrieval agent: `ks_embed()` + `ks_retrieve()`
+
+`ks_embed()` calls an OpenAI-compatible `/v1/embeddings` endpoint and stores
+vectors in `capsule$embedding`.
+
+`ks_retrieve(store, query, n, filter, weights)` scores every capsule:
+
+| Signal | Default weight | Mechanism |
+|--------|---------------|-----------|
+| Semantic | 0.6 | Cosine similarity: query embedding vs capsule embedding |
+| Keyword | 0.3 | Token overlap with `capsule$keywords` |
+| Metadata | 0.1 | Exact match on `domain`, `level`, `population` |
+
+Returns a `ks_capsule_subset` with ranked capsules and score breakdown.
+
+Filters narrow candidates before scoring:
+
+```r
+ks_retrieve(store,
+  query = "cardiac bradycardia high dose",
+  n = 5,
+  filter = list(domain = "AE", level = "SOC"))
+```
+
+If embeddings are absent, semantic score falls back to 0 and keyword/metadata
+signals still rank results.
+
+### Reasoning agent: `ks_reason()`
+
+Combines retrieval and generation:
+
+1. `ks_retrieve()` → top *n* capsules
+2. Optionally `expand = TRUE` → include child PT capsules (progressive disclosure)
+3. Format capsule `compact_text` + metadata into a context block
+4. Send to a larger reasoning model with a focused system prompt
+
+The reasoning model **never sees the full study** — only retrieved capsule
+summaries. This is the capsule pipeline's primary token advantage.
+
+```r
+ks_reason(store,
+  query = "Summarize cardiac findings with n(%) per arm",
+  n = 5,
+  expand = TRUE,
+  model = "gemma-4-26b-a4b-it-mlx",
+  provider = "lm_studio")
+```
+
+### Progressive disclosure
+
+```
+Query → retrieve SOC capsules (compact summaries)
+      → reason at SOC level
+      → expand = TRUE pulls PT children on demand
+      → linked_ids connect to patient listings (same domain)
+```
+
+High-level reasoning happens over SOC summaries; detail rows are fetched only
+when the query or `expand` flag requires them.
+
+---
+
+## LLM integration
+
+ksAI uses [ellmer](https://ellmer.tidyverse.org/) for provider abstraction.
+
+| Provider | `base_url` | Notes |
+|----------|------------|-------|
+| `lm_studio` | `http://127.0.0.1:1234` (no `/v1`) | `chat_lmstudio()` adds `/v1` internally |
+| `ollama` | default or custom | Local models |
+| `openai` | API default | Hosted |
+| `anthropic` | API default | Hosted |
+
+Embeddings (`ks_embed`, query vectors in `ks_retrieve`) use the
+**OpenAI-compatible** path: `http://127.0.0.1:1234/v1` in LM Studio.
+
+### Recommended model split (local)
+
+| Task | Model size | Function |
+|------|------------|----------|
+| Capsule annotation | 4B | `ks_annotate(..., model = "google/gemma-4-e4b")` |
+| CSR drafting / reasoning | 26B+ | `ks_llm()`, `ks_reason()` |
+| Embeddings | dedicated | `text-embedding-nomic-embed-text-v1.5` |
+
+Unload large models before loading small ones in LM Studio when memory is
+constrained.
+
+---
+
+## Package options
+
+| Option | Default | Purpose |
+|--------|---------|---------|
+| `max_rows` | `200` | Row cap per table at import |
+| `context_format` | `"markdown"` | `"markdown"`, `"compact"`, or `"json"` for LLM injection |
+| `provider` | `"ollama"` | Default ellmer provider |
+| `skills_dir` | `NULL` | User skill template directory |
+| `embed_model` | `text-embedding-nomic-embed-text-v1.5` | Embedding model name |
+| `embed_url` | `http://127.0.0.1:1234/v1` | Embeddings endpoint |
+
+Set `context_format` and `max_rows` **before** `ks_chat()` — the chat system
+prompt is built at construction time.
+
+---
+
+## Choosing a pipeline
+
+| Situation | Pipeline | Entry points |
+|-----------|----------|--------------|
+| One known table, CSR section | Direct | `ks_llm(study, ids, skill = "csr_section")` |
+| Two tables, consistency check | Direct | `ks_llm(..., skill = "review")` |
+| Filter to one SOC / visit / row | CKR facts | `retrieve(as_facts(ctx), rows = ...)` |
+| Many outputs, exploratory Q&A | Capsule | `as_capsules()` → `ks_reason()` |
+| Large AE / lab table, token limit | Capsule or facts | `ks_retrieve()` or `retrieve()` |
+| Iterative refinement | Direct + chain | `save_result()` → `prior = load_result()` |
+| Conversational follow-ups | Direct chat | `ks_chat(small_study)` → `chat$chat$chat()` |
+
+---
+
+## Persistence map
+
+| File | Contents | Functions |
+|------|----------|-----------|
+| `.ks` | Compiled `ks_study` (embedded rows) | `save_study()`, `ks_load()` |
+| `.ksc` | Capsule store (keywords, embeddings) | `save_capsules()`, `load_capsules()` |
+| `.json` / `.md` | `ks_result` from LLM runs | `save_result()`, `load_result()` |
+| ksTFL `meta/` | Source spec + data JSON | `ks_list_ids()`, `ks_load()` |
+
+Typical project layout:
+
+```
+study-meta/          # ksTFL save_report output (source of truth)
+my_study.ks          # compiled targeted subset
+my_study.ksc         # capsule store (build once, reuse)
+analysis/
+  table-14-3-01.md   # generated CSR fragments
+  table-14-3-01.json
+```
+
+---
+
+## Runnable example
+
+A full walkthrough of all four workflows (direct, facts, capsule, chaining)
+ships with the package:
+
+```r
+# Development checkout
+Rscript inst/examples/pilot-study-workflows.R
+
+# Installed package
+Rscript system.file("examples", "pilot-study-workflows.R", package = "ksAI")
+```
+
+Bundled pilot-study meta data lives in `inst/examples/pilot-study/meta`.
+Set `RUN_LLM <- FALSE` in the script to exercise import, CKR, and capsule
+building without a live model.
+
+---
+
+## Design principles
+
+1. **Deterministic upstream** — ksTFL numbers are final; ksAI never recomputes statistics.
+2. **Targeted loading** — load only the ids you need; scale to full studies via capsules.
+3. **Traceability** — every capsule and fact links back to `source_id` + `source_rows`.
+4. **Token economy** — compact DSL, fact filtering, and capsule retrieval minimize model input.
+5. **Offline-first** — JSON-only import; local models via Ollama or LM Studio.
+6. **Separation of concerns** — structure (R), retrieval (C++23), semantics (small LLM), reasoning (large LLM).
+
+These layers compose: you can use `as_compact()` without capsules, capsules
+without embeddings (keyword-only retrieval), or the full stack for large-study
+Q&A.

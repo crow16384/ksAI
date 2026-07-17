@@ -1,0 +1,266 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-3.07.docx",
+    "datetime": "2026-07-05T18:36:19",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_7c8236f2effbc6a9": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "92%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "b": {
+          "font": {
+            "bold": true
+          }
+        },
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        },
+        "indent_1": {
+          "paragraph": {
+            "indents": {
+              "left": "0.5cm"
+            }
+          }
+        },
+        "style_3e27fb4e71b95f95": {
+          "font": {
+            "bold": true
+          },
+          "paragraph": {
+            "alignment": "left"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Completers",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-3-07.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_7c8236f2effbc6a9"
+    ],
+    "columns": {
+      "SECTION": {
+        "colOrder": 1,
+        "label": "SECTION",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "ROW_LABEL": {
+        "colOrder": 2,
+        "label": "",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "40.5%"
+        }
+      },
+      "ROW_KIND": {
+        "colOrder": 3,
+        "label": "ROW_KIND",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "BREAK_BEFORE": {
+        "colOrder": 4,
+        "label": "BREAK_BEFORE",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "PLACEBO": {
+        "colOrder": 5,
+        "label": "Placebo<br>(N=60)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "20.2%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE": {
+        "colOrder": 6,
+        "label": "Xanomeline Low Dose<br>(N=28)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "20.2%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE": {
+        "colOrder": 7,
+        "label": "Xanomeline High Dose<br>(N=30)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "19.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}],\"add_row\":[{\"pos\":\"above\",\"value_from\":\"SECTION\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}],\"add_row\":[{\"pos\":\"above\",\"value_from\":\"SECTION\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}],\"add_row\":[{\"pos\":\"above\",\"value_from\":\"SECTION\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"b\",\"seq\":0}],\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"SECTION\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"b\",\"seq\":0}],\"add_row\":[{\"pos\":\"above\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"b\",\"seq\":0}],\"add_row\":[{\"pos\":\"above\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}",
+      "{\"style\":[{\"cols\":[\"ROW_LABEL\"],\"styleRef\":\"indent_1\",\"seq\":0}]}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-3.07",
+          "ADAS Cog (11) - Change from Baseline to Week 24 - Completers at Wk 24-Observed Cases-Windowed"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "[1] Based on Analysis of covariance (ANCOVA) model with treatment and site group as factors and baseline value as a covariate."
+        ],
+        "order": 1
+      },
+      "footnote_0002": {
+        "text": [
+          "[2] Test for a non-zero coefficient for treatment (dose) as a continuous variable."
+        ],
+        "order": 2
+      },
+      "footnote_0003": {
+        "text": [
+          "[3] Pairwise comparison with treatment as a categorical variable: p-values without adjustment for multiple comparisons."
+        ],
+        "order": 3
+      },
+      "footnote_0004": {
+        "text": [
+          "Note that only assessments falling within the assessment window are included in the summary for a visit."
+        ],
+        "order": 4
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

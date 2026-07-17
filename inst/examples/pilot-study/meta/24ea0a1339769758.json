@@ -1,0 +1,361 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-7.02.docx",
+    "datetime": "2026-07-05T18:36:28",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_22ffab7233557612": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "92%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "b": {
+          "font": {
+            "bold": true
+          }
+        },
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        },
+        "indent_1": {
+          "paragraph": {
+            "indents": {
+              "left": "0.5cm"
+            }
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Safety",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-7-02.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_22ffab7233557612"
+    ],
+    "columns": {
+      "Measure": {
+        "colOrder": 1,
+        "label": "Measure",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "Position": {
+        "colOrder": 2,
+        "label": "Position",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": true,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "24.8%",
+          "valueStyleRef": [
+            "indent_1"
+          ]
+        }
+      },
+      "Treatment": {
+        "colOrder": 3,
+        "label": "Treatment",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": true,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "16.7%"
+        }
+      },
+      "N": {
+        "colOrder": 4,
+        "label": "N",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "5.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "Planned Relative Time": {
+        "colOrder": 5,
+        "label": "Planned Relative Time",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "17.5%"
+        }
+      },
+      "n": {
+        "colOrder": 6,
+        "label": "n",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "5.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "Mean": {
+        "colOrder": 7,
+        "label": "Mean",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.1f",
+          "missings": "",
+          "colWidth": "6.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "SD": {
+        "colOrder": 8,
+        "label": "SD",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.2f",
+          "missings": "",
+          "colWidth": "5.8%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "Median": {
+        "colOrder": 9,
+        "label": "Median",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.1f",
+          "missings": "",
+          "colWidth": "5.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "Min.": {
+        "colOrder": 10,
+        "label": "Min.",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.1f",
+          "missings": "",
+          "colWidth": "5.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "Max.": {
+        "colOrder": 11,
+        "label": "Max.",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.1f",
+          "missings": "",
+          "colWidth": "5.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{\"add_row\":[{\"pos\":\"above\",\"value_from\":\"Measure\",\"styleRef\":\"b\",\"seq\":0}]}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{\"add_row\":[{\"pos\":\"above\",\"value_from\":\"Measure\",\"styleRef\":\"b\",\"seq\":0}],\"page_break\":[{\"seq\":0}]}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{\"add_row\":[{\"pos\":\"above\",\"value_from\":\"Measure\",\"styleRef\":\"b\",\"seq\":0}],\"page_break\":[{\"seq\":0}]}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}",
+      "{}",
+      "{\"clear\":[{\"cols\":[\"N\"],\"seq\":0}]}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-7.02",
+          "Summary of Vital Signs Change from Baseline at End of Treatment"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "End of treatment is the last on-treatment assessment of the specified vital sign (on or before the Week 24 visit)."
+        ],
+        "order": 1
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

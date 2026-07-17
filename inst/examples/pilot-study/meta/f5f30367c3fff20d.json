@@ -1,0 +1,86 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "f-14-01_adas_mean_profile.docx",
+    "datetime": "2026-07-05T18:36:28",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "figure_spec_6355b0d2c5cfb653": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "92%",
+      "docType": "Figure",
+      "hasData": false,
+      "docOrder": 1
+    },
+    "figure": {
+      "width": "6in",
+      "height": "4in",
+      "figureScaleMode": "fitWidth",
+      "device": "svg"
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Efficacy",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/f-14-01_adas_mean_profile.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_6355b0d2c5cfb653"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Figure 14.01 Mean ADAS-Cog (11) Profile by Visit"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "subtitles": {
+      "subtitle_0001": {
+        "text": [
+          "Observed efficacy assessments"
+        ],
+        "order": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "Means are calculated from ADADAS observed records at the selected visits."
+        ],
+        "order": 1
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

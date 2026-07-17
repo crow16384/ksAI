@@ -21,6 +21,7 @@ ks_llm(
   provider = ks_get_option("provider"),
   base_url = NULL,
   echo = "none",
+  context_format = ks_get_option("context_format"),
   ...
 )
 ```
@@ -74,6 +75,11 @@ ks_llm(
 
   Echo mode forwarded to ellmer when `x` is a
   [ks_study](https://crow16384.github.io/ksAI/reference/is_ks_study.md).
+
+- context_format:
+
+  Context serialization format: `"markdown"` (default), `"compact"`, or
+  `"json"`. Defaults to the `"context_format"` package option.
 
 - ...:
 

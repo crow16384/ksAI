@@ -1,0 +1,389 @@
+[
+  {
+    "spec_file": "6e3c2c239a83ad83.json",
+    "doc_file": "14-1.01.docx",
+    "datetime": "2026-07-05T18:33:30",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_70c2fdd5ac8dc177"
+    ]
+  },
+  {
+    "spec_file": "54c31d810fa0282d.json",
+    "doc_file": "14-1.01.docx",
+    "datetime": "2026-07-05T18:34:32",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_70c2fdd5ac8dc177"
+    ]
+  },
+  {
+    "spec_file": "787bf758004c15f7.json",
+    "doc_file": "14-1.01.docx",
+    "datetime": "2026-07-05T18:36:17",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_70c2fdd5ac8dc177"
+    ]
+  },
+  {
+    "spec_file": "ceb0e64c9f025bc8.json",
+    "doc_file": "14-1.02.docx",
+    "datetime": "2026-07-05T18:36:17",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_586d44e2c1a27eae"
+    ]
+  },
+  {
+    "spec_file": "16592e5a40c5e66a.json",
+    "doc_file": "14-1.03.docx",
+    "datetime": "2026-07-05T18:36:17",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_01ac6b1d56b549df"
+    ]
+  },
+  {
+    "spec_file": "cb38ba80f4ba6030.json",
+    "doc_file": "14-2.01.docx",
+    "datetime": "2026-07-05T18:36:17",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_1096b604d3b350de"
+    ]
+  },
+  {
+    "spec_file": "87632d927dfd3ff4.json",
+    "doc_file": "14-3.01.docx",
+    "datetime": "2026-07-05T18:36:18",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_d4003a3759f5eabc"
+    ]
+  },
+  {
+    "spec_file": "05e40e38a29f0816.json",
+    "doc_file": "14-3.02.docx",
+    "datetime": "2026-07-05T18:36:18",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_e213607498c522cb"
+    ]
+  },
+  {
+    "spec_file": "65ed55f1ae4babd5.json",
+    "doc_file": "14-3.03.docx",
+    "datetime": "2026-07-05T18:36:18",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_5b94a9be7fe8a5fc"
+    ]
+  },
+  {
+    "spec_file": "abdbc0724891a743.json",
+    "doc_file": "14-3.04.docx",
+    "datetime": "2026-07-05T18:36:18",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_8ec3b09fda9ff189"
+    ]
+  },
+  {
+    "spec_file": "e17f436a2600b3b0.json",
+    "doc_file": "14-3.05.docx",
+    "datetime": "2026-07-05T18:36:19",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_ffef4d852a6083a2"
+    ]
+  },
+  {
+    "spec_file": "0ae159348e04f4c0.json",
+    "doc_file": "14-3.06.docx",
+    "datetime": "2026-07-05T18:36:19",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_7af32e2bc881baae"
+    ]
+  },
+  {
+    "spec_file": "f6a6741547b774e1.json",
+    "doc_file": "14-3.07.docx",
+    "datetime": "2026-07-05T18:36:19",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_7c8236f2effbc6a9"
+    ]
+  },
+  {
+    "spec_file": "a3dba037fc47bf8a.json",
+    "doc_file": "14-3.08.docx",
+    "datetime": "2026-07-05T18:36:19",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_686483adfc98840f"
+    ]
+  },
+  {
+    "spec_file": "bbd51b84be1dd379.json",
+    "doc_file": "14-3.09.docx",
+    "datetime": "2026-07-05T18:36:20",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_0b803e31389db7f7"
+    ]
+  },
+  {
+    "spec_file": "3eba35d8d960e990.json",
+    "doc_file": "14-3.10.docx",
+    "datetime": "2026-07-05T18:36:20",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_50ef0a2e4298a31d"
+    ]
+  },
+  {
+    "spec_file": "52dc79faa9e8fdf0.json",
+    "doc_file": "14-3.11.docx",
+    "datetime": "2026-07-05T18:36:20",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_7ef674ee4f5db9b8"
+    ]
+  },
+  {
+    "spec_file": "b2a88b2c9889c22f.json",
+    "doc_file": "14-3.12.docx",
+    "datetime": "2026-07-05T18:36:21",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_cd8af48c66dba87a"
+    ]
+  },
+  {
+    "spec_file": "05dbb94be89934cf.json",
+    "doc_file": "14-3.13.docx",
+    "datetime": "2026-07-05T18:36:21",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_744f3f85ddf91c46"
+    ]
+  },
+  {
+    "spec_file": "bfff9a345bed8950.json",
+    "doc_file": "14-4.01.docx",
+    "datetime": "2026-07-05T18:36:21",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_236fb47b8d066ac5"
+    ]
+  },
+  {
+    "spec_file": "81ecba2bf4e7702a.json",
+    "doc_file": "14-5.01.docx",
+    "datetime": "2026-07-05T18:36:22",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_926e143c5f8c1638"
+    ]
+  },
+  {
+    "spec_file": "2a6b3bf5e45c38e1.json",
+    "doc_file": "14-5.02.docx",
+    "datetime": "2026-07-05T18:36:22",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_cff67978d4fae944"
+    ]
+  },
+  {
+    "spec_file": "f9f9f676c090ec74.json",
+    "doc_file": "14-6.01.docx",
+    "datetime": "2026-07-05T18:36:23",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_713fa1b7379f7a0e"
+    ]
+  },
+  {
+    "spec_file": "242fffe678baff0a.json",
+    "doc_file": "14-6.02.docx",
+    "datetime": "2026-07-05T18:36:24",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_9c91b028fa80afcf"
+    ]
+  },
+  {
+    "spec_file": "bee0c32b7824df05.json",
+    "doc_file": "14-6.03.docx",
+    "datetime": "2026-07-05T18:36:24",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_59f61834d17a698d"
+    ]
+  },
+  {
+    "spec_file": "c701d295b4038425.json",
+    "doc_file": "14-6.04.docx",
+    "datetime": "2026-07-05T18:36:25",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_7fc4b752c19fabc2"
+    ]
+  },
+  {
+    "spec_file": "ade4e2bbea108e73.json",
+    "doc_file": "14-6.05.docx",
+    "datetime": "2026-07-05T18:36:27",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_4523cf1c1c3e11b0"
+    ]
+  },
+  {
+    "spec_file": "a999a557c619bd42.json",
+    "doc_file": "14-6.06.docx",
+    "datetime": "2026-07-05T18:36:27",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_559b9a7f166e27f5"
+    ]
+  },
+  {
+    "spec_file": "ccac8be447bec7fa.json",
+    "doc_file": "14-7.01.docx",
+    "datetime": "2026-07-05T18:36:27",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_b828e943bf1ece5a"
+    ]
+  },
+  {
+    "spec_file": "24ea0a1339769758.json",
+    "doc_file": "14-7.02.docx",
+    "datetime": "2026-07-05T18:36:28",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_22ffab7233557612"
+    ]
+  },
+  {
+    "spec_file": "d1ff1cc9e21ff2d2.json",
+    "doc_file": "14-7.03.docx",
+    "datetime": "2026-07-05T18:36:28",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_4855a7a4df6eb4fd"
+    ]
+  },
+  {
+    "spec_file": "f5f30367c3fff20d.json",
+    "doc_file": "f-14-01_adas_mean_profile.docx",
+    "datetime": "2026-07-05T18:36:28",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_6355b0d2c5cfb653"
+    ]
+  },
+  {
+    "spec_file": "c1b4a8a08e02e364.json",
+    "doc_file": "f-14-02_adas_change_boxplot.docx",
+    "datetime": "2026-07-05T18:36:29",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_609d1f898e2dfdee"
+    ]
+  },
+  {
+    "spec_file": "fd708c545eebcdf8.json",
+    "doc_file": "f-14-03_cibic_week24_distribution.docx",
+    "datetime": "2026-07-05T18:36:29",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_25408ed650787220"
+    ]
+  },
+  {
+    "spec_file": "9cb11c7dfb4494b6.json",
+    "doc_file": "f-14-04_ae_top_terms_bar.docx",
+    "datetime": "2026-07-05T18:36:29",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_84a365df6b3bbaf1"
+    ]
+  },
+  {
+    "spec_file": "3cbc6a18e71e894a.json",
+    "doc_file": "f-14-05_serious_ae_top_terms_bar.docx",
+    "datetime": "2026-07-05T18:36:29",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_2d27be7ec0f2eb57"
+    ]
+  },
+  {
+    "spec_file": "1569005e7a89abdb.json",
+    "doc_file": "f-14-06_weight_mean_profile.docx",
+    "datetime": "2026-07-05T18:36:30",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_141c38ae6106cae2"
+    ]
+  },
+  {
+    "spec_file": "4b9445885f6d4411.json",
+    "doc_file": "f-14-07_weight_change_boxplot.docx",
+    "datetime": "2026-07-05T18:36:30",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_4e44e3d674548c81"
+    ]
+  },
+  {
+    "spec_file": "5f36db3f724d677f.json",
+    "doc_file": "f-14-08_sbp_change_boxplot.docx",
+    "datetime": "2026-07-05T18:36:30",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_1552589a8d1586e1"
+    ]
+  },
+  {
+    "spec_file": "b0709a6354e374f9.json",
+    "doc_file": "f-14-09_pulse_mean_profile.docx",
+    "datetime": "2026-07-05T18:36:31",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_184d9ee1c30b5c67"
+    ]
+  },
+  {
+    "spec_file": "db69bc93f3dd5259.json",
+    "doc_file": "f-14-10_exposure_scatter.docx",
+    "datetime": "2026-07-05T18:36:31",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_4e20798ef28cf21d"
+    ]
+  },
+  {
+    "spec_file": "cd4a339d9c45957a.json",
+    "doc_file": "14-6.04.docx",
+    "datetime": "2026-07-06T08:33:17",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_7fc4b752c19fabc2"
+    ]
+  },
+  {
+    "spec_file": "761579b4a482fd7d.json",
+    "doc_file": "14-6.05.docx",
+    "datetime": "2026-07-06T08:46:50",
+    "n_specs": 1,
+    "data_refs": [
+      "0001_4523cf1c1c3e11b0"
+    ]
+  }
+]

@@ -30,7 +30,11 @@
     # Default LLM provider for ks_chat().
     provider = "ollama",
     # Context serialization for LLM injection: "markdown", "compact", or "json".
-    context_format = "markdown"
+    context_format = "markdown",
+    # Default embedding model for capsule semantic retrieval.
+    embed_model = "text-embedding-nomic-embed-text-v1.5",
+    # OpenAI-compatible embeddings endpoint.
+    embed_url = "http://127.0.0.1:1234/v1"
   )
 }
 
@@ -51,7 +55,8 @@
 #' or more options for the current session.
 #'
 #' @param key Character scalar. Option name. One of `"max_rows"`,
-#'   `"skills_dir"`, `"provider"`, `"context_format"`.
+#'   `"skills_dir"`, `"provider"`, `"context_format"`, `"embed_model"`,
+#'   `"embed_url"`.
 #' @param ... Named `key = value` pairs to set (for `ks_set_option()`).
 #'
 #' @return `ks_get_option()` returns the option value. `ks_set_option()`

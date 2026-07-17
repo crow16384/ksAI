@@ -16,7 +16,7 @@ ks_set_option(...)
 - key:
 
   Character scalar. Option name. One of `"max_rows"`, `"skills_dir"`,
-  `"provider"`.
+  `"provider"`, `"context_format"`, `"embed_model"`, `"embed_url"`.
 
 - ...:
 

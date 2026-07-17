@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Targeted Workflow and Result Chaining • ksAI</title>
+<title>Targeted Workflow, Clinical Capsules, and Result Chaining • ksAI</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Targeted Workflow and Result Chaining">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Targeted Workflow, Clinical Capsules, and Result Chaining">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -34,7 +34,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/Getting_Started_ksAI.html">Getting Started with ksAI</a></li>
-    <li><a class="dropdown-item" href="../articles/Targeted_Workflow_and_Result_Chaining.html">Targeted Workflow and Result Chaining</a></li>
+    <li><a class="dropdown-item" href="../articles/Architecture_and_Pipeline.html">Architecture and Pipeline</a></li>
+    <li><a class="dropdown-item" href="../articles/Targeted_Workflow_and_Result_Chaining.html">Targeted Workflow, Clinical Capsules, and Result Chaining</a></li>
   </ul>
 </li>
       </ul>
@@ -53,7 +54,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Targeted Workflow and Result Chaining</h1>
+      <h1>Targeted Workflow, Clinical Capsules, and Result Chaining</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/crow16384/ksAI/blob/HEAD/vignettes/Targeted_Workflow_and_Result_Chaining.Rmd" class="external-link"><code>vignettes/Targeted_Workflow_and_Result_Chaining.Rmd</code></a></small>
@@ -63,125 +64,359 @@
     
     
 <div class="section level2">
-<h2 id="why-targeted-loading">Why targeted loading<a class="anchor" aria-label="anchor" href="#why-targeted-loading"></a>
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>Clinical studies can produce many outputs, while most writing tasks
-need only a small subset. The targeted workflow in ksAI lets you:</p>
-<ul>
-<li>discover available output IDs quickly</li>
-<li>load only the relevant IDs into context</li>
-<li>run skills or free prompts on one or multiple IDs</li>
-<li>save generated analysis in markdown and JSON</li>
-<li>reuse prior analysis in later prompts</li>
-</ul>
+<p>ksAI provides two complementary workflows for reasoning over ksTFL
+outputs.</p>
+<p><strong>Direct context workflow</strong> (Sections 1–4): load a
+targeted subset of outputs, render them as markdown or compact text, and
+run skill-based prompts. This is the fastest path for single-output
+tasks and for drafting CSR narratives where you already know which
+tables you need.</p>
+<p><strong>Capsule workflow</strong> (Sections 5–8): decompose all
+outputs into a concept-level capsule store, enrich capsules with
+keywords and embeddings, retrieve the smallest relevant subset for a
+query, and send only those capsules to a larger reasoning model. This is
+the preferred path for exploratory questions across many outputs and for
+large studies where injecting full tables would exceed model context
+limits.</p>
+<pre><code>ks_load() → ks_study → ks_context → ks_llm()        # direct
+                    ↓
+              as_capsules() → ks_capsule_store
+              ks_annotate()   (semantic enrichment)
+              ks_embed()      (vector embeddings)
+              ks_retrieve()   (hybrid retrieval)
+              ks_reason()     → ks_result            # capsule</code></pre>
+<hr>
 </div>
 <div class="section level2">
 <h2 id="discover-and-load-only-needed-ids">1. Discover and load only needed IDs<a class="anchor" aria-label="anchor" href="#discover-and-load-only-needed-ids"></a>
 </h2>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://crow16384.github.io/ksAI/">ksAI</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Inspect available outputs in a ksTFL meta folder.</span></span>
+<span><span class="co"># Inspect available outputs without loading data.</span></span>
 <span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_list_ids.html">ks_list_ids</a></span><span class="op">(</span><span class="st">"path/to/outputs/meta"</span><span class="op">)</span></span>
 <span><span class="va">ids</span></span>
 <span></span>
 <span><span class="co"># Load only the outputs required for the current task.</span></span>
 <span><span class="va">study</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_load.html">ks_load</a></span><span class="op">(</span></span>
 <span>  <span class="st">"path/to/outputs/meta"</span>,</span>
-<span>  ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"14-3.01"</span>, <span class="st">"14-3.02"</span>, <span class="st">"14-7.02"</span><span class="op">)</span></span>
+<span>  ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"14-3.01"</span>, <span class="st">"14-3.02"</span>, <span class="st">"14-5.01"</span>, <span class="st">"14-7.02"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">study</span></span></code></pre></div>
-<p>You can also reload a previously persisted study and optionally
-filter IDs:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<p>Reload a previously persisted study or filter IDs from an existing
+<code>.ks</code> file:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">study_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_load.html">ks_load</a></span><span class="op">(</span><span class="st">"my_study.ks"</span><span class="op">)</span></span>
 <span><span class="va">study_subset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_load.html">ks_load</a></span><span class="op">(</span><span class="st">"my_study.ks"</span>, ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"14-3.01"</span>, <span class="st">"14-7.02"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="run-skills-on-single-or-multiple-ids">2. Run skills on single or multiple IDs<a class="anchor" aria-label="anchor" href="#run-skills-on-single-or-multiple-ids"></a>
+<h2 id="inspect-context-objects">2. Inspect context objects<a class="anchor" aria-label="anchor" href="#inspect-context-objects"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_chat.html">ks_chat</a></span><span class="op">(</span><span class="va">study</span>, model <span class="op">=</span> <span class="st">"qwen3:14b"</span>, provider <span class="op">=</span> <span class="st">"ollama"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Single-ID skill call.</span></span>
+<p>Each loaded output becomes a <code>ks_context</code> — the
+render-join of specification and data:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ctx</span> <span class="op">&lt;-</span> <span class="va">study</span><span class="op">[[</span><span class="st">"14-3.01"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">ctx</span>                       <span class="co"># print: title, columns, span headers, row count</span></span>
+<span><span class="fu"><a href="../reference/as_markdown.html">as_markdown</a></span><span class="op">(</span><span class="va">ctx</span><span class="op">)</span>          <span class="co"># markdown table for reading</span></span>
+<span><span class="fu"><a href="../reference/as_compact.html">as_compact</a></span><span class="op">(</span><span class="va">ctx</span><span class="op">)</span>           <span class="co"># token-efficient DSL: smaller than markdown</span></span>
+<span><span class="fu"><a href="../reference/as_json.html">as_json</a></span><span class="op">(</span><span class="va">ctx</span><span class="op">)</span>              <span class="co"># full JSON (columns + rows)</span></span></code></pre></div>
+<p>Compact format is ideal for model injection when the table is large.
+For a table with span-header groups it emits a one-time legend
+(<code>SPANS:</code>, <code>COLS:</code>) and short keys per row rather
+than repeating arm labels:</p>
+<pre><code>TABLE: 14-5.01 | Population: Safety
+TITLE: ...
+SPANS: A=Placebo (N=86); B=Xanomeline Low Dose (N=84); C=Xanomeline High Dose (N=84)
+COLS: n(%), [AEs]
+[CARDIAC DISORDERS]
+SINUS BRADYCARDIA:  A: 2 (2.3%), [2]  |  B: 7 (8.3%), [10]  |  C: 8 (9.5%), [12]</code></pre>
+<p>Set the format globally before any LLM call:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_get_option.html">ks_set_option</a></span><span class="op">(</span>context_format <span class="op">=</span> <span class="st">"compact"</span><span class="op">)</span>   <span class="co"># "markdown" | "compact" | "json"</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="run-skills-or-free-prompts">3. Run skills or free prompts<a class="anchor" aria-label="anchor" href="#run-skills-or-free-prompts"></a>
+</h2>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Preferred: pass study and provider directly (context injected once).</span></span>
 <span><span class="va">out_describe</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_llm.html">ks_llm</a></span><span class="op">(</span></span>
-<span>  <span class="va">chat</span>,</span>
+<span>  <span class="va">study</span>,</span>
 <span>  ids <span class="op">=</span> <span class="st">"14-3.01"</span>,</span>
-<span>  skill <span class="op">=</span> <span class="st">"describe"</span></span>
+<span>  skill <span class="op">=</span> <span class="st">"describe"</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"qwen3:14b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"ollama"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Multi-ID review call (review requires exactly two IDs).</span></span>
+<span><span class="co"># Multi-ID review (requires exactly two IDs).</span></span>
 <span><span class="va">out_review</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_llm.html">ks_llm</a></span><span class="op">(</span></span>
-<span>  <span class="va">chat</span>,</span>
+<span>  <span class="va">study</span>,</span>
 <span>  ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"14-3.01"</span>, <span class="st">"14-3.02"</span><span class="op">)</span>,</span>
-<span>  skill <span class="op">=</span> <span class="st">"review"</span></span>
+<span>  skill <span class="op">=</span> <span class="st">"review"</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"qwen3:14b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"ollama"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Skill + extra user instruction. The model follows the language in prompt.</span></span>
-<span><span class="va">out_spanish</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_llm.html">ks_llm</a></span><span class="op">(</span></span>
-<span>  <span class="va">chat</span>,</span>
+<span><span class="co"># Extra user instruction on top of a skill template.</span></span>
+<span><span class="va">out_section</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_llm.html">ks_llm</a></span><span class="op">(</span></span>
+<span>  <span class="va">study</span>,</span>
 <span>  ids <span class="op">=</span> <span class="st">"14-7.02"</span>,</span>
-<span>  skill <span class="op">=</span> <span class="st">"summarize"</span>,</span>
-<span>  prompt <span class="op">=</span> <span class="st">"Write the final answer in Spanish."</span>,</span>
-<span>  audience <span class="op">=</span> <span class="st">"clinician"</span></span>
+<span>  skill <span class="op">=</span> <span class="st">"csr_section"</span>,</span>
+<span>  prompt <span class="op">=</span> <span class="st">"Keep only statements supported by explicit values."</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"qwen3:14b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"ollama"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Free-form mode (no skill template).</span></span>
 <span><span class="va">out_free</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_llm.html">ks_llm</a></span><span class="op">(</span></span>
-<span>  <span class="va">chat</span>,</span>
+<span>  <span class="va">study</span>,</span>
 <span>  ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"14-3.01"</span>, <span class="st">"14-7.02"</span><span class="op">)</span>,</span>
 <span>  skill <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  prompt <span class="op">=</span> <span class="st">"Compare efficacy and safety signals and keep the tone regulatory."</span></span>
+<span>  prompt <span class="op">=</span> <span class="st">"Compare efficacy and safety signals."</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"qwen3:14b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"ollama"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>Alternatively create a persistent chat session — useful when you want
+to ask follow-up questions in a conversational thread. Note that
+<code><a href="../reference/ks_chat.html">ks_chat()</a></code> embeds all loaded contexts in the system prompt,
+so set <code>context_format</code> before building the chat and keep
+<code>max_rows</code> within the model’s context window:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_get_option.html">ks_set_option</a></span><span class="op">(</span>context_format <span class="op">=</span> <span class="st">"compact"</span>, max_rows <span class="op">=</span> <span class="fl">50L</span><span class="op">)</span></span>
+<span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_chat.html">ks_chat</a></span><span class="op">(</span><span class="va">study</span>, model <span class="op">=</span> <span class="st">"qwen3:14b"</span>, provider <span class="op">=</span> <span class="st">"ollama"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/ks_llm.html">ks_llm</a></span><span class="op">(</span><span class="va">chat</span>, ids <span class="op">=</span> <span class="st">"14-3.01"</span>, skill <span class="op">=</span> <span class="st">"describe"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="save-and-reload-generated-outputs">3. Save and reload generated outputs<a class="anchor" aria-label="anchor" href="#save-and-reload-generated-outputs"></a>
+<h2 id="save-reload-and-chain-results">4. Save, reload, and chain results<a class="anchor" aria-label="anchor" href="#save-reload-and-chain-results"></a>
 </h2>
-<p><code><a href="../reference/ks_llm.html">ks_llm()</a></code> returns a <code>ks_result</code> object. Save
-it in both markdown and JSON with <code><a href="../reference/save_result.html">save_result()</a></code>:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">paths</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/save_result.html">save_result</a></span><span class="op">(</span><span class="va">out_spanish</span>, <span class="st">"analysis/out-14-7-02"</span><span class="op">)</span></span>
-<span><span class="va">paths</span></span>
-<span></span>
-<span><span class="co"># Reload later by base path, .json, or .md path.</span></span>
-<span><span class="va">out_loaded</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_result.html">load_result</a></span><span class="op">(</span><span class="st">"analysis/out-14-7-02"</span><span class="op">)</span></span>
-<span><span class="va">out_loaded</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="chain-prior-analysis-into-a-new-run">4. Chain prior analysis into a new run<a class="anchor" aria-label="anchor" href="#chain-prior-analysis-into-a-new-run"></a>
-</h2>
-<p>Pass a previous <code>ks_result</code> to <code>prior</code> so the
-next run can build on it:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p><code><a href="../reference/ks_llm.html">ks_llm()</a></code> and <code><a href="../reference/ks_reason.html">ks_reason()</a></code> both return a
+<code>ks_result</code>. Persist with <code><a href="../reference/save_result.html">save_result()</a></code> (writes
+both <code>.md</code> and <code>.json</code>) and reload with
+<code><a href="../reference/load_result.html">load_result()</a></code>:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/save_result.html">save_result</a></span><span class="op">(</span><span class="va">out_section</span>, <span class="st">"analysis/out-14-7-02"</span><span class="op">)</span></span>
+<span><span class="va">out_loaded</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_result.html">load_result</a></span><span class="op">(</span><span class="st">"analysis/out-14-7-02"</span><span class="op">)</span></span></code></pre></div>
+<p>Pass a previous result to <code>prior</code> so the next run can
+build on it:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">out_refined</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_llm.html">ks_llm</a></span><span class="op">(</span></span>
-<span>  <span class="va">chat</span>,</span>
+<span>  <span class="va">study</span>,</span>
 <span>  ids <span class="op">=</span> <span class="st">"14-7.02"</span>,</span>
 <span>  skill <span class="op">=</span> <span class="st">"csr_section"</span>,</span>
-<span>  title <span class="op">=</span> <span class="st">"Safety Overview"</span>,</span>
-<span>  prompt <span class="op">=</span> <span class="st">"Keep only statements supported by explicit values."</span>,</span>
-<span>  prior <span class="op">=</span> <span class="va">out_loaded</span></span>
+<span>  prompt <span class="op">=</span> <span class="st">"Tighten the narrative; remove any unsupported claims."</span>,</span>
+<span>  prior <span class="op">=</span> <span class="va">out_loaded</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"qwen3:14b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"ollama"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<hr>
 </div>
 <div class="section level2">
-<h2 id="suggested-project-flow">5. Suggested project flow<a class="anchor" aria-label="anchor" href="#suggested-project-flow"></a>
+<h2 id="build-a-clinical-capsule-store">5. Build a Clinical Capsule store<a class="anchor" aria-label="anchor" href="#build-a-clinical-capsule-store"></a>
 </h2>
-<p>A practical sequence for writing tasks:</p>
+<p>When a study has many outputs or individual tables are too large to
+fit in one prompt, decompose them into <strong>clinical
+capsules</strong> — concept-centric, hierarchical summaries with parsed
+statistics, domain tags, and links.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Build capsule store from the entire study (or a single context).</span></span>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span><span class="va">study</span><span class="op">)</span></span>
+<span><span class="va">store</span></span>
+<span></span>
+<span><span class="co"># Inspect individual capsules.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span></span>
+<span><span class="va">cap</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="st">"14-5.01::SOC::CARDIAC_DISORDERS"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">cap</span>                    <span class="co"># print: domain, level, label, row span, child count</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">stats</span>              <span class="co"># parsed statistics per treatment arm</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">compact_text</span>       <span class="co"># the text a model will see for this capsule</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">child_ids</span>          <span class="co"># PT-level capsule IDs nested under this SOC</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">linked_ids</span>         <span class="co"># listing output IDs in the same study / same domain</span></span></code></pre></div>
+<p>The hierarchy has three levels by default: OVERALL → SOC → PT (for AE
+tables), or OVERALL → PARAM (for continuous endpoints). Parent/child IDs
+are wired automatically.</p>
+<p>Persist the store alongside your <code>.ks</code> file:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/save_capsules.html">save_capsules</a></span><span class="op">(</span><span class="va">store</span>, <span class="st">"my_study.ksc"</span><span class="op">)</span></span>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_capsules.html">load_capsules</a></span><span class="op">(</span><span class="st">"my_study.ksc"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="enrich-with-keywords-and-embeddings">6. Enrich with keywords and embeddings<a class="anchor" aria-label="anchor" href="#enrich-with-keywords-and-embeddings"></a>
+</h2>
+<div class="section level3">
+<h3 id="a--pure-r-keyword-pass-always-fast-no-model-needed">6a. Pure-R keyword pass (always fast, no model needed)<a class="anchor" aria-label="anchor" href="#a--pure-r-keyword-pass-always-fast-no-model-needed"></a>
+</h3>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
+<span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="st">"14-5.01::SOC::CARDIAC_DISORDERS"</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">keywords</span></span></code></pre></div>
+<p>This tokenizes <code>label</code>, <code>compact_text</code>, and
+existing concepts, strips stop words, and detects known clinical
+abbreviations (<code>TEAE</code>, <code>SOC</code>, <code>PT</code>,
+etc.).</p>
+</div>
+<div class="section level3">
+<h3 id="b--optional-small-llm-enrichment-pass">6b. Optional small-LLM enrichment pass<a class="anchor" aria-label="anchor" href="#b--optional-small-llm-enrichment-pass"></a>
+</h3>
+<p>A 4B model running locally can identify medical concepts, synonyms,
+and richer keywords. LM Studio with <code>gemma-4-12b</code> or
+<code>qwen3-4b</code> works well:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>,</span>
+<span>  model    <span class="op">=</span> <span class="st">"google/gemma-4-12b-qat"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>  force    <span class="op">=</span> <span class="cn">FALSE</span>   <span class="co"># skip capsules already annotated</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The response is expected to be JSON with keys <code>concepts</code>,
+<code>synonyms</code>, <code>keywords</code>. Any non-JSON wrapper text
+is stripped automatically.</p>
+</div>
+<div class="section level3">
+<h3 id="c--embedding-vectors">6c. Embedding vectors<a class="anchor" aria-label="anchor" href="#c--embedding-vectors"></a>
+</h3>
+<p><code><a href="../reference/ks_embed.html">ks_embed()</a></code> calls the OpenAI-compatible
+<code>/v1/embeddings</code> endpoint —
+<code>text-embedding-nomic-embed-text-v1.5</code> runs out of the box in
+LM Studio:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_get_option.html">ks_set_option</a></span><span class="op">(</span></span>
+<span>  embed_model <span class="op">=</span> <span class="st">"text-embedding-nomic-embed-text-v1.5"</span>,</span>
+<span>  embed_url   <span class="op">=</span> <span class="st">"http://127.0.0.1:1234/v1"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_embed.html">ks_embed</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="st">"14-5.01::SOC::CARDIAC_DISORDERS"</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">embedding</span><span class="op">)</span></span></code></pre></div>
+<p>Embeddings are stored in <code>capsule$embedding</code> as a numeric
+vector and persisted in the <code>.ksc</code> file.
+<code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> falls back to keyword-only scoring when
+embeddings are absent.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="retrieve-the-smallest-relevant-subset">7. Retrieve the smallest relevant subset<a class="anchor" aria-label="anchor" href="#retrieve-the-smallest-relevant-subset"></a>
+</h2>
+<p><code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> scores every capsule against a query using
+three signals blended by configurable weights:</p>
+<table class="table">
+<thead><tr class="header">
+<th>Signal</th>
+<th>Default weight</th>
+<th>Source</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Semantic</td>
+<td>0.6</td>
+<td>cosine similarity with query embedding</td>
+</tr>
+<tr class="even">
+<td>Keyword</td>
+<td>0.3</td>
+<td>token overlap between query and <code>capsule$keywords</code>
+</td>
+</tr>
+<tr class="odd">
+<td>Metadata</td>
+<td>0.1</td>
+<td>exact match on <code>domain</code>, <code>level</code>,
+<code>population</code>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">subset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_retrieve.html">ks_retrieve</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>,</span>
+<span>  query  <span class="op">=</span> <span class="st">"cardiac events in the Xanomeline High Dose arm"</span>,</span>
+<span>  n      <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"AE"</span>, level <span class="op">=</span> <span class="st">"SOC"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">subset</span>                   <span class="co"># print: query + top-5 ranked capsules with scores</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">subset</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span>   <span class="co"># selected capsule IDs</span></span>
+<span><span class="va">subset</span><span class="op">$</span><span class="va">scores</span>            <span class="co"># data.frame: capsule_id, semantic, keyword, metadata, score</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="reason-over-retrieved-capsules">8. Reason over retrieved capsules<a class="anchor" aria-label="anchor" href="#reason-over-retrieved-capsules"></a>
+</h2>
+<p><code><a href="../reference/ks_reason.html">ks_reason()</a></code> combines retrieval and the reasoning step in
+one call. The model <strong>never sees the full study</strong> — only
+the capsule compact texts for the matched subset, plus its metadata:</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>,</span>
+<span>  query    <span class="op">=</span> <span class="st">"Summarize cardiac findings and statistical significance"</span>,</span>
+<span>  n        <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  expand   <span class="op">=</span> <span class="cn">FALSE</span>,   <span class="co"># TRUE → also include child PT capsules</span></span>
+<span>  model    <span class="op">=</span> <span class="st">"gemma-4-26b-a4b-it-mlx"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">out</span>                  <span class="co"># ks_result with skill = "reason"</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">out</span><span class="op">$</span><span class="va">response</span><span class="op">)</span></span></code></pre></div>
+<p>Set <code>expand = TRUE</code> for progressive disclosure: the
+initial reasoning pass uses only the retrieved capsules; children are
+loaded on demand:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">out_expanded</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>,</span>
+<span>  query    <span class="op">=</span> <span class="st">"Which PT-level terms drove cardiac disorder incidence?"</span>,</span>
+<span>  n        <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>  expand   <span class="op">=</span> <span class="cn">TRUE</span>,          <span class="co"># pulls in all PT children of matched SOC capsules</span></span>
+<span>  model    <span class="op">=</span> <span class="st">"gemma-4-26b-a4b-it-mlx"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="suggested-project-flow">9. Suggested project flow<a class="anchor" aria-label="anchor" href="#suggested-project-flow"></a>
+</h2>
+<div class="section level3">
+<h3 id="for-focused-tasks-13-outputs-model-context-not-a-constraint">For focused tasks (1–3 outputs, model context not a constraint)<a class="anchor" aria-label="anchor" href="#for-focused-tasks-13-outputs-model-context-not-a-constraint"></a>
+</h3>
 <ol style="list-style-type: decimal">
 <li>
-<code><a href="../reference/ks_list_ids.html">ks_list_ids()</a></code> to identify relevant outputs</li>
+<code><a href="../reference/ks_list_ids.html">ks_list_ids()</a></code> → identify outputs</li>
 <li>
-<code>ks_load(ids = ...)</code> to create a focused study
-object</li>
+<code>ks_load(ids = ...)</code> → targeted study</li>
 <li>
-<code><a href="../reference/ks_chat.html">ks_chat()</a></code> for model session setup</li>
+<code>ks_set_option(context_format = "compact")</code> →
+token-efficient injection</li>
 <li>
-<code><a href="../reference/ks_llm.html">ks_llm()</a></code> for skill-based and free-form generation</li>
+<code><a href="../reference/ks_llm.html">ks_llm()</a></code> → generate draft</li>
 <li>
-<code><a href="../reference/save_result.html">save_result()</a></code> for traceable deliverables</li>
-<li>
-<code><a href="../reference/load_result.html">load_result()</a></code> + <code>prior =</code> for iterative
-refinement</li>
+<code><a href="../reference/save_result.html">save_result()</a></code> / <code><a href="../reference/load_result.html">load_result()</a></code> +
+<code>prior =</code> → iterate</li>
 </ol>
+</div>
+<div class="section level3">
+<h3 id="for-broad-tasks-many-outputs-or-large-tables">For broad tasks (many outputs or large tables)<a class="anchor" aria-label="anchor" href="#for-broad-tasks-many-outputs-or-large-tables"></a>
+</h3>
+<ol style="list-style-type: decimal">
+<li>
+<code>ks_load(ids = NULL)</code> → full study</li>
+<li>
+<code>as_capsules(study)</code> → concept-level decomposition</li>
+<li>
+<code>ks_annotate(store)</code> → keywords (+ optional small-LLM
+enrichment)</li>
+<li>
+<code>ks_embed(store)</code> → semantic vectors via local embedding
+model</li>
+<li>
+<code>save_capsules(store, ...)</code> → persist for reuse</li>
+<li>
+<code>ks_reason(store, query, n)</code> → retrieve + reason in one
+call</li>
+<li>
+<code><a href="../reference/save_result.html">save_result()</a></code> → traceable deliverable</li>
+</ol>
+<p>Capsule stores can be built once from the full study and reused
+across many writing sessions without reloading or reprocessing the ksTFL
+source JSON.</p>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

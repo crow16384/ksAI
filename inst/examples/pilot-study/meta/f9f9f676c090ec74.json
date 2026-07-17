@@ -1,0 +1,692 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-6.01.docx",
+    "datetime": "2026-07-05T18:36:23",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_713fa1b7379f7a0e": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "100%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        },
+        "indent_1": {
+          "paragraph": {
+            "indents": {
+              "left": "0.5cm"
+            }
+          }
+        },
+        "style_3e27fb4e71b95f95": {
+          "font": {
+            "bold": true
+          },
+          "paragraph": {
+            "alignment": "left"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Safety",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-6-01.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_713fa1b7379f7a0e"
+    ],
+    "stubColumns": {
+      "stub_0001": {
+        "label": "Placebo",
+        "stubOrder": 1,
+        "cols": [
+          "PLACEBO_N",
+          "PLACEBO_MEAN_SD",
+          "PLACEBO_CHG_SD"
+        ]
+      },
+      "stub_0002": {
+        "label": "Xanomeline Low",
+        "stubOrder": 1,
+        "cols": [
+          "LOW_DOSE_N",
+          "LOW_DOSE_MEAN_SD",
+          "LOW_DOSE_CHG_SD"
+        ]
+      },
+      "stub_0003": {
+        "label": "Xanomeline High",
+        "stubOrder": 1,
+        "cols": [
+          "HIGH_DOSE_N",
+          "HIGH_DOSE_MEAN_SD",
+          "HIGH_DOSE_CHG_SD"
+        ]
+      }
+    },
+    "columns": {
+      "DOMAIN": {
+        "colOrder": 1,
+        "label": "DOMAIN",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "PARAM": {
+        "colOrder": 2,
+        "label": "",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "VISIT": {
+        "colOrder": 3,
+        "label": "Visit",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "6.7%",
+          "valueStyleRef": [
+            "indent_1"
+          ]
+        }
+      },
+      "PLACEBO_N": {
+        "colOrder": 4,
+        "label": "N",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "6.8%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "PLACEBO_MEAN_SD": {
+        "colOrder": 5,
+        "label": "Mean (SD)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "11.3%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "PLACEBO_CHG_SD": {
+        "colOrder": 6,
+        "label": "Change<br>from Bsln<br>Mean (SD)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "10.6%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_N": {
+        "colOrder": 7,
+        "label": "N",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "7.6%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_MEAN_SD": {
+        "colOrder": 8,
+        "label": "Mean (SD)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "12.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_CHG_SD": {
+        "colOrder": 9,
+        "label": "Change<br>from Bsln<br>Mean (SD)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "11.3%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_N": {
+        "colOrder": 10,
+        "label": "N",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "8.3%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_MEAN_SD": {
+        "colOrder": 11,
+        "label": "Mean (SD)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "13.2%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_CHG_SD": {
+        "colOrder": 12,
+        "label": "Change<br>from Bsln<br>Mean (SD)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "12.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{\"add_row\":[{\"pos\":\"above\",\"value_from\":\"DOMAIN\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0},{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"value_from\":\"DOMAIN\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0},{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0},{\"pos\":\"above\",\"value_from\":\"PARAM\",\"seq\":1}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-6.01",
+          "Summary Statistics for Continuous Laboratory Values"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "[1] Last observed value while on treatment (prior to or at Week 24)"
+        ],
+        "order": 1
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

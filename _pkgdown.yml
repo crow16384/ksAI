@@ -19,6 +19,14 @@ navbar:
       aria-label: GitHub repository
       href: https://github.com/crow16384/ksAI
 
+articles:
+- title: Guides
+  navbar: ~
+  contents:
+  - Getting_Started_ksAI
+  - Architecture_and_Pipeline
+  - Targeted_Workflow_and_Result_Chaining
+
 reference:
 - title: Study Loading and Persistence
   contents:
@@ -40,7 +48,24 @@ reference:
   - is_ks_context
   - as_json
   - as_markdown
+  - as_compact
   - enrich_context
+- title: CKR and Structured Facts
+  contents:
+  - is_ks_facts
+  - as_facts
+  - retrieve
+- title: Clinical Capsules
+  contents:
+  - is_ks_capsule
+  - is_ks_capsule_store
+  - as_capsules
+  - save_capsules
+  - load_capsules
+  - ks_annotate
+  - ks_embed
+  - ks_retrieve
+  - ks_reason
 - title: Study and Session Utilities
   contents:
   - is_ks_study
@@ -48,10 +73,3 @@ reference:
   - is_kschat
   - ks_get_option
   - ks_set_option
-
-articles:
-- title: Guides
-  navbar: ~
-  contents:
-  - Getting_Started_ksAI
-  - Targeted_Workflow_and_Result_Chaining

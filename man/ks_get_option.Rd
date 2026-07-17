@@ -11,7 +11,8 @@ ks_set_option(...)
 }
 \arguments{
 \item{key}{Character scalar. Option name. One of \code{"max_rows"},
-\code{"skills_dir"}, \code{"provider"}, \code{"context_format"}.}
+\code{"skills_dir"}, \code{"provider"}, \code{"context_format"}, \code{"embed_model"},
+\code{"embed_url"}.}
 
 \item{...}{Named \code{key = value} pairs to set (for \code{ks_set_option()}).}
 }

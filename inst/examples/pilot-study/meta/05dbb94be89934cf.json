@@ -1,0 +1,239 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-3.13.docx",
+    "datetime": "2026-07-05T18:36:21",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_744f3f85ddf91c46": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "92%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Efficacy",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-3-13.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_744f3f85ddf91c46"
+    ],
+    "columns": {
+      "AVISITN": {
+        "colOrder": 1,
+        "label": "AVISITN",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%d",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "AVISIT": {
+        "colOrder": 2,
+        "label": "",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": true,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "11.9%"
+        }
+      },
+      "CATEGORY": {
+        "colOrder": 3,
+        "label": "Assessment",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "34.0%"
+        }
+      },
+      "PLACEBO": {
+        "colOrder": 4,
+        "label": "Placebo<br>(N=79)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "13.5%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE": {
+        "colOrder": 5,
+        "label": "Xanomeline Low Dose<br>(N=81)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "13.5%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE": {
+        "colOrder": 6,
+        "label": "Xanomeline High Dose<br>(N=74)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "15.2%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "P_VALUE": {
+        "colOrder": 7,
+        "label": "p-value<br>[1]",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "11.9%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-3.13",
+          "CIBIC+ - Categorical Analysis - LOCF"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "[1] Overall comparison of treatments using CMH test (Pearson Chi-Square), controlling for site group."
+        ],
+        "order": 1
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

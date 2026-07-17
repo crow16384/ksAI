@@ -1,0 +1,404 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-3.10.docx",
+    "datetime": "2026-07-05T18:36:20",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_50ef0a2e4298a31d": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "100%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Efficacy",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-3-10.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_50ef0a2e4298a31d"
+    ],
+    "stubColumns": {
+      "stub_0001": {
+        "label": "Change from baseline",
+        "stubOrder": 1,
+        "cols": [
+          "CHG_MEAN",
+          "CHG_SD",
+          "CHG_MEDIAN",
+          "CHG_MIN",
+          "CHG_MAX"
+        ]
+      }
+    },
+    "columns": {
+      "TRT_DISPLAY": {
+        "colOrder": 1,
+        "label": "",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": true,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "9%"
+        }
+      },
+      "VISIT_LABEL": {
+        "colOrder": 2,
+        "label": "",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "19%"
+        }
+      },
+      "N": {
+        "colOrder": 3,
+        "label": "nc",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "4.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "MEAN": {
+        "colOrder": 4,
+        "label": "Mean",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "4.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "SD": {
+        "colOrder": 5,
+        "label": "Std",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "4.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "MEDIAN": {
+        "colOrder": 6,
+        "label": "Med.",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "5.0%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "MIN": {
+        "colOrder": 7,
+        "label": "Min.",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "4.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "MAX": {
+        "colOrder": 8,
+        "label": "Max.",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "4.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "BASE_MEAN": {
+        "colOrder": 9,
+        "label": "Bsln<br>Mean",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "7.5%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "BASE_SD": {
+        "colOrder": 10,
+        "label": "Bsln<br>Std",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "5.8%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "CHG_MEAN": {
+        "colOrder": 11,
+        "label": "Mean",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "6.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "CHG_SD": {
+        "colOrder": 12,
+        "label": "Std",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "5.0%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "CHG_MEDIAN": {
+        "colOrder": 13,
+        "label": "Med.",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "8.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "CHG_MIN": {
+        "colOrder": 14,
+        "label": "Min.",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "5.8%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "CHG_MAX": {
+        "colOrder": 15,
+        "label": "Max.",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "5.8%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"above\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-3.10",
+          "ADAS Cog (11) - Mean and Mean Change from Baseline over Time"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

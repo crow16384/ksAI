@@ -1,8 +1,8 @@
 ---
-title: "Targeted Workflow and Result Chaining"
+title: "Targeted Workflow, Clinical Capsules, and Result Chaining"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Targeted Workflow and Result Chaining}
+  %\VignetteIndexEntry{Targeted Workflow, Clinical Capsules, and Result Chaining}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,114 +16,334 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Why targeted loading
+## Overview
 
-Clinical studies can produce many outputs, while most writing tasks need only a
-small subset. The targeted workflow in ksAI lets you:
+ksAI provides two complementary workflows for reasoning over ksTFL outputs.
 
-- discover available output IDs quickly
-- load only the relevant IDs into context
-- run skills or free prompts on one or multiple IDs
-- save generated analysis in markdown and JSON
-- reuse prior analysis in later prompts
+**Direct context workflow** (Sections 1–4): load a targeted subset of outputs,
+render them as markdown or compact text, and run skill-based prompts. This is
+the fastest path for single-output tasks and for drafting CSR narratives where
+you already know which tables you need.
+
+**Capsule workflow** (Sections 5–8): decompose all outputs into a concept-level
+capsule store, enrich capsules with keywords and embeddings, retrieve the
+smallest relevant subset for a query, and send only those capsules to a larger
+reasoning model. This is the preferred path for exploratory questions across
+many outputs and for large studies where injecting full tables would exceed
+model context limits.
+
+```
+ks_load() → ks_study → ks_context → ks_llm()        # direct
+                    ↓
+              as_capsules() → ks_capsule_store
+              ks_annotate()   (semantic enrichment)
+              ks_embed()      (vector embeddings)
+              ks_retrieve()   (hybrid retrieval)
+              ks_reason()     → ks_result            # capsule
+```
+
+---
 
 ## 1. Discover and load only needed IDs
 
 ```{r}
 library(ksAI)
 
-# Inspect available outputs in a ksTFL meta folder.
+# Inspect available outputs without loading data.
 ids <- ks_list_ids("path/to/outputs/meta")
 ids
 
 # Load only the outputs required for the current task.
 study <- ks_load(
   "path/to/outputs/meta",
-  ids = c("14-3.01", "14-3.02", "14-7.02")
+  ids = c("14-3.01", "14-3.02", "14-5.01", "14-7.02")
 )
 study
 ```
 
-You can also reload a previously persisted study and optionally filter IDs:
+Reload a previously persisted study or filter IDs from an existing `.ks` file:
 
 ```{r}
 study_all <- ks_load("my_study.ks")
 study_subset <- ks_load("my_study.ks", ids = c("14-3.01", "14-7.02"))
 ```
 
-## 2. Run skills on single or multiple IDs
+## 2. Inspect context objects
+
+Each loaded output becomes a `ks_context` — the render-join of specification
+and data:
 
 ```{r}
-chat <- ks_chat(study, model = "qwen3:14b", provider = "ollama")
+ctx <- study[["14-3.01"]]
+ctx                       # print: title, columns, span headers, row count
+as_markdown(ctx)          # markdown table for reading
+as_compact(ctx)           # token-efficient DSL: smaller than markdown
+as_json(ctx)              # full JSON (columns + rows)
+```
 
-# Single-ID skill call.
+Compact format is ideal for model injection when the table is large. For a
+table with span-header groups it emits a one-time legend (`SPANS:`, `COLS:`)
+and short keys per row rather than repeating arm labels:
+
+```
+TABLE: 14-5.01 | Population: Safety
+TITLE: ...
+SPANS: A=Placebo (N=86); B=Xanomeline Low Dose (N=84); C=Xanomeline High Dose (N=84)
+COLS: n(%), [AEs]
+[CARDIAC DISORDERS]
+SINUS BRADYCARDIA:  A: 2 (2.3%), [2]  |  B: 7 (8.3%), [10]  |  C: 8 (9.5%), [12]
+```
+
+Set the format globally before any LLM call:
+
+```{r}
+ks_set_option(context_format = "compact")   # "markdown" | "compact" | "json"
+```
+
+## 3. Run skills or free prompts
+
+```{r}
+# Preferred: pass study and provider directly (context injected once).
 out_describe <- ks_llm(
-  chat,
+  study,
   ids = "14-3.01",
-  skill = "describe"
+  skill = "describe",
+  model = "qwen3:14b",
+  provider = "ollama"
 )
 
-# Multi-ID review call (review requires exactly two IDs).
+# Multi-ID review (requires exactly two IDs).
 out_review <- ks_llm(
-  chat,
+  study,
   ids = c("14-3.01", "14-3.02"),
-  skill = "review"
+  skill = "review",
+  model = "qwen3:14b",
+  provider = "ollama"
 )
 
-# Skill + extra user instruction. The model follows the language in prompt.
-out_spanish <- ks_llm(
-  chat,
+# Extra user instruction on top of a skill template.
+out_section <- ks_llm(
+  study,
   ids = "14-7.02",
-  skill = "summarize",
-  prompt = "Write the final answer in Spanish.",
-  audience = "clinician"
+  skill = "csr_section",
+  prompt = "Keep only statements supported by explicit values.",
+  model = "qwen3:14b",
+  provider = "ollama"
 )
 
 # Free-form mode (no skill template).
 out_free <- ks_llm(
-  chat,
+  study,
   ids = c("14-3.01", "14-7.02"),
   skill = NULL,
-  prompt = "Compare efficacy and safety signals and keep the tone regulatory."
+  prompt = "Compare efficacy and safety signals.",
+  model = "qwen3:14b",
+  provider = "ollama"
 )
 ```
 
-## 3. Save and reload generated outputs
-
-`ks_llm()` returns a `ks_result` object. Save it in both markdown and JSON with
-`save_result()`:
+Alternatively create a persistent chat session — useful when you want to ask
+follow-up questions in a conversational thread. Note that `ks_chat()` embeds
+all loaded contexts in the system prompt, so set `context_format` before
+building the chat and keep `max_rows` within the model's context window:
 
 ```{r}
-paths <- save_result(out_spanish, "analysis/out-14-7-02")
-paths
-
-# Reload later by base path, .json, or .md path.
-out_loaded <- load_result("analysis/out-14-7-02")
-out_loaded
+ks_set_option(context_format = "compact", max_rows = 50L)
+chat <- ks_chat(study, model = "qwen3:14b", provider = "ollama")
+ks_llm(chat, ids = "14-3.01", skill = "describe")
 ```
 
-## 4. Chain prior analysis into a new run
+## 4. Save, reload, and chain results
 
-Pass a previous `ks_result` to `prior` so the next run can build on it:
+`ks_llm()` and `ks_reason()` both return a `ks_result`. Persist with
+`save_result()` (writes both `.md` and `.json`) and reload with `load_result()`:
+
+```{r}
+save_result(out_section, "analysis/out-14-7-02")
+out_loaded <- load_result("analysis/out-14-7-02")
+```
+
+Pass a previous result to `prior` so the next run can build on it:
 
 ```{r}
 out_refined <- ks_llm(
-  chat,
+  study,
   ids = "14-7.02",
   skill = "csr_section",
-  title = "Safety Overview",
-  prompt = "Keep only statements supported by explicit values.",
-  prior = out_loaded
+  prompt = "Tighten the narrative; remove any unsupported claims.",
+  prior = out_loaded,
+  model = "qwen3:14b",
+  provider = "ollama"
 )
 ```
 
-## 5. Suggested project flow
+---
 
-A practical sequence for writing tasks:
+## 5. Build a Clinical Capsule store
 
-1. `ks_list_ids()` to identify relevant outputs
-2. `ks_load(ids = ...)` to create a focused study object
-3. `ks_chat()` for model session setup
-4. `ks_llm()` for skill-based and free-form generation
-5. `save_result()` for traceable deliverables
-6. `load_result()` + `prior =` for iterative refinement
+When a study has many outputs or individual tables are too large to fit in one
+prompt, decompose them into **clinical capsules** — concept-centric,
+hierarchical summaries with parsed statistics, domain tags, and links.
+
+```{r}
+# Build capsule store from the entire study (or a single context).
+store <- as_capsules(study)
+store
+
+# Inspect individual capsules.
+names(store$capsules)[1:6]
+cap <- store$capsules[["14-5.01::SOC::CARDIAC_DISORDERS"]]
+cap                    # print: domain, level, label, row span, child count
+cap$stats              # parsed statistics per treatment arm
+cap$compact_text       # the text a model will see for this capsule
+cap$child_ids          # PT-level capsule IDs nested under this SOC
+cap$linked_ids         # listing output IDs in the same study / same domain
+```
+
+The hierarchy has three levels by default: OVERALL → SOC → PT (for AE tables),
+or OVERALL → PARAM (for continuous endpoints). Parent/child IDs are wired
+automatically.
+
+Persist the store alongside your `.ks` file:
+
+```{r}
+save_capsules(store, "my_study.ksc")
+store <- load_capsules("my_study.ksc")
+```
+
+---
+
+## 6. Enrich with keywords and embeddings
+
+### 6a. Pure-R keyword pass (always fast, no model needed)
+
+```{r}
+store <- ks_annotate(store)
+store$capsules[["14-5.01::SOC::CARDIAC_DISORDERS"]]$keywords
+```
+
+This tokenizes `label`, `compact_text`, and existing concepts, strips stop
+words, and detects known clinical abbreviations (`TEAE`, `SOC`, `PT`, etc.).
+
+### 6b. Optional small-LLM enrichment pass
+
+A 4B model running locally can identify medical concepts, synonyms, and
+richer keywords. LM Studio with `gemma-4-12b` or `qwen3-4b` works well:
+
+```{r}
+store <- ks_annotate(
+  store,
+  model    = "google/gemma-4-12b-qat",
+  provider = "lm_studio",
+  force    = FALSE   # skip capsules already annotated
+)
+```
+
+The response is expected to be JSON with keys `concepts`, `synonyms`,
+`keywords`. Any non-JSON wrapper text is stripped automatically.
+
+### 6c. Embedding vectors
+
+`ks_embed()` calls the OpenAI-compatible `/v1/embeddings` endpoint —
+`text-embedding-nomic-embed-text-v1.5` runs out of the box in LM Studio:
+
+```{r}
+ks_set_option(
+  embed_model = "text-embedding-nomic-embed-text-v1.5",
+  embed_url   = "http://127.0.0.1:1234/v1"
+)
+
+store <- ks_embed(store)
+length(store$capsules[["14-5.01::SOC::CARDIAC_DISORDERS"]]$embedding)
+```
+
+Embeddings are stored in `capsule$embedding` as a numeric vector and
+persisted in the `.ksc` file. `ks_retrieve()` falls back to keyword-only
+scoring when embeddings are absent.
+
+---
+
+## 7. Retrieve the smallest relevant subset
+
+`ks_retrieve()` scores every capsule against a query using three signals
+blended by configurable weights:
+
+| Signal | Default weight | Source |
+|--------|---------------|--------|
+| Semantic | 0.6 | cosine similarity with query embedding |
+| Keyword | 0.3 | token overlap between query and `capsule$keywords` |
+| Metadata | 0.1 | exact match on `domain`, `level`, `population` |
+
+```{r}
+subset <- ks_retrieve(
+  store,
+  query  = "cardiac events in the Xanomeline High Dose arm",
+  n      = 5L,
+  filter = list(domain = "AE", level = "SOC")
+)
+
+subset                   # print: query + top-5 ranked capsules with scores
+names(subset$capsules)   # selected capsule IDs
+subset$scores            # data.frame: capsule_id, semantic, keyword, metadata, score
+```
+
+---
+
+## 8. Reason over retrieved capsules
+
+`ks_reason()` combines retrieval and the reasoning step in one call. The
+model **never sees the full study** — only the capsule compact texts for the
+matched subset, plus its metadata:
+
+```{r}
+out <- ks_reason(
+  store,
+  query    = "Summarize cardiac findings and statistical significance",
+  n        = 5L,
+  expand   = FALSE,   # TRUE → also include child PT capsules
+  model    = "gemma-4-26b-a4b-it-mlx",
+  provider = "lm_studio"
+)
+
+out                  # ks_result with skill = "reason"
+cat(out$response)
+```
+
+Set `expand = TRUE` for progressive disclosure: the initial reasoning pass
+uses only the retrieved capsules; children are loaded on demand:
+
+```{r}
+out_expanded <- ks_reason(
+  store,
+  query    = "Which PT-level terms drove cardiac disorder incidence?",
+  n        = 3L,
+  expand   = TRUE,          # pulls in all PT children of matched SOC capsules
+  model    = "gemma-4-26b-a4b-it-mlx",
+  provider = "lm_studio"
+)
+```
+
+---
+
+## 9. Suggested project flow
+
+### For focused tasks (1–3 outputs, model context not a constraint)
+
+1. `ks_list_ids()` → identify outputs
+2. `ks_load(ids = ...)` → targeted study
+3. `ks_set_option(context_format = "compact")` → token-efficient injection
+4. `ks_llm()` → generate draft
+5. `save_result()` / `load_result()` + `prior =` → iterate
+
+### For broad tasks (many outputs or large tables)
+
+1. `ks_load(ids = NULL)` → full study
+2. `as_capsules(study)` → concept-level decomposition
+3. `ks_annotate(store)` → keywords (+ optional small-LLM enrichment)
+4. `ks_embed(store)` → semantic vectors via local embedding model
+5. `save_capsules(store, ...)` → persist for reuse
+6. `ks_reason(store, query, n)` → retrieve + reason in one call
+7. `save_result()` → traceable deliverable
+
+Capsule stores can be built once from the full study and reused across many
+writing sessions without reloading or reprocessing the ksTFL source JSON.

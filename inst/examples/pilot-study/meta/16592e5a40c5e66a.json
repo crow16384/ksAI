@@ -1,0 +1,400 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-1.03.docx",
+    "datetime": "2026-07-05T18:36:17",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_01ac6b1d56b549df": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "100%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: All Subjects",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-1-03.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_01ac6b1d56b549df"
+    ],
+    "stubColumns": {
+      "stub_0001": {
+        "label": "Placebo<br>(N=86)",
+        "stubOrder": 1,
+        "cols": [
+          "PLACEBO_ITT",
+          "PLACEBO_Eff",
+          "PLACEBO_Com"
+        ]
+      },
+      "stub_0002": {
+        "label": "Xanomeline Low Dose<br>(N=84)",
+        "stubOrder": 1,
+        "cols": [
+          "LOW_DOSE_ITT",
+          "LOW_DOSE_Eff",
+          "LOW_DOSE_Com"
+        ]
+      },
+      "stub_0003": {
+        "label": "Xanomeline High Dose<br>(N=84)",
+        "stubOrder": 1,
+        "cols": [
+          "HIGH_DOSE_ITT",
+          "HIGH_DOSE_Eff",
+          "HIGH_DOSE_Com"
+        ]
+      },
+      "stub_0004": {
+        "label": "Total<br>(N=254)",
+        "stubOrder": 1,
+        "cols": [
+          "TOTAL_ITT",
+          "TOTAL_Eff",
+          "TOTAL_Com"
+        ]
+      }
+    },
+    "columns": {
+      "SITEGR1": {
+        "colOrder": 1,
+        "label": "Pooled<br>Id",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "8%"
+        }
+      },
+      "SITEID": {
+        "colOrder": 2,
+        "label": "Site<br>Id",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "8%"
+        }
+      },
+      "PLACEBO_ITT": {
+        "colOrder": 3,
+        "label": "ITT",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "6.8%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "PLACEBO_Eff": {
+        "colOrder": 4,
+        "label": "Eff",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "6.8%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "PLACEBO_Com": {
+        "colOrder": 5,
+        "label": "Com",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "6.8%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_ITT": {
+        "colOrder": 6,
+        "label": "ITT",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "7.5%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_Eff": {
+        "colOrder": 7,
+        "label": "Eff",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "7.5%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_Com": {
+        "colOrder": 8,
+        "label": "Com",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "7.5%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_ITT": {
+        "colOrder": 9,
+        "label": "ITT",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "8.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_Eff": {
+        "colOrder": 10,
+        "label": "Eff",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "8.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_Com": {
+        "colOrder": 11,
+        "label": "Com",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "8.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "TOTAL_ITT": {
+        "colOrder": 12,
+        "label": "ITT",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "5.6%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "TOTAL_Eff": {
+        "colOrder": 13,
+        "label": "Eff",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "5.6%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "TOTAL_Com": {
+        "colOrder": 14,
+        "label": "Com",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "numeric",
+          "format": "%.0f",
+          "missings": "",
+          "colWidth": "5.6%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-1.03",
+          "Summary of Number of Subjects By Site"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "Note: ITT: Number of subjects in the ITT population, Eff: Number of subjects in the Efficacy population;"
+        ],
+        "order": 1
+      },
+      "footnote_0002": {
+        "text": [
+          "Com: Number of subjects completing Week 24."
+        ],
+        "order": 2
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

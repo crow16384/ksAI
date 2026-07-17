@@ -1,0 +1,427 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-6.05.docx",
+    "datetime": "2026-07-05T18:36:27",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_4523cf1c1c3e11b0": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "100%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        },
+        "indent_1": {
+          "paragraph": {
+            "indents": {
+              "left": "0.5cm"
+            }
+          }
+        },
+        "style_3e27fb4e71b95f95": {
+          "font": {
+            "bold": true
+          },
+          "paragraph": {
+            "alignment": "left"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Safety",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-6.05.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_4523cf1c1c3e11b0"
+    ],
+    "stubColumns": {
+      "stub_0001": {
+        "label": "Placebo<br>(N=86)",
+        "stubOrder": 1,
+        "cols": [
+          "PLACEBO_N",
+          "PLACEBO_H"
+        ]
+      },
+      "stub_0002": {
+        "label": "Xanomeline Low Dose<br>(N=84)",
+        "stubOrder": 1,
+        "cols": [
+          "LOW_DOSE_N",
+          "LOW_DOSE_H"
+        ]
+      },
+      "stub_0003": {
+        "label": "Xanomeline High Dose<br>(N=84)",
+        "stubOrder": 1,
+        "cols": [
+          "HIGH_DOSE_N",
+          "HIGH_DOSE_H"
+        ]
+      }
+    },
+    "columns": {
+      "DOMAIN": {
+        "colOrder": 1,
+        "label": "DOMAIN",
+        "isVisible": false,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "0.0cm"
+        }
+      },
+      "PARAM": {
+        "colOrder": 2,
+        "label": "",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": true,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "34.0%",
+          "valueStyleRef": [
+            "indent_1"
+          ]
+        }
+      },
+      "SHIFT": {
+        "colOrder": 3,
+        "label": "Shift<br>[1]",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "5.5%"
+        }
+      },
+      "PLACEBO_N": {
+        "colOrder": 4,
+        "label": "Normal at Baseline",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "8.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "PLACEBO_H": {
+        "colOrder": 5,
+        "label": "High at Baseline",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "8.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_N": {
+        "colOrder": 6,
+        "label": "Normal at Baseline",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "9.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE_H": {
+        "colOrder": 7,
+        "label": "High at Baseline",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "9.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_N": {
+        "colOrder": 8,
+        "label": "Normal at Baseline",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "9.9%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE_H": {
+        "colOrder": 9,
+        "label": "High at Baseline",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "9.9%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "P_VALUE": {
+        "colOrder": 10,
+        "label": "p-value<br>[2]",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "6.3%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{\"add_row\":[{\"pos\":\"above\",\"value_from\":\"DOMAIN\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0}]}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{\"add_row\":[{\"pos\":\"above\",\"value_from\":\"DOMAIN\",\"styleRef\":\"style_3e27fb4e71b95f95\",\"seq\":0}]}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{\"add_row\":[{\"pos\":\"below\",\"seq\":0}]}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-6.05",
+          "Shifts of Laboratory Values During Treatment, Categorized Based on Threshold Ranges"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "NOTES: Only subjects with baseline results are included in the summary."
+        ],
+        "order": 1
+      },
+      "footnote_0002": {
+        "text": [
+          "There were no subjects with abnormal low values at baseline."
+        ],
+        "order": 2
+      },
+      "footnote_0003": {
+        "text": [
+          "[1] A subject is counted only once for each analyte. A change will be considered shifting from normal at baseline to abnormal or from abnormal at baseline to normal at any visit during the treatment. The treatment period is defined as any planned visit after Week 0 (Visit 3), up to and including Week 24 (Visit 12)."
+        ],
+        "order": 3
+      },
+      "footnote_0004": {
+        "text": [
+          "[2] CMH test for general association, controlling for status at baseline."
+        ],
+        "order": 4
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}

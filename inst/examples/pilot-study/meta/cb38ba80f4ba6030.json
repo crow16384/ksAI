@@ -1,0 +1,301 @@
+{
+  "_metadata": {
+    "outDir": "/home/i_aleschenkov/develop/ksTFL-examples/pilot-study/outputs",
+    "docFileName": "14-2.01.docx",
+    "datetime": "2026-07-05T18:36:17",
+    "insertTOC": false,
+    "tocTitle": "Table of Contents"
+  },
+  "table_spec_1096b604d3b350de": {
+    "document": {
+      "footnotePlace": "last_page",
+      "isContinues": false,
+      "continuousSection": false,
+      "contentWidth": "92%",
+      "docType": "Table",
+      "hasData": true,
+      "docOrder": 1
+    },
+    "attribs": {
+      "documentStyle": {
+        "docTemplate": "Regulatory_Arial"
+      },
+      "styles": {
+        "al": {
+          "paragraph": {
+            "alignment": "left"
+          }
+        },
+        "ac": {
+          "paragraph": {
+            "alignment": "center"
+          }
+        }
+      }
+    },
+    "headers": [
+      [
+        "Protocol: CDISCPILOT01",
+        "",
+        "Page {PAGE} of {NUMPAGES}"
+      ],
+      [
+        "Population: Intent-to-Treat",
+        "",
+        ""
+      ]
+    ],
+    "footers": [
+      [
+        "Source: tfl-programs/t-14-2-01.R",
+        "",
+        "2026-07-05"
+      ]
+    ],
+    "dataRef": [
+      "0001_1096b604d3b350de"
+    ],
+    "columns": {
+      "PARAM": {
+        "colOrder": 1,
+        "label": "Parameter",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": true,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "27.2%",
+          "valueStyleRef": [
+            "al"
+          ]
+        }
+      },
+      "STATISTIC": {
+        "colOrder": 2,
+        "label": "Statistic",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "19.5%"
+        }
+      },
+      "PLACEBO": {
+        "colOrder": 3,
+        "label": "Placebo<br>(N=86)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "10.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "HIGH_DOSE": {
+        "colOrder": 4,
+        "label": "Xanomeline High Dose<br>(N=84)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "11.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "LOW_DOSE": {
+        "colOrder": 5,
+        "label": "Xanomeline Low Dose<br>(N=84)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "10.4%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "TOTAL": {
+        "colOrder": 6,
+        "label": "Total<br>(N=254)",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "11.7%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      },
+      "P_VALUE": {
+        "colOrder": 7,
+        "label": "p-value <sup>[1]<\/sup>",
+        "isVisible": true,
+        "isID": false,
+        "isGrouping": false,
+        "isPaging": false,
+        "isColBreak": false,
+        "dedupe": false,
+        "blankAfter": false,
+        "format": {
+          "type": "string",
+          "format": "%s",
+          "missings": "",
+          "colWidth": "9.1%",
+          "valueStyleRef": [
+            "ac"
+          ]
+        }
+      }
+    },
+    "styleRows": [
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"page_break\":[{\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{\"page_break\":[{\"seq\":0}]}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}",
+      "{}"
+    ],
+    "titles": {
+      "title_0001": {
+        "text": [
+          "Table 14-2.01",
+          "Summary of Demographic and Baseline Characteristics"
+        ],
+        "order": 1,
+        "toclevel": 1
+      }
+    },
+    "footnotes": {
+      "footnote_0001": {
+        "text": [
+          "[1] P-values are results of ANOVA treatment group comparison for continuous variable and Pearson's chisquare test for categorical variables."
+        ],
+        "order": 1
+      },
+      "footnote_0002": {
+        "text": [
+          "NOTE: Duration of disease is computed as months between date of enrollment and date of onset of the first definite symptoms of Alzheimer's disease."
+        ],
+        "order": 2
+      }
+    },
+    "bodyText": {
+      "__default_001": {
+        "text": [
+          "No data are available for this output."
+        ],
+        "order": 999
+      }
+    }
+  }
+}
