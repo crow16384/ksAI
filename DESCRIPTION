@@ -34,6 +34,8 @@ Imports:
     checkmate,
     rlang,
     Rcpp
+Remotes:
+    github::crow16384/ksTFL
 LinkingTo:
     Rcpp
 SystemRequirements: C++23

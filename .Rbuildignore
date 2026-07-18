@@ -11,3 +11,5 @@
 ^docs$
 ^vignettes/.*_files$
 ^vignettes/_quarto\.yml$
+^doc$
+^Meta$

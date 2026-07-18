@@ -483,9 +483,11 @@ For each capsule,
 [`ks_retrieve()`](https://crow16384.github.io/ksAI/reference/ks_retrieve.md)
 computes:
 
-\[ = w_s + w_k + w_m \]
+``` math
+\text{score} = w_s \cdot \text{semantic} + w_k \cdot \text{keyword} + w_m \cdot \text{metadata}
+```
 
-Defaults: (w_s = 0.6), (w_k = 0.3), (w_m = 0.1).
+Defaults: $`w_s = 0.6`$, $`w_k = 0.3`$, $`w_m = 0.1`$.
 
 | Signal | Range | Meaning |
 |----|----|----|
@@ -593,7 +595,7 @@ if (RUN_LLM) {
   out_ae <- ks_reason(
     store,
     query    = "Summarize cardiac disorder incidence across treatment arms. Cite specific n(%) values from the capsules.",
-    n        = 3L,
+    n        = 6L,
     expand   = TRUE,
     model    = MODEL_LARGE,
     provider = "lm_studio",
@@ -606,7 +608,7 @@ if (RUN_LLM) {
   out_eff <- ks_reason(
     store,
     query    = "What treatment differences for ADAS-Cog change from baseline at Week 24 appear in the capsules?",
-    n        = 4L,
+    n        = 6L,
     expand   = FALSE,
     model    = MODEL_LARGE,
     provider = "lm_studio",
@@ -618,7 +620,7 @@ if (RUN_LLM) {
   out_mix <- ks_reason(
     store,
     query    = "Are there safety signals that should contextualize interpretation of the primary efficacy results?",
-    n        = 6L,
+    n        = 5L,
     expand   = FALSE,
     model    = MODEL_LARGE,
     provider = "lm_studio",

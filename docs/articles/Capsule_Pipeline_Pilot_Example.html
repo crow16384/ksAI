@@ -542,8 +542,10 @@
 <section class="level3"><h3 id="scoring-model">Scoring model<a class="anchor" aria-label="anchor" href="#scoring-model"></a>
 </h3>
 <p>For each capsule, <code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> computes:</p>
-<p>[ = w_s + w_k + w_m ]</p>
-<p>Defaults: (w_s = 0.6), (w_k = 0.3), (w_m = 0.1).</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">score</mtext><mo>=</mo><msub><mi>w</mi><mi>s</mi></msub><mo>⋅</mo><mtext mathvariant="normal">semantic</mtext><mo>+</mo><msub><mi>w</mi><mi>k</mi></msub><mo>⋅</mo><mtext mathvariant="normal">keyword</mtext><mo>+</mo><msub><mi>w</mi><mi>m</mi></msub><mo>⋅</mo><mtext mathvariant="normal">metadata</mtext></mrow><annotation encoding="application/x-tex">
+\text{score} = w_s \cdot \text{semantic} + w_k \cdot \text{keyword} + w_m \cdot \text{metadata}
+</annotation></semantics></math></p>
+<p>Defaults: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mi>s</mi></msub><mo>=</mo><mn>0.6</mn></mrow><annotation encoding="application/x-tex">w_s = 0.6</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mi>k</mi></msub><mo>=</mo><mn>0.3</mn></mrow><annotation encoding="application/x-tex">w_k = 0.3</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mi>m</mi></msub><mo>=</mo><mn>0.1</mn></mrow><annotation encoding="application/x-tex">w_m = 0.1</annotation></semantics></math>.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 33%">
@@ -661,7 +663,7 @@
 <span>  <span class="va">out_ae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>    <span class="va">store</span>,</span>
 <span>    query    <span class="op">=</span> <span class="st">"Summarize cardiac disorder incidence across treatment arms. Cite specific n(%) values from the capsules."</span>,</span>
-<span>    n        <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>    n        <span class="op">=</span> <span class="fl">6L</span>,</span>
 <span>    expand   <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>    model    <span class="op">=</span> <span class="va">MODEL_LARGE</span>,</span>
 <span>    provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
@@ -674,7 +676,7 @@
 <span>  <span class="va">out_eff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>    <span class="va">store</span>,</span>
 <span>    query    <span class="op">=</span> <span class="st">"What treatment differences for ADAS-Cog change from baseline at Week 24 appear in the capsules?"</span>,</span>
-<span>    n        <span class="op">=</span> <span class="fl">4L</span>,</span>
+<span>    n        <span class="op">=</span> <span class="fl">6L</span>,</span>
 <span>    expand   <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    model    <span class="op">=</span> <span class="va">MODEL_LARGE</span>,</span>
 <span>    provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
@@ -686,7 +688,7 @@
 <span>  <span class="va">out_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>    <span class="va">store</span>,</span>
 <span>    query    <span class="op">=</span> <span class="st">"Are there safety signals that should contextualize interpretation of the primary efficacy results?"</span>,</span>
-<span>    n        <span class="op">=</span> <span class="fl">6L</span>,</span>
+<span>    n        <span class="op">=</span> <span class="fl">5L</span>,</span>
 <span>    expand   <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    model    <span class="op">=</span> <span class="va">MODEL_LARGE</span>,</span>
 <span>    provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>

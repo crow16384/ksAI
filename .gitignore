@@ -10,3 +10,6 @@ src/*.dll
 src/symbols.rds
 vignettes/*_files
 vignettes/*.html
+/doc/
+/Meta/
+*.tar.gz
