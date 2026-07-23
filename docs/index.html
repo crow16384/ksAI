@@ -29,7 +29,7 @@
 
     <a class="navbar-brand me-2" href="index.html">ksAI</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -108,6 +108,8 @@
 <strong><code><a href="reference/ks_chat.html">ks_chat()</a></code></strong> — an <a href="https://ellmer.tidyverse.org/" class="external-link">ellmer</a> chat wired to a targeted loaded subset.</li>
 <li>
 <strong><code>ks_result</code></strong> — persisted output from <code><a href="reference/ks_llm.html">ks_llm()</a></code>. Save/load with <code><a href="reference/save_result.html">save_result()</a></code> / <code><a href="reference/load_result.html">load_result()</a></code>.</li>
+<li>
+<strong>Clinical capsules</strong> — <code><a href="reference/as_capsules.html">as_capsules()</a></code> decomposes large studies into concept-level units with language-agnostic domain tags (<code>domain_map</code>, multilingual lexicon, optional small-LLM via <code>model</code> / <code>llm_domain</code>). Enrich with <code><a href="reference/ks_annotate.html">ks_annotate()</a></code>, embed, retrieve, and reason.</li>
 <li>
 <strong>Skills</strong> — customizable Markdown prompt templates. Built-ins: <code>describe</code>, <code>summarize</code>, <code>csr_section</code>, <code>review</code>. Add your own with <code>ks_set_option(skills_dir = ...)</code>; see <code><a href="reference/ks_list_skills.html">ks_list_skills()</a></code>.</li>
 </ul>

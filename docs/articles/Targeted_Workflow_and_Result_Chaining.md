@@ -182,11 +182,26 @@ in one prompt, decompose them into **clinical capsules** —
 concept-centric, hierarchical summaries with parsed statistics, domain
 tags, and links.
 
+Domain codes are inferred once per output (multilingual rules; optional
+small LLM). Hard overrides win first:
+`enrich_context(annotations$domain)` and
+`ks_set_option(domain_map = ...)`.
+
 ``` r
 
 # Build capsule store from the entire study (or a single context).
 store <- as_capsules(study)
 store
+
+# Optional: resolve UNKNOWN domains with a small local model (once per table).
+# store <- as_capsules(
+#   study,
+#   model = "qwen3.5-4b",
+#   provider = "lm_studio",
+#   base_url = "http://127.0.0.1:1234",
+#   llm_domain = "unknown",
+#   llm_min_confidence = 0.5
+# )
 
 # Inspect individual capsules.
 names(store$capsules)[1:6]
@@ -229,20 +244,28 @@ stop words, and detects known clinical abbreviations (`TEAE`, `SOC`,
 ### 6b. Optional small-LLM enrichment pass
 
 A 4B model running locally can identify medical concepts, synonyms, and
-richer keywords. LM Studio with `gemma-4-12b` or `qwen3-4b` works well:
+richer keywords. The same `model` also reclassifies capsules still
+tagged `UNKNOWN` (once per `source_id`). Use `force_domain = TRUE` to
+reclassify every table. LM Studio with `qwen3.5-4b` or similar works
+well:
 
 ``` r
 
 store <- ks_annotate(
   store,
-  model    = "google/gemma-4-12b-qat",
-  provider = "lm_studio",
-  force    = FALSE   # skip capsules already annotated
+  model              = "qwen3.5-4b",
+  provider           = "lm_studio",
+  base_url           = "http://127.0.0.1:1234",
+  force              = FALSE,  # skip capsules already annotated
+  force_domain       = FALSE,  # only UNKNOWN domains
+  llm_min_confidence = 0.5
 )
 ```
 
-The response is expected to be JSON with keys `concepts`, `synonyms`,
-`keywords`. Any non-JSON wrapper text is stripped automatically.
+The concept response is expected to be JSON with keys `concepts`,
+`synonyms`, `keywords`. Domain responses use
+`{"domain":"CODE","confidence":0.0}`. Any non-JSON wrapper text is
+stripped automatically.
 
 ### 6c. Embedding vectors
 
@@ -354,8 +377,10 @@ out_expanded <- ks_reason(
 ### For broad tasks (many outputs or large tables)
 
 1.  `ks_load(ids = NULL)` → full study
-2.  `as_capsules(study)` → concept-level decomposition
-3.  `ks_annotate(store)` → keywords (+ optional small-LLM enrichment)
+2.  `as_capsules(study)` → concept-level decomposition (optional `model`
+    / `llm_domain` for UNKNOWN domains)
+3.  `ks_annotate(store)` → keywords (+ optional small-LLM enrichment /
+    `force_domain` for domain repair)
 4.  `ks_embed(store)` → semantic vectors via local embedding model
 5.  `save_capsules(store, ...)` → persist for reuse
 6.  `ks_reason(store, query, n)` → retrieve + reason in one call

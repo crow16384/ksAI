@@ -311,6 +311,16 @@
 
   columns <- .extract_columns(spec_entry$columns)
   span_headers <- .extract_span_headers(spec_entry$stubColumns)
+  # Span stubs may list invisible / dropped columns; keep only visible ones so
+  # compact/capsule rendering never looks up missing names.
+  if (length(span_headers) && length(columns)) {
+    visible_names <- vapply(columns, function(c) as.character(c$name %||% ""), character(1))
+    span_headers <- lapply(span_headers, function(s) {
+      s$cols <- intersect(as.character(s$cols %||% character()), visible_names)
+      s
+    })
+    span_headers <- Filter(function(s) length(s$cols) > 0L, span_headers)
+  }
   title <- .extract_text_entries(spec_entry$titles)
   subtitles <- .extract_text_entries(spec_entry$subtitles)
   footnotes <- .extract_text_entries(spec_entry$footnotes)

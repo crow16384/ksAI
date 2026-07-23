@@ -11,13 +11,16 @@ ks_annotate(
   base_url = NULL,
   batch_size = 64L,
   force = FALSE,
+  force_domain = FALSE,
+  llm_min_confidence = 0.5,
   ...
 )
 }
 \arguments{
 \item{store}{A \code{ks_capsule_store}.}
 
-\item{model}{Optional model for the small semantic LLM pass.}
+\item{model}{Optional model for the small semantic LLM pass (and domain
+fallback).}
 
 \item{provider}{Provider for LLM pass. Defaults to \code{\link[=ks_get_option]{ks_get_option()}}\code{provider}.}
 
@@ -25,7 +28,12 @@ ks_annotate(
 
 \item{batch_size}{Integer batch size for deterministic pass.}
 
-\item{force}{Recompute metadata even if already present.}
+\item{force}{Recompute keyword/concept metadata even if already present.}
+
+\item{force_domain}{Reclassify domains with the LLM even when not
+\code{UNKNOWN}. Ignored when \code{model} is \code{NULL}.}
+
+\item{llm_min_confidence}{Minimum confidence (0–1) to accept an LLM domain.}
 
 \item{...}{Extra args forwarded to the chat constructor.}
 }
@@ -35,4 +43,7 @@ Updated \code{ks_capsule_store}.
 \description{
 Enriches capsules in a \link{ks_capsule_store} in two passes: a deterministic
 token/abbreviation pass, plus an optional small-LLM extraction pass.
+When \code{model} is supplied, capsules still tagged \code{UNKNOWN} are also
+reclassified once per \code{source_id} by the same small model (closed domain
+codes). Use \code{force_domain = TRUE} to reclassify every source table.
 }

@@ -2,14 +2,50 @@
 % Please edit documentation in R/capsule.R
 \name{as_capsules}
 \alias{as_capsules}
+\alias{as_capsules.ks_context}
+\alias{as_capsules.ks_study}
 \title{Build Clinical Capsules from Contexts}
 \usage{
 as_capsules(x, ...)
+
+\method{as_capsules}{ks_context}(
+  x,
+  model = NULL,
+  provider = ks_get_option("provider"),
+  base_url = NULL,
+  llm_domain = c("unknown", "always", "never"),
+  llm_min_confidence = 0.5,
+  ...
+)
+
+\method{as_capsules}{ks_study}(
+  x,
+  model = NULL,
+  provider = ks_get_option("provider"),
+  base_url = NULL,
+  llm_domain = c("unknown", "always", "never"),
+  llm_min_confidence = 0.5,
+  ...
+)
 }
 \arguments{
 \item{x}{A \code{ks_context} or \code{ks_study}.}
 
-\item{...}{Unused; for S3 compatibility.}
+\item{...}{Extra args forwarded to the ellmer chat constructor.}
+
+\item{model}{Optional small LLM for domain classification (e.g. a 4B
+local model). \code{NULL} keeps deterministic inference only.}
+
+\item{provider}{LLM provider. Defaults to \code{\link[=ks_get_option]{ks_get_option()}}\code{"provider"}.}
+
+\item{base_url}{Optional provider URL override.}
+
+\item{llm_domain}{When to call the model: \code{"unknown"} (default — only if
+rules yield \code{UNKNOWN}), \code{"always"} (after annotation / \code{domain_map} /
+MedDRA structure; lexicon and id are fallbacks), or \code{"never"}.}
+
+\item{llm_min_confidence}{Minimum confidence (0–1) to accept an LLM
+domain. Below this, rules continue / return \code{UNKNOWN}.}
 }
 \value{
 A \code{ks_capsule_store}.
@@ -18,4 +54,10 @@ A \code{ks_capsule_store}.
 Converts one \link{ks_context} (or all contexts in a \link{ks_study}) into a
 concept-centric capsule registry suitable for semantic enrichment,
 retrieval, and progressive-disclosure reasoning.
+}
+\details{
+Domain codes are inferred once per output (language-agnostic rules first).
+Pass \code{model} to ask a small local LLM when rules leave the domain
+\code{UNKNOWN} (default), or always after hard signals (\code{llm_domain = "always"}).
+The chat is created once per call and reused across tables in a study.
 }

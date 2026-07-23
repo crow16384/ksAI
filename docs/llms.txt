@@ -66,6 +66,13 @@ loaded_out <- load_result("analysis/table-14-3-01")
   [`save_result()`](https://crow16384.github.io/ksAI/reference/save_result.md)
   /
   [`load_result()`](https://crow16384.github.io/ksAI/reference/load_result.md).
+- **Clinical capsules** —
+  [`as_capsules()`](https://crow16384.github.io/ksAI/reference/as_capsules.md)
+  decomposes large studies into concept-level units with
+  language-agnostic domain tags (`domain_map`, multilingual lexicon,
+  optional small-LLM via `model` / `llm_domain`). Enrich with
+  [`ks_annotate()`](https://crow16384.github.io/ksAI/reference/ks_annotate.md),
+  embed, retrieve, and reason.
 - **Skills** — customizable Markdown prompt templates. Built-ins:
   `describe`, `summarize`, `csr_section`, `review`. Add your own with
   `ks_set_option(skills_dir = ...)`; see

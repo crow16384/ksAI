@@ -54,6 +54,10 @@ loaded_out <- load_result("analysis/table-14-3-01")
   targeted loaded subset.
 - **`ks_result`** — persisted output from `ks_llm()`. Save/load with
   `save_result()` / `load_result()`.
+- **Clinical capsules** — `as_capsules()` decomposes large studies into
+  concept-level units with language-agnostic domain tags (`domain_map`,
+  multilingual lexicon, optional small-LLM via `model` /
+  `llm_domain`). Enrich with `ks_annotate()`, embed, retrieve, and reason.
 - **Skills** — customizable Markdown prompt templates. Built-ins: `describe`,
   `summarize`, `csr_section`, `review`. Add your own with
   `ks_set_option(skills_dir = ...)`; see `ks_list_skills()`.

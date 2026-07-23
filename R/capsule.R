@@ -126,8 +126,22 @@ print.ks_capsule_store <- function(x, ...) {
 #' concept-centric capsule registry suitable for semantic enrichment,
 #' retrieval, and progressive-disclosure reasoning.
 #'
+#' Domain codes are inferred once per output (language-agnostic rules first).
+#' Pass `model` to ask a small local LLM when rules leave the domain
+#' `UNKNOWN` (default), or always after hard signals (`llm_domain = "always"`).
+#' The chat is created once per call and reused across tables in a study.
+#'
 #' @param x A `ks_context` or `ks_study`.
-#' @param ... Unused; for S3 compatibility.
+#' @param model Optional small LLM for domain classification (e.g. a 4B
+#'   local model). `NULL` keeps deterministic inference only.
+#' @param provider LLM provider. Defaults to [ks_get_option()]`"provider"`.
+#' @param base_url Optional provider URL override.
+#' @param llm_domain When to call the model: `"unknown"` (default — only if
+#'   rules yield `UNKNOWN`), `"always"` (after annotation / `domain_map` /
+#'   MedDRA structure; lexicon and id are fallbacks), or `"never"`.
+#' @param llm_min_confidence Minimum confidence (0–1) to accept an LLM
+#'   domain. Below this, rules continue / return `UNKNOWN`.
+#' @param ... Extra args forwarded to the ellmer chat constructor.
 #'
 #' @return A `ks_capsule_store`.
 #' @export
@@ -135,11 +149,106 @@ as_capsules <- function(x, ...) {
   UseMethod("as_capsules")
 }
 
+#' @rdname as_capsules
 #' @export
-as_capsules.ks_context <- function(x, ...) {
+as_capsules.ks_context <- function(x,
+                                   model = NULL,
+                                   provider = ks_get_option("provider"),
+                                   base_url = NULL,
+                                   llm_domain = c("unknown", "always", "never"),
+                                   llm_min_confidence = 0.5,
+                                   ...) {
+  llm_domain <- match.arg(llm_domain)
+  dots <- rlang::list2(...)
+  chat <- .make_domain_llm_chat(
+    model = model,
+    provider = provider,
+    base_url = base_url,
+    llm_domain = llm_domain,
+    dots = dots
+  )
+  .as_capsules_context(
+    x,
+    chat = chat,
+    llm_domain = llm_domain,
+    llm_min_confidence = llm_min_confidence
+  )
+}
+
+#' @rdname as_capsules
+#' @export
+as_capsules.ks_study <- function(x,
+                                 model = NULL,
+                                 provider = ks_get_option("provider"),
+                                 base_url = NULL,
+                                 llm_domain = c("unknown", "always", "never"),
+                                 llm_min_confidence = 0.5,
+                                 ...) {
+  llm_domain <- match.arg(llm_domain)
+  dots <- rlang::list2(...)
+  chat <- .make_domain_llm_chat(
+    model = model,
+    provider = provider,
+    base_url = base_url,
+    llm_domain = llm_domain,
+    dots = dots
+  )
+  all <- .study_all(x)
+  if (!length(all)) {
+    return(new_ks_capsule_store(capsules = list(), meta_dir = x$meta_dir))
+  }
+  pieces <- lapply(names(all), function(id) {
+    ctx <- all[[id]]
+    tryCatch(
+      .as_capsules_context(
+        ctx,
+        chat = chat,
+        llm_domain = llm_domain,
+        llm_min_confidence = llm_min_confidence
+      ),
+      error = function(e) {
+        cli::cli_warn(c(
+          "Skipping capsule build for output {.val {id}}.",
+          x = conditionMessage(e)
+        ))
+        new_ks_capsule_store(capsules = list())
+      }
+    )
+  })
+  caps <- Reduce(c, lapply(pieces, function(s) s$capsules))
+  if (is.null(caps)) {
+    caps <- list()
+  }
+  caps <- .link_capsules_to_text_outputs(
+    caps,
+    x,
+    chat = chat,
+    llm_domain = llm_domain,
+    llm_min_confidence = llm_min_confidence
+  )
+  new_ks_capsule_store(
+    capsules = caps,
+    study_id = if (!is.null(x$meta_dir)) basename(x$meta_dir) else NULL,
+    meta_dir = x$meta_dir
+  )
+}
+
+#' @keywords internal
+#' @noRd
+.as_capsules_context <- function(x,
+                                 chat = NULL,
+                                 llm_domain = "unknown",
+                                 llm_min_confidence = 0.5) {
   if (!length(x$rows)) {
     return(new_ks_capsule_store(capsules = list()))
   }
+
+  domain <- .capsule_infer_domain(
+    x,
+    chat = chat,
+    llm_domain = llm_domain,
+    llm_min_confidence = llm_min_confidence
+  )
 
   row_label_col <- .capsule_row_label_col(x)
   groups <- .capsule_groups_from_rows(x$rows, row_label_col)
@@ -171,27 +280,16 @@ as_capsules.ks_context <- function(x, ...) {
 
   capsules <- lapply(seq_along(groups), function(i) {
     g <- groups[[i]]
-    .capsule_from_group(x, g, row_label_col, capsule_id = ids[[i]], parent_id = parent_ids[[i]])
+    .capsule_from_group(
+      x, g, row_label_col,
+      capsule_id = ids[[i]],
+      parent_id = parent_ids[[i]],
+      domain = domain
+    )
   })
   names(capsules) <- vapply(capsules, function(c) c$capsule_id, character(1))
   capsules <- .wire_capsule_children(capsules)
   new_ks_capsule_store(capsules = capsules)
-}
-
-#' @export
-as_capsules.ks_study <- function(x, ...) {
-  all <- .study_all(x)
-  if (!length(all)) {
-    return(new_ks_capsule_store(capsules = list(), meta_dir = x$meta_dir))
-  }
-  pieces <- lapply(all, as_capsules)
-  caps <- Reduce(c, lapply(pieces, function(s) s$capsules))
-  caps <- .link_capsules_to_text_outputs(caps, x)
-  new_ks_capsule_store(
-    capsules = caps,
-    study_id = if (!is.null(x$meta_dir)) basename(x$meta_dir) else NULL,
-    meta_dir = x$meta_dir
-  )
 }
 
 # ---------------------------------------------------------------------------
@@ -362,18 +460,22 @@ load_capsules <- function(path) {
 
 #' @keywords internal
 #' @noRd
-.capsule_from_group <- function(ctx, g, row_label_col, capsule_id, parent_id) {
+.capsule_from_group <- function(ctx, g, row_label_col, capsule_id, parent_id,
+                                domain = NULL) {
   idx <- g$idx
   row <- ctx$rows[[idx]]
   source_rows <- as.integer(g$rows %||% idx)
   label <- if (nzchar(g$label)) g$label else paste0("ROW_", idx)
   stats <- .capsule_extract_stats(row$cells, row_label_col, ctx$span_headers)
   compact_text <- .capsule_compact_for_rows(ctx, source_rows)
+  if (is.null(domain)) {
+    domain <- .capsule_infer_domain(ctx)
+  }
   new_ks_capsule(
     capsule_id = capsule_id,
     source_id = ctx$id,
     source_rows = source_rows,
-    domain = .capsule_infer_domain(ctx),
+    domain = domain,
     level = g$level,
     label = label,
     population = ctx$population %||% NA_character_,
@@ -485,21 +587,405 @@ load_capsules <- function(path) {
   as_compact(sub_ctx)
 }
 
+#' Infer a clinical domain code for a context (language-agnostic).
+#'
+#' Priority (first hit wins):
+#' 1. Explicit `ctx$annotations$domain` (set via [enrich_context()]).
+#' 2. Session `domain_map` option (exact output id, then regex keys).
+#' 3. Structural cues from rows (`ROW_KIND` SOC/PT → AE) — no language needed.
+#' 4. Optional small LLM when `llm_domain = "always"` and `chat` is set.
+#' 5. Multilingual title/subtitle/source keyword lexicon.
+#' 6. ICH/CSR-style output id numbering (`14-5.x` → AE, `14-6.x` → LB, …).
+#' 7. Optional small LLM when `llm_domain = "unknown"` and still unresolved.
+#' 8. `"UNKNOWN"`.
+#'
 #' @keywords internal
 #' @noRd
-.capsule_infer_domain <- function(ctx) {
+.capsule_infer_domain <- function(ctx,
+                                  chat = NULL,
+                                  llm_domain = "unknown",
+                                  llm_min_confidence = 0.5) {
+  # 1. Explicit annotation override (any language / custom study taxonomy).
+  ann <- ctx$annotations %||% list()
+  if (!is.null(ann$domain) && nzchar(as.character(ann$domain)[[1]])) {
+    return(toupper(as.character(ann$domain)[[1]]))
+  }
+
+  # 2. User domain_map: exact id, then regex patterns.
+  mapped <- .capsule_domain_from_map(ctx$id %||% "")
+  if (!is.null(mapped)) {
+    return(mapped)
+  }
+
+  # 3. Structure from MedDRA-like hierarchy markers (language-independent).
+  if (.capsule_has_ae_structure(ctx)) {
+    return("AE")
+  }
+
+  # 4. Optional LLM before soft lexical / id heuristics.
+  if (identical(llm_domain, "always") && !is.null(chat)) {
+    hit <- .capsule_domain_from_llm(ctx, chat, llm_min_confidence)
+    if (!is.null(hit) && !identical(hit, "UNKNOWN")) {
+      return(hit)
+    }
+  }
+
+  # 5. Multilingual lexical cues in title / subtitles / source.
+  lex <- .capsule_domain_from_lexicon(ctx)
+  if (!is.null(lex)) {
+    return(lex)
+  }
+
+  # 6. CSR / ICH table-number conventions encoded in the output id.
+  by_id <- .capsule_domain_from_id(ctx$id %||% "")
+  if (!is.null(by_id)) {
+    return(by_id)
+  }
+
+  # 7. Optional LLM fallback when rules leave the domain unresolved.
+  if (identical(llm_domain, "unknown") && !is.null(chat)) {
+    hit <- .capsule_domain_from_llm(ctx, chat, llm_min_confidence)
+    if (!is.null(hit) && !identical(hit, "UNKNOWN")) {
+      return(hit)
+    }
+  }
+
+  "UNKNOWN"
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_allowed_domains <- function() {
+  c("AE", "DM", "VS", "LB", "EFFC", "EX", "DS", "UNKNOWN")
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_normalize_domain <- function(x) {
+  if (is.null(x) || !length(x)) {
+    return(NULL)
+  }
+  x <- toupper(trimws(as.character(x)[[1]]))
+  if (!nzchar(x)) {
+    return(NULL)
+  }
+  aliases <- c(
+    LAB = "LB", LABORATORY = "LB", LABS = "LB",
+    DEMO = "DM", DEMOGRAPHICS = "DM", DEMOGRAPHY = "DM",
+    EFFICACY = "EFFC", EFF = "EFFC",
+    VITAL = "VS", VITALS = "VS",
+    ADVERSE = "AE", TEAE = "AE", SAE = "AE",
+    EXPOSURE = "EX", DISPOSITION = "DS", POPULATION = "DS"
+  )
+  if (x %in% names(aliases)) {
+    x <- unname(aliases[[x]])
+  }
+  if (x %in% .capsule_allowed_domains()) {
+    x
+  } else {
+    NULL
+  }
+}
+
+#' @keywords internal
+#' @noRd
+.make_domain_llm_chat <- function(model,
+                                  provider,
+                                  base_url,
+                                  llm_domain = "unknown",
+                                  dots = list()) {
+  if (identical(llm_domain, "never")) {
+    return(NULL)
+  }
+  if (is.null(model) || !nzchar(as.character(model)[[1]])) {
+    return(NULL)
+  }
+  system_prompt <- paste(
+    "You classify clinical statistical outputs into CDISC-like domains.",
+    "Return strict JSON only: {\"domain\":\"CODE\",\"confidence\":0.0}.",
+    "Allowed domain codes:",
+    paste(.capsule_allowed_domains(), collapse = ", "),
+    "Use UNKNOWN if unsure. Never invent other codes.",
+    "Titles may be in any language.",
+    sep = " "
+  )
+  tryCatch(
+    rlang::exec(
+      .make_ellmer_chat,
+      provider = provider,
+      model = model,
+      system_prompt = system_prompt,
+      base_url = base_url,
+      echo = "none",
+      !!!dots
+    ),
+    error = function(e) {
+      cli::cli_warn(c(
+        "Domain LLM chat could not be created; using rule-based domains only.",
+        x = conditionMessage(e)
+      ))
+      NULL
+    }
+  )
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_domain_llm_prompt <- function(ctx) {
+  n_show <- min(8L, length(ctx$rows))
+  row_bits <- character(0)
+  if (n_show > 0L) {
+    row_bits <- vapply(seq_len(n_show), function(i) {
+      r <- ctx$rows[[i]]
+      lab <- ""
+      if (length(r$cells)) {
+        lab <- as.character(r$cells[[1]] %||% "")
+      }
+      sprintf("%s|%s", as.character(r$kind %||% ""), lab)
+    }, character(1))
+  }
+  paste(
+    "Classify this clinical output domain.",
+    paste0("id: ", ctx$id %||% ""),
+    paste0("type: ", ctx$type %||% ""),
+    paste0("title: ", paste(ctx$title %||% character(), collapse = " — ")),
+    paste0("subtitles: ", paste(ctx$subtitles %||% character(), collapse = " — ")),
+    paste0("source: ", ctx$source %||% ""),
+    paste0("population: ", ctx$population %||% ""),
+    paste0("row_kinds_and_labels: ", paste(row_bits, collapse = "; ")),
+    "Return JSON {\"domain\":\"CODE\",\"confidence\":0.0}.",
+    sep = "\n"
+  )
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_parse_domain_llm_json <- function(out) {
+  if (is.null(out) || !nzchar(out)) {
+    return(NULL)
+  }
+  parsed <- tryCatch(jsonlite::fromJSON(out, simplifyVector = TRUE), error = function(e) NULL)
+  if (is.null(parsed)) {
+    json_block <- regmatches(out, regexpr("\\{[\\s\\S]*\\}", out, perl = TRUE))
+    if (length(json_block) == 1L && nzchar(json_block[[1]])) {
+      parsed <- tryCatch(
+        jsonlite::fromJSON(json_block[[1]], simplifyVector = TRUE),
+        error = function(e) NULL
+      )
+    }
+  }
+  parsed
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_domain_from_llm <- function(ctx, chat, min_confidence = 0.5) {
+  if (is.null(chat)) {
+    return(NULL)
+  }
+  req <- .capsule_domain_llm_prompt(ctx)
+  out <- tryCatch(as.character(chat$chat(req)), error = function(e) NULL)
+  parsed <- .capsule_parse_domain_llm_json(out)
+  if (is.null(parsed)) {
+    return(NULL)
+  }
+  dom <- .capsule_normalize_domain(parsed$domain)
+  if (is.null(dom)) {
+    return(NULL)
+  }
+  conf <- suppressWarnings(as.numeric(parsed$confidence %||% 1))
+  if (!is.finite(conf)) {
+    conf <- 1
+  }
+  if (conf < min_confidence) {
+    return(NULL)
+  }
+  dom
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_domain_from_map <- function(id) {
+  id <- as.character(id %||% "")
+  if (!nzchar(id)) {
+    return(NULL)
+  }
+  dm <- ks_get_option("domain_map")
+  if (is.null(dm) || !length(dm)) {
+    return(NULL)
+  }
+  dm <- unlist(dm)
+  if (is.null(names(dm)) || any(names(dm) == "")) {
+    return(NULL)
+  }
+  # Exact id match first.
+  if (id %in% names(dm)) {
+    return(toupper(as.character(unname(dm[[id]]))))
+  }
+  # Then regex keys (e.g. "^14-5", "^табл-ндя").
+  for (pat in names(dm)) {
+    ok <- tryCatch(
+      grepl(pat, id, ignore.case = TRUE, perl = TRUE),
+      error = function(e) FALSE
+    )
+    if (isTRUE(ok)) {
+      return(toupper(as.character(unname(dm[[pat]]))))
+    }
+  }
+  NULL
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_has_ae_structure <- function(ctx) {
+  if (!length(ctx$rows)) {
+    return(FALSE)
+  }
+  kinds <- toupper(vapply(ctx$rows, function(r) {
+    as.character(r$kind %||% "")
+  }, character(1)))
+  any(kinds %in% c("SOC", "PT", "HLGT", "HLT", "LLT"))
+}
+
+#' Multilingual keyword lexicon for domain inference.
+#'
+#' Patterns are matched against a lowercased concatenation of title, subtitles,
+#' and source. Keep this list conservative: prefer structure / id / domain_map
+#' for ambiguous words (e.g. English "baseline" alone is NOT mapped to DM).
+#'
+#' @keywords internal
+#' @noRd
+.capsule_domain_lexicon <- function() {
+  list(
+    AE = paste(
+      # EN
+      "adverse", "teae", "\\bsae\\b", "\\bae\\b", "meddra", "preferred term",
+      "system organ class",
+      # DE
+      "unerw(?:u|ü)nscht", "nebenwirkung",
+      # FR
+      "ind(?:e|é)sirable",
+      # ES / PT
+      "advers[oa]", "acontecimiento advers", "evento advers",
+      # IT
+      "avvers",
+      # RU
+      "нежелательн", "ндя", "серьезн.*событ",
+      "предпочтительн.*термин", "систем.*орган",
+      # ZH / JA / PL
+      "不良事件", "严重不良", "有害事象", "niepożąd",
+      sep = "|"
+    ),
+    DM = paste(
+      "demograph", "demographic", "baseline character",
+      "demografía", "demografia", "demograf",
+      "демограф", "исходн.*характерист",
+      "人口学", "人口統計", "人口统计学",
+      "demographie", "demografie",
+      sep = "|"
+    ),
+    VS = paste(
+      "vital sign", "blood pressure", "heart rate", "\\bpulse\\b",
+      "respiratory rate",
+      "vitalparameter", "vitalzeichen",
+      "signes vitaux", "signos vitales",
+      "витальн", "жизненн.*показател", "артериальн.*давлен", "пульс",
+      "血压", "脉搏", "バイタル",
+      sep = "|"
+    ),
+    LB = paste(
+      "\\blab(?:oratory)?\\b", "chemistry", "hematology", "haematology",
+      "hy.?s law", "liver enzyme",
+      "laborwert", "laborbefund", "laboratoire", "laboratorio",
+      "лаборатор", "биохим", "гематолог",
+      "实验室", "检验", "臨床検査",
+      sep = "|"
+    ),
+    EFFC = paste(
+      "efficac", "endpoint", "primary analysis", "adas", "cibic", "\\bnpi\\b",
+      "\\bmmse\\b", "\\bcdr\\b", "scale score",
+      "wirksamkeit", "efficacité", "eficacia", "efficacia",
+      "эффективност", "конечн.*точк", "первичн.*конечн",
+      "疗效", "有效性", "有効性",
+      sep = "|"
+    ),
+    EX = paste(
+      "exposure", "cumulative dose", "drug administration",
+      "exposit", "posolog",
+      "экспозиц", "дозиров", "приверженност",
+      "暴露", "给药",
+      sep = "|"
+    ),
+    DS = paste(
+      "disposition", "discontinu", "withdrawal", "end of study",
+      "analysis set", "intent.?to.?treat", "\\bitt\\b",
+      "safety population",
+      "выбыван", "исключен", "популац", "анализ.*набор",
+      "受试者分布", "中止",
+      sep = "|"
+    )
+  )
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_domain_from_lexicon <- function(ctx) {
   txt <- paste(
     paste(ctx$title %||% character(), collapse = " "),
+    paste(ctx$subtitles %||% character(), collapse = " "),
     ctx$source %||% "",
     sep = " "
   )
+  # Keep original script; case-fold only Latin via tolower for EN/DE/FR/ES…
   tx <- tolower(txt)
-  if (grepl("adverse|teae|serious", tx)) return("AE")
-  if (grepl("demograph|baseline", tx)) return("DM")
-  if (grepl("vital", tx)) return("VS")
-  if (grepl("lab|chemistry|hematology", tx)) return("LB")
-  if (grepl("efficacy|adas|cibic|npi", tx)) return("EFFC")
-  "UNKNOWN"
+  lex <- .capsule_domain_lexicon()
+  # Prefer more specific clinical domains before broad ones.
+  order <- c("AE", "LB", "VS", "EFFC", "EX", "DM", "DS")
+  for (dom in order) {
+    pat <- lex[[dom]]
+    if (is.null(pat)) next
+    hit <- tryCatch(
+      grepl(pat, tx, ignore.case = TRUE, perl = TRUE),
+      error = function(e) FALSE
+    )
+    if (isTRUE(hit)) {
+      return(dom)
+    }
+  }
+  NULL
+}
+
+#' Infer domain from CSR/ICH-style table numbering in the output id.
+#'
+#' Language-independent fallback used when titles are non-English and no
+#' structural MedDRA markers are present. Matches common CDISC Pilot /
+#' ICH E3 section numbering (14-1 disposition, 14-2 demography, 14-3
+#' efficacy, 14-4 exposure, 14-5 AE, 14-6 laboratory, 14-7 vital signs).
+#'
+#' @keywords internal
+#' @noRd
+.capsule_domain_from_id <- function(id) {
+  id <- as.character(id %||% "")
+  # Accept "14-5.01", "t-14-5-01", "Table_14_5_01", "14.5.01"
+  m <- regmatches(
+    id,
+    regexpr("(?i)(?:^|[^0-9])14[\\._-]?([1-9])(?:[\\._-]|\\b)", id, perl = TRUE)
+  )
+  if (!length(m) || !nzchar(m[[1]])) {
+    return(NULL)
+  }
+  digit <- sub("(?i).*14[\\._-]?([1-9]).*", "\\1", m[[1]], perl = TRUE)
+  switch(
+    digit,
+    "1" = "DS",
+    "2" = "DM",
+    "3" = "EFFC",
+    "4" = "EX",
+    "5" = "AE",
+    "6" = "LB",
+    "7" = "VS",
+    NULL
+  )
 }
 
 #' @keywords internal
@@ -521,9 +1007,20 @@ load_capsules <- function(path) {
 
 #' @keywords internal
 #' @noRd
-.link_capsules_to_text_outputs <- function(capsules, study) {
+.link_capsules_to_text_outputs <- function(capsules,
+                                          study,
+                                          chat = NULL,
+                                          llm_domain = "unknown",
+                                          llm_min_confidence = 0.5) {
   if (!length(capsules) || !length(study$texts)) return(capsules)
-  txt_map <- lapply(study$texts, .capsule_infer_domain)
+  txt_map <- lapply(study$texts, function(ctx) {
+    .capsule_infer_domain(
+      ctx,
+      chat = chat,
+      llm_domain = llm_domain,
+      llm_min_confidence = llm_min_confidence
+    )
+  })
   txt_ids_by_domain <- split(names(txt_map), unlist(txt_map))
   for (nm in names(capsules)) {
     d <- capsules[[nm]]$domain %||% "UNKNOWN"

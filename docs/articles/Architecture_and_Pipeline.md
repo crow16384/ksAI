@@ -341,7 +341,36 @@ flowchart LR
 ### Structure agent: `as_capsules()`
 
 Splits each `ks_context` into hierarchical row groups and builds a
-`ks_capsule_store`.
+`ks_capsule_store`. Domain is inferred **once per output** (not per
+capsule).
+
+**Domain inference** (language-agnostic; first hit wins):
+
+1.  `enrich_context(..., annotations = list(domain = ...))`
+2.  Session `domain_map`
+    ([`ks_set_option()`](https://crow16384.github.io/ksAI/reference/ks_get_option.md))
+    — exact id or regex
+3.  MedDRA-like structure (`ROW_KIND` SOC/PT/…) → `AE`
+4.  Optional small LLM when `model` is set and `llm_domain = "always"`
+5.  Multilingual title/subtitle/source lexicon
+6.  ICH/CSR-style numbering in the output id (`14-5.x` → AE, …)
+7.  Optional small LLM when still `UNKNOWN` (`llm_domain = "unknown"`,
+    default)
+8.  `"UNKNOWN"`
+
+``` r
+
+store <- as_capsules(study)   # rules only
+
+store <- as_capsules(
+  study,
+  model = "qwen3.5-4b",
+  provider = "lm_studio",
+  base_url = "http://127.0.0.1:1234",
+  llm_domain = "unknown",
+  llm_min_confidence = 0.5
+)
+```
 
 **Capsule anatomy:**
 
@@ -349,7 +378,7 @@ Splits each `ks_context` into hierarchical row groups and builds a
     ├── capsule_id          # e.g. 14-5.01::SOC::CARDIAC_DISORDERS
     ├── source_id           # output id
     ├── source_rows         # traceable row indices
-    ├── domain              # AE, EFFC, DM, LB, VS, …
+    ├── domain              # AE, EFFC, DM, LB, VS, EX, DS, … (rules + optional small LLM)
     ├── level               # OVERALL → SOC → PT  (or OVERALL → PARAM)
     ├── label, population
     ├── parent_id, child_ids
@@ -375,14 +404,29 @@ Persist with `save_capsules(store, "study.ksc")` /
 
 ### Semantic agent: `ks_annotate()`
 
-Two-pass enrichment:
+Two-pass enrichment, plus optional domain repair:
 
 1.  **Pure R pass** (always): tokenize `label` + `compact_text`, strip
     stop words, detect clinical abbreviations (`TEAE`, `SOC`, `PT`,
     `LOCF`, …).
 2.  **Optional small-LLM pass**: structured JSON extraction of
-    `concepts`, `synonyms`, `keywords`. A 4B local model (for example
-    `google/gemma-4-e4b` in LM Studio) is sufficient.
+    `concepts`, `synonyms`, `keywords`. A 4B local model is sufficient.
+3.  **Domain fallback** (when `model` is set): reclassify capsules still
+    tagged `UNKNOWN`, once per `source_id`. Use `force_domain = TRUE` to
+    reclassify every table.
+
+``` r
+
+store <- ks_annotate(store)
+store <- ks_annotate(
+  store,
+  model = "qwen3.5-4b",
+  provider = "lm_studio",
+  base_url = "http://127.0.0.1:1234",
+  force_domain = FALSE,
+  llm_min_confidence = 0.5
+)
+```
 
 Run once per study; reuse the `.ksc` file across writing sessions.
 
@@ -471,7 +515,7 @@ Embeddings (`ks_embed`, query vectors in `ks_retrieve`) use the
 
 | Task | Model size | Function |
 |----|----|----|
-| Capsule annotation | 4B | `ks_annotate(..., model = "google/gemma-4-e4b")` |
+| Domain classification / annotation | 4B | `as_capsules(..., model = ...)`, `ks_annotate(..., model = ...)` |
 | CSR drafting / reasoning | 26B+ | [`ks_llm()`](https://crow16384.github.io/ksAI/reference/ks_llm.md), [`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md) |
 | Embeddings | dedicated | `text-embedding-nomic-embed-text-v1.5` |
 
@@ -490,6 +534,7 @@ is constrained.
 | `skills_dir` | `NULL` | User skill template directory |
 | `embed_model` | `text-embedding-nomic-embed-text-v1.5` | Embedding model name |
 | `embed_url` | `http://127.0.0.1:1234/v1` | Embeddings endpoint |
+| `domain_map` | [`character()`](https://rdrr.io/r/base/character.html) | Named id/regex → domain overrides for capsules |
 
 Set `context_format` and `max_rows` **before**
 [`ks_chat()`](https://crow16384.github.io/ksAI/reference/ks_chat.md) —

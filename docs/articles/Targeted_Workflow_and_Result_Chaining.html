@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">ksAI</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -224,10 +224,24 @@ build on it:</p>
 fit in one prompt, decompose them into <strong>clinical
 capsules</strong> — concept-centric, hierarchical summaries with parsed
 statistics, domain tags, and links.</p>
+<p>Domain codes are inferred once per output (multilingual rules;
+optional small LLM). Hard overrides win first:
+<code>enrich_context(annotations$domain)</code> and
+<code>ks_set_option(domain_map = ...)</code>.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Build capsule store from the entire study (or a single context).</span></span>
 <span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span><span class="va">study</span><span class="op">)</span></span>
 <span><span class="va">store</span></span>
+<span></span>
+<span><span class="co"># Optional: resolve UNKNOWN domains with a small local model (once per table).</span></span>
+<span><span class="co"># store &lt;- as_capsules(</span></span>
+<span><span class="co">#   study,</span></span>
+<span><span class="co">#   model = "qwen3.5-4b",</span></span>
+<span><span class="co">#   provider = "lm_studio",</span></span>
+<span><span class="co">#   base_url = "http://127.0.0.1:1234",</span></span>
+<span><span class="co">#   llm_domain = "unknown",</span></span>
+<span><span class="co">#   llm_min_confidence = 0.5</span></span>
+<span><span class="co"># )</span></span>
 <span></span>
 <span><span class="co"># Inspect individual capsules.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span></span>
@@ -264,18 +278,25 @@ etc.).</p>
 <h3 id="b--optional-small-llm-enrichment-pass">6b. Optional small-LLM enrichment pass<a class="anchor" aria-label="anchor" href="#b--optional-small-llm-enrichment-pass"></a>
 </h3>
 <p>A 4B model running locally can identify medical concepts, synonyms,
-and richer keywords. LM Studio with <code>gemma-4-12b</code> or
-<code>qwen3-4b</code> works well:</p>
+and richer keywords. The same <code>model</code> also reclassifies
+capsules still tagged <code>UNKNOWN</code> (once per
+<code>source_id</code>). Use <code>force_domain = TRUE</code> to
+reclassify every table. LM Studio with <code>qwen3.5-4b</code> or
+similar works well:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span></span>
 <span>  <span class="va">store</span>,</span>
-<span>  model    <span class="op">=</span> <span class="st">"google/gemma-4-12b-qat"</span>,</span>
-<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
-<span>  force    <span class="op">=</span> <span class="cn">FALSE</span>   <span class="co"># skip capsules already annotated</span></span>
+<span>  model              <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
+<span>  provider           <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>  base_url           <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
+<span>  force              <span class="op">=</span> <span class="cn">FALSE</span>,  <span class="co"># skip capsules already annotated</span></span>
+<span>  force_domain       <span class="op">=</span> <span class="cn">FALSE</span>,  <span class="co"># only UNKNOWN domains</span></span>
+<span>  llm_min_confidence <span class="op">=</span> <span class="fl">0.5</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The response is expected to be JSON with keys <code>concepts</code>,
-<code>synonyms</code>, <code>keywords</code>. Any non-JSON wrapper text
-is stripped automatically.</p>
+<p>The concept response is expected to be JSON with keys
+<code>concepts</code>, <code>synonyms</code>, <code>keywords</code>.
+Domain responses use <code>{"domain":"CODE","confidence":0.0}</code>.
+Any non-JSON wrapper text is stripped automatically.</p>
 </div>
 <div class="section level3">
 <h3 id="c--embedding-vectors">6c. Embedding vectors<a class="anchor" aria-label="anchor" href="#c--embedding-vectors"></a>
@@ -404,10 +425,12 @@ token-efficient injection</li>
 <li>
 <code>ks_load(ids = NULL)</code> → full study</li>
 <li>
-<code>as_capsules(study)</code> → concept-level decomposition</li>
+<code>as_capsules(study)</code> → concept-level decomposition
+(optional <code>model</code> / <code>llm_domain</code> for UNKNOWN
+domains)</li>
 <li>
 <code>ks_annotate(store)</code> → keywords (+ optional small-LLM
-enrichment)</li>
+enrichment / <code>force_domain</code> for domain repair)</li>
 <li>
 <code>ks_embed(store)</code> → semantic vectors via local embedding
 model</li>

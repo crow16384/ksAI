@@ -16,7 +16,8 @@ ks_set_option(...)
 - key:
 
   Character scalar. Option name. One of `"max_rows"`, `"skills_dir"`,
-  `"provider"`, `"context_format"`, `"embed_model"`, `"embed_url"`.
+  `"provider"`, `"context_format"`, `"embed_model"`, `"embed_url"`,
+  `"domain_map"`.
 
 - ...:
 
@@ -34,4 +35,7 @@ ks_get_option("max_rows")
 #> [1] 200
 old <- ks_set_option(max_rows = 300L)
 ks_set_option(!!!old)
+
+# Language-independent domain overrides for capsule building:
+ks_set_option(domain_map = c("14-5.01" = "AE", "^табл-ндя" = "AE"))
 ```

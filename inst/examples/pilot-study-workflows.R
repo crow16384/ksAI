@@ -6,8 +6,8 @@
 ##   Rscript inst/examples/pilot-study-workflows.R
 ##
 ## Prerequisites (LM Studio, local server on http://127.0.0.1:1234):
-##   - google/gemma-4-e4b              — 4B semantic agent (capsule annotation)
-##   - gemma-4-26b-a4b-it-mlx          — 26B reasoning agent (skills + ks_reason)
+##   - qwen3.5-4b (or similar 4B) — domain classification + capsule annotation
+##   - a larger chat model          — skills + ks_reason
 ##   - text-embedding-nomic-embed-text-v1.5 — embedding model (retrieval)
 ##
 ## Bundled data: inst/examples/pilot-study/meta (ksTFL save_report output).
@@ -16,6 +16,7 @@
 ##   A. Direct context  — ks_llm() on targeted tables (compact format)
 ##   B. Structured facts — as_facts() + retrieve() for row-level filtering
 ##   C. Capsule pipeline — as_capsules → annotate → embed → retrieve → reason
+##      (optional model= on as_capsules / ks_annotate for domain + concepts)
 ##   D. Result chaining — save_result() / load_result() + prior =
 
 suppressPackageStartupMessages({
@@ -239,6 +240,9 @@ cat(as_compact(facts_bsln_high), "\n")
 hr("5. Workflow C — Capsule pipeline")
 
 # 5a. Build capsule store from all six tables.
+# Domain tags: rules first (lexicon / structure / ICH id / domain_map).
+# Optional: pass model = MODEL_SMALL, llm_domain = "unknown" to classify
+# remaining UNKNOWN titles with a small LLM (once per table).
 store <- as_capsules(study)
 cli_alert_success("Built {length(store$capsules)} capsules from {length(TABLES)} tables")
 
@@ -291,7 +295,9 @@ if (RUN_LLM) {
     model = MODEL_SMALL,
     provider = PROVIDER,
     base_url = CHAT_URL,
-    force = TRUE
+    force = TRUE,
+    force_domain = FALSE,
+    llm_min_confidence = 0.5
   )
   store$capsules[DEMO_CAPSULE_IDS] <- demo_store$capsules
   for (cid in DEMO_CAPSULE_IDS) {

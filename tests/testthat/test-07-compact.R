@@ -45,6 +45,72 @@ test_that("as_compact handles non-table outputs without rows", {
   expect_match(txt, "Figure output", fixed = TRUE)
 })
 
+test_that("as_compact handles span cols missing from visible columns", {
+  ctx <- ksAI:::new_ks_context(
+    id = "T-span",
+    type = "Table",
+    title = "Span mismatch",
+    population = "Safety",
+    columns = list(
+      list(name = "ROW_LABEL", label = "", is_grouping = FALSE),
+      list(name = "N_A", label = "n", is_grouping = FALSE),
+      list(name = "PCT_A", label = "%", is_grouping = FALSE)
+    ),
+    span_headers = list(
+      list(label = "Arm A", cols = c("N_A", "PCT_A", "INVISIBLE_COL"))
+    ),
+    rows = list(
+      list(
+        cells = list(ROW_LABEL = "Age", N_A = "10", PCT_A = "50.0"),
+        section = NA_character_,
+        kind = NA_character_
+      )
+    ),
+    n_rows_total = 1L
+  )
+
+  txt <- as_compact(ctx)
+  expect_match(txt, "SPANS:", fixed = TRUE)
+  expect_match(txt, "Arm A", fixed = TRUE)
+  expect_match(txt, "Age:", fixed = TRUE)
+  # Must not throw on INVISIBLE_COL; may omit it when visible cols exist.
+  expect_false(grepl("subscript out of bounds", txt, fixed = TRUE))
+})
+
+test_that("as_capsules survives span/column mismatches via compact path", {
+  ctx <- ksAI:::new_ks_context(
+    id = "14-9.99",
+    type = "Table",
+    title = "Adverse events with bad span ref",
+    population = "Safety",
+    columns = list(
+      list(name = "AEDECOD", label = "Preferred Term", is_grouping = FALSE),
+      list(name = "N_P", label = "n", is_grouping = FALSE)
+    ),
+    span_headers = list(
+      list(label = "Placebo", cols = c("N_P", "MISSING_MEASURE"))
+    ),
+    rows = list(
+      list(
+        cells = list(AEDECOD = "CARDIAC DISORDERS", N_P = "3 (3.5%)"),
+        section = "CARDIAC DISORDERS",
+        kind = "SOC"
+      ),
+      list(
+        cells = list(AEDECOD = "SINUS BRADYCARDIA", N_P = "2 (2.3%)"),
+        section = "CARDIAC DISORDERS",
+        kind = "PT"
+      )
+    ),
+    n_rows_total = 2L
+  )
+
+  store <- as_capsules(ctx)
+  expect_true(is_ks_capsule_store(store))
+  expect_gt(length(store$capsules), 0L)
+  expect_true(any(nzchar(vapply(store$capsules, function(c) c$compact_text, ""))))
+})
+
 test_that("as_compact includes footnotes for empty tables", {
   ctx <- ksAI:::new_ks_context(
     id = "T1", type = "Table", title = "Empty",

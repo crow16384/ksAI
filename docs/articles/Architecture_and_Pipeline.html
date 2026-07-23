@@ -30,7 +30,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">ksAI</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -470,13 +470,39 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 <section class="level3"><h3 id="structure-agent-as_capsules">Structure agent: <code>as_capsules()</code>
 <a class="anchor" aria-label="anchor" href="#structure-agent-as_capsules"></a>
 </h3>
-<p>Splits each <code>ks_context</code> into hierarchical row groups and builds a <code>ks_capsule_store</code>.</p>
+<p>Splits each <code>ks_context</code> into hierarchical row groups and builds a <code>ks_capsule_store</code>. Domain is inferred <strong>once per output</strong> (not per capsule).</p>
+<p><strong>Domain inference</strong> (language-agnostic; first hit wins):</p>
+<ol type="1">
+<li><code>enrich_context(..., annotations = list(domain = ...))</code></li>
+<li>Session <code>domain_map</code> (<code><a href="../reference/ks_get_option.html">ks_set_option()</a></code>) — exact id or regex</li>
+<li>MedDRA-like structure (<code>ROW_KIND</code> SOC/PT/…) → <code>AE</code>
+</li>
+<li>Optional small LLM when <code>model</code> is set and <code>llm_domain = "always"</code>
+</li>
+<li>Multilingual title/subtitle/source lexicon</li>
+<li>ICH/CSR-style numbering in the output id (<code>14-5.x</code> → AE, …)</li>
+<li>Optional small LLM when still <code>UNKNOWN</code> (<code>llm_domain = "unknown"</code>, default)</li>
+<li><code>"UNKNOWN"</code></li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span><span class="va">study</span><span class="op">)</span>   <span class="co"># rules only</span></span>
+<span></span>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span></span>
+<span>  <span class="va">study</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>  base_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
+<span>  llm_domain <span class="op">=</span> <span class="st">"unknown"</span>,</span>
+<span>  llm_min_confidence <span class="op">=</span> <span class="fl">0.5</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
 <p><strong>Capsule anatomy:</strong></p>
 <pre><code>ks_capsule
 ├── capsule_id          # e.g. 14-5.01::SOC::CARDIAC_DISORDERS
 ├── source_id           # output id
 ├── source_rows         # traceable row indices
-├── domain              # AE, EFFC, DM, LB, VS, …
+├── domain              # AE, EFFC, DM, LB, VS, EX, DS, … (rules + optional small LLM)
 ├── level               # OVERALL → SOC → PT  (or OVERALL → PARAM)
 ├── label, population
 ├── parent_id, child_ids
@@ -511,13 +537,27 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 </section><section class="level3"><h3 id="semantic-agent-ks_annotate">Semantic agent: <code>ks_annotate()</code>
 <a class="anchor" aria-label="anchor" href="#semantic-agent-ks_annotate"></a>
 </h3>
-<p>Two-pass enrichment:</p>
+<p>Two-pass enrichment, plus optional domain repair:</p>
 <ol type="1">
 <li>
 <strong>Pure R pass</strong> (always): tokenize <code>label</code> + <code>compact_text</code>, strip stop words, detect clinical abbreviations (<code>TEAE</code>, <code>SOC</code>, <code>PT</code>, <code>LOCF</code>, …).</li>
 <li>
-<strong>Optional small-LLM pass</strong>: structured JSON extraction of <code>concepts</code>, <code>synonyms</code>, <code>keywords</code>. A 4B local model (for example <code>google/gemma-4-e4b</code> in LM Studio) is sufficient.</li>
+<strong>Optional small-LLM pass</strong>: structured JSON extraction of <code>concepts</code>, <code>synonyms</code>, <code>keywords</code>. A 4B local model is sufficient.</li>
+<li>
+<strong>Domain fallback</strong> (when <code>model</code> is set): reclassify capsules still tagged <code>UNKNOWN</code>, once per <code>source_id</code>. Use <code>force_domain = TRUE</code> to reclassify every table.</li>
 </ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span></span>
+<span>  <span class="va">store</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>  base_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
+<span>  force_domain <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  llm_min_confidence <span class="op">=</span> <span class="fl">0.5</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
 <p>Run once per study; reuse the <code>.ksc</code> file across writing sessions.</p>
 </section><section class="level3"><h3 id="retrieval-agent-ks_embed-ks_retrieve">Retrieval agent: <code>ks_embed()</code> + <code>ks_retrieve()</code>
 <a class="anchor" aria-label="anchor" href="#retrieval-agent-ks_embed-ks_retrieve"></a>
@@ -558,7 +598,7 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 <p>Returns a <code>ks_capsule_subset</code> with ranked capsules and score breakdown.</p>
 <p>Filters narrow candidates before scoring:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_retrieve.html">ks_retrieve</a></span><span class="op">(</span><span class="va">store</span>,</span>
 <span>  query <span class="op">=</span> <span class="st">"cardiac bradycardia high dose"</span>,</span>
 <span>  n <span class="op">=</span> <span class="fl">5</span>,</span>
@@ -578,7 +618,7 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 </ol>
 <p>The reasoning model <strong>never sees the full study</strong> — only retrieved capsule summaries. This is the capsule pipeline’s primary token advantage.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span><span class="va">store</span>,</span>
 <span>  query <span class="op">=</span> <span class="st">"Summarize cardiac findings with n(%) per arm"</span>,</span>
 <span>  n <span class="op">=</span> <span class="fl">5</span>,</span>
@@ -648,9 +688,11 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>Capsule annotation</td>
+<td>Domain classification / annotation</td>
 <td>4B</td>
-<td><code>ks_annotate(..., model = "google/gemma-4-e4b")</code></td>
+<td>
+<code>as_capsules(..., model = ...)</code>, <code>ks_annotate(..., model = ...)</code>
+</td>
 </tr>
 <tr class="even">
 <td>CSR drafting / reasoning</td>
@@ -711,6 +753,11 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 <td><code>embed_url</code></td>
 <td><code>http://127.0.0.1:1234/v1</code></td>
 <td>Embeddings endpoint</td>
+</tr>
+<tr class="odd">
+<td><code>domain_map</code></td>
+<td><code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code></td>
+<td>Named id/regex → domain overrides for capsules</td>
 </tr>
 </tbody>
 </table>
@@ -833,7 +880,7 @@ analysis/
 </h2>
 <p>A full walkthrough of all four workflows (direct, facts, capsule, chaining) ships with the package:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Development checkout</span></span>
 <span><span class="co"># Rscript inst/examples/pilot-study-workflows.R</span></span>
 <span></span>

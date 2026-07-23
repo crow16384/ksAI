@@ -114,8 +114,9 @@ This walkthrough is written for **LM Studio** with three roles:
 
 | Role | Example model | Used by |
 |----|----|----|
-| Semantic enrichment (small) | `google/gemma-4-e4b` | `ks_annotate(..., model = ...)` |
-| Reasoning / CSR (large) | `gemma-4-26b-a4b-it-mlx` | [`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md) |
+| Domain + semantic (small) | `qwen3.5-4b` | `as_capsules(..., model = ...)`, `ks_annotate(..., model = ...)` |
+| Reasoning / CSR (large) | `qwen3.6-14b-a3b-fablevibes` | [`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md) |
+| Reasoning / CSR (large) | `gemma-4-14b-a4b-heretic-v2` | [`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md) |
 | Embeddings | `text-embedding-nomic-embed-text-v1.5` | [`ks_embed()`](https://crow16384.github.io/ksAI/reference/ks_embed.md), query vectors in [`ks_retrieve()`](https://crow16384.github.io/ksAI/reference/ks_retrieve.md) |
 
 **URL rule that matters:**
@@ -145,8 +146,9 @@ ks_set_option(
 
 RUN_LLM <- FALSE   # TRUE when LM Studio is up with the models above
 CHAT_URL <- "http://127.0.0.1:1234"
-MODEL_SMALL <- "google/gemma-4-e4b"
-MODEL_LARGE <- "gemma-4-26b-a4b-it-mlx"
+MODEL_SMALL <- "qwen3.5-4b"
+MODEL_LARGE <- "qwen3.6-14b-a3b-fablevibes"
+#MODEL_LARGE <- "gemma-4-14b-a4b-heretic-v2"
 
 OUT_DIR <- file.path(tempdir(), "ksAI-capsule-pilot")
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
@@ -156,17 +158,53 @@ dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 ## Step 0 — Choose outputs that span clinical domains
 
-Domain tags on capsules are inferred from each context’s **title** (and
-source string) by `.capsule_infer_domain()`. The current vocabulary is:
+Domain tags on capsules are inferred by `.capsule_infer_domain()` in a
+**language-agnostic** order:
 
-| Domain code | Title / source patterns | Typical pilot tables |
+1.  Explicit `annotations$domain` via
+    [`enrich_context()`](https://crow16384.github.io/ksAI/reference/enrich_context.md)
+2.  Session `domain_map`
+    ([`ks_set_option()`](https://crow16384.github.io/ksAI/reference/ks_get_option.md))
+    — exact output id or regex
+3.  Structural cues (`ROW_KIND` SOC/PT/HLGT/… → `AE`)
+4.  Optional small LLM when
+    `as_capsules(..., model = ..., llm_domain = "always")`
+5.  Multilingual title/subtitle/source lexicon (EN, DE, FR, ES, IT, RU,
+    ZH, JA, …)
+6.  ICH/CSR-style numbering in the output id (`14-5.x` → AE, `14-6.x` →
+    LB, …)
+7.  Optional small LLM when still `UNKNOWN` (`model` + default
+    `llm_domain = "unknown"`)
+8.  `"UNKNOWN"`
+
+Bare English `"baseline"` alone is **not** mapped to `DM` (avoids
+tagging efficacy change-from-baseline tables as demographics). Prefer
+`enrich_context(..., annotations = list(domain = ...))`, `domain_map`,
+or a small local model for study-specific / non-English titles:
+
+``` r
+
+store <- as_capsules(
+  study,
+  model = "qwen3.5-4b",
+  provider = "lm_studio",
+  base_url = "http://127.0.0.1:1234",
+  llm_domain = "unknown"   # or "always" after hard signals
+)
+# Later: re-tag remaining UNKNOWN domains during annotate
+store <- ks_annotate(store, model = "qwen3.5-4b", provider = "lm_studio",
+                     base_url = "http://127.0.0.1:1234")
+```
+
+| Domain | Typical cues (any language) | Typical pilot tables |
 |----|----|----|
-| `AE` | adverse, teae, serious | `14-5.01`, `14-5.02` |
-| `DM` | demograph, baseline | `14-2.01` (also some “baseline” efficacy titles — see caveats) |
-| `VS` | vital | `14-7.01`, `14-7.02` |
-| `LB` | lab, chemistry, hematology | `14-6.01`, `14-6.02`, … |
-| `EFFC` | efficacy, adas, cibic, npi | `14-3.01`, `14-3.02`, … |
-| `UNKNOWN` | no match | figures, exposure, etc. |
+| `AE` | adverse / НДЯ / 不良事件; MedDRA SOC/PT | `14-5.01`, `14-5.02` |
+| `DM` | demograph / демограф / 人口学 | `14-2.01` |
+| `VS` | vital / витальн / バイタル | `14-7.01`, `14-7.02` |
+| `LB` | lab / лаборатор / 实验室 | `14-6.01`, `14-6.02`, … |
+| `EFFC` | efficacy / эффективност / 疗效 | `14-3.01`, `14-3.02`, … |
+| `EX` / `DS` | exposure / disposition (lexicon or id) | — |
+| `UNKNOWN` | no match (until LLM / override) | figures, untitled stubs |
 
 We deliberately load **six tables across five domains** so retrieval
 filters and domain inventory are non-trivial:
@@ -177,8 +215,8 @@ meta_path <- system.file("examples", "pilot-study", "meta", package = "ksAI")
 
 TABLES <- c(
   demographics   = "14-2.01",  # DM  — Age, Sex, Race, …
-  efficacy_adas  = "14-3.01",  # EFFC (or DM if “baseline” matches first)
-  efficacy_cibic = "14-3.02",  # EFFC / DM
+  efficacy_adas  = "14-3.01",  # EFFC
+  efficacy_cibic = "14-3.02",  # EFFC
   adverse_events = "14-5.01",  # AE   — SOC / PT hierarchy
   laboratory     = "14-6.01",  # LB   — visit / parameter rows
   vital_signs    = "14-7.02"   # VS   — change from baseline
@@ -188,13 +226,6 @@ TABLES <- c(
 catalog <- ks_list_ids(meta_path)
 catalog[catalog$id %in% TABLES, c("id", "type", "title")]
 ```
-
-**Caveat on domain inference:** rules are first-match. A title
-containing both “baseline” and “ADAS” may classify as `DM` rather than
-`EFFC` because the `demograph|baseline` rule is checked before the
-efficacy rule. When filtering retrieval by `domain`, verify the actual
-tags on your store (Step 2) rather than assuming the intended clinical
-bucket.
 
 ------------------------------------------------------------------------
 
@@ -233,22 +264,27 @@ stores in `compact_text` for its row group.
 
 `as_capsules(study)` walks every loaded context and:
 
-1.  Identifies a **row-label column** (first visible column).
-2.  Assigns each row (or section block) a **level**:
+1.  Infers a **domain** once per output (rules; optional `model` /
+    `llm_domain` / `llm_min_confidence` when a small LLM is available).
+2.  Identifies a **row-label column** (first visible column).
+3.  Assigns each row (or section block) a **level**:
     - AE-style: `OVERALL` → `SOC` → `PT` (from `ROW_KIND` / section
       headers);
     - continuous / demo / lab: `OVERALL` → `PARAM`.
-3.  Builds synthetic **SOC** capsules when a section header exists
+4.  Builds synthetic **SOC** capsules when a section header exists
     without an explicit SOC kind row.
-4.  Parses arm-wise **stats** where possible.
-5.  Renders **compact_text** for that row slice only.
-6.  Wires **parent_id** / **child_ids**.
-7.  Links **linked_ids** to text listings in the same inferred domain
+5.  Parses arm-wise **stats** where possible.
+6.  Renders **compact_text** for that row slice only.
+7.  Wires **parent_id** / **child_ids**.
+8.  Links **linked_ids** to text listings in the same inferred domain
     (if any text outputs were loaded).
 
 ``` r
 
 store <- as_capsules(study)
+# Optional domain LLM (same signature as Step 0):
+# store <- as_capsules(study, model = MODEL_SMALL, provider = PROVIDER,
+#                      base_url = CHAT_URL, llm_domain = "unknown")
 store
 length(store$capsules)
 ```
@@ -390,8 +426,10 @@ metadata filters. Always run at least the R pass before retrieval demos.
 
 A 4B local model can add clinical concepts and synonyms that pure
 tokenization misses (for example mapping “SINUS BRADYCARDIA” to broader
-cardiac terms). This is slower and memory-heavy: unload the 26B model in
-LM Studio first if needed.
+cardiac terms). The same `model` argument also reclassifies capsules
+still tagged `UNKNOWN` (once per `source_id`). Use `force_domain = TRUE`
+to reclassify every table. This is slower and memory-heavy: unload the
+26B model in LM Studio first if needed.
 
 ``` r
 
@@ -410,10 +448,12 @@ if (RUN_LLM) {
 
   demo <- ks_annotate(
     demo,
-    model    = MODEL_SMALL,
-    provider = "lm_studio",
-    base_url = CHAT_URL,
-    force    = TRUE          # re-run even if concepts already seeded
+    model              = MODEL_SMALL,
+    provider           = "lm_studio",
+    base_url           = CHAT_URL,
+    force              = TRUE,   # re-run even if concepts already seeded
+    force_domain       = FALSE,  # only repair UNKNOWN domains
+    llm_min_confidence = 0.5
   )
 
   store$capsules[demo_ids] <- demo$capsules
@@ -706,11 +746,14 @@ if (RUN_LLM) {
 2.  **Set `max_rows` deliberately** — capsules cannot recover rows never
     imported.
 3.  **`as_capsules(study)`** — inventory `domain` × `level` ×
-    `source_id`.
-4.  **Fix or accept domain tags** — especially titles containing
-    “baseline”.
-5.  **`ks_annotate(store)`** — always; add `model =` for a small LLM
-    pass on high-value capsules if needed.
+    `source_id`; optional `model` / `llm_domain` for UNKNOWN titles.
+4.  **Fix or accept domain tags** — use
+    `enrich_context(..., annotations = list(domain = ...))`,
+    `domain_map`, or `ks_annotate(..., model = ..., force_domain = ...)`
+    for non-English / custom titles.
+5.  **`ks_annotate(store)`** — always; add `model =` for
+    concepts/keywords and UNKNOWN domain repair on high-value capsules
+    if needed.
 6.  **`ks_embed(store)`** — when an embedding endpoint is available.
 7.  **[`save_capsules()`](https://crow16384.github.io/ksAI/reference/save_capsules.md)**
     — `.ksc` is the reusable artefact.

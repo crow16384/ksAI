@@ -336,6 +336,9 @@ as_compact.ks_context <- function(x, ...) {
 #' @noRd
 .compact_rows_block <- function(x) {
   cols <- x$columns
+  if (!length(cols)) {
+    return(character())
+  }
   col_names <- vapply(cols, function(c) c$name, character(1))
   col_labels <- vapply(cols, function(c) {
     lab <- c$label
@@ -363,6 +366,25 @@ as_compact.ks_context <- function(x, ...) {
   }
 }
 
+#' Resolve a column name to its display label, falling back to the name.
+#'
+#' Span headers may reference columns that are not visible (filtered out of
+#' `ks_context$columns`). Atomic `[[` lookup throws on missing names; this
+#' helper never does.
+#' @keywords internal
+#' @noRd
+.col_label_or_name <- function(name_to_label, nm) {
+  nm <- as.character(nm %||% "")
+  if (!nzchar(nm)) {
+    return("")
+  }
+  if (!nm %in% names(name_to_label)) {
+    return(nm)
+  }
+  lab <- unname(name_to_label[[nm]])
+  if (is.null(lab) || is.na(lab) || !nzchar(lab)) nm else as.character(lab)
+}
+
 #' Span-grouped compact rows
 #'
 #' Emits a one-time SPANS/COLS legend, then short keys per row so long arm
@@ -388,18 +410,24 @@ as_compact.ks_context <- function(x, ...) {
   )
   lines <- c(lines, paste0("SPANS: ", legend))
 
+  # Keep only columns that exist in the context (or still show the name).
+  # Prefer visible measure cols when a span mixes visible + invisible refs.
+  visible <- names(name_to_label)
+  span_col_lists <- lapply(span_headers, function(span) {
+    cols <- as.character(span$cols %||% character())
+    keep <- intersect(cols, visible)
+    if (length(keep)) keep else cols
+  })
+
   # Shared measure labels within the first span (typical stub layout).
   # If spans differ, list COLS per span key.
-  col_sets <- lapply(span_headers, function(span) {
-    vapply(span$cols, function(nm) {
-      lab <- name_to_label[[nm]]
-      if (is.null(lab) || is.na(lab) || !nzchar(lab)) nm else lab
-    }, character(1))
+  col_sets <- lapply(span_col_lists, function(cols) {
+    vapply(cols, function(nm) .col_label_or_name(name_to_label, nm), character(1))
   })
   same_cols <- length(unique(lapply(col_sets, paste, collapse = "\1"))) == 1L
   if (same_cols && length(col_sets[[1]])) {
     lines <- c(lines, paste0("COLS: ", paste(col_sets[[1]], collapse = ", ")))
-  } else {
+  } else if (length(col_sets) && any(lengths(col_sets) > 0)) {
     per <- vapply(seq_len(n_spans), function(i) {
       paste0(keys[[i]], ":(", paste(col_sets[[i]], collapse = ", "), ")")
     }, character(1))
@@ -416,7 +444,11 @@ as_compact.ks_context <- function(x, ...) {
 
     label <- cell_val(row, row_label_col)
     span_parts <- vapply(seq_len(n_spans), function(i) {
-      vals <- vapply(span_headers[[i]]$cols, function(nm) cell_val(row, nm), character(1))
+      cols_i <- span_col_lists[[i]]
+      if (!length(cols_i)) {
+        return(paste0(keys[[i]], ":"))
+      }
+      vals <- vapply(cols_i, function(nm) cell_val(row, nm), character(1))
       paste0(keys[[i]], ": ", paste(vals, collapse = ", "))
     }, character(1))
 
@@ -491,11 +523,17 @@ as_compact.ks_context <- function(x, ...) {
 #' original object is not modified. `annotations` are merged with any existing
 #' annotations rather than replaced.
 #'
+#' Set `annotations = list(domain = "AE")` (or any study-specific code) to
+#' override automatic domain inference used by [as_capsules()]. Domain tags
+#' are language-agnostic: multilingual titles, MedDRA structure, ICH-style
+#' ids, and [ks_set_option()] `domain_map` are also consulted.
+#'
 #' @param ctx A `ks_context` object.
 #' @param population Optional character scalar. Overrides the analysis
 #'   population.
 #' @param source Optional character scalar. Overrides the source program.
 #' @param annotations Named list of free-form metadata to merge in.
+#'   Use `domain` to force the capsule domain code.
 #'
 #' @return A new `ks_context` object.
 #'
@@ -503,7 +541,8 @@ as_compact.ks_context <- function(x, ...) {
 #' \dontrun{
 #' ctx <- study$tables[["14-3.01"]]
 #' ctx <- enrich_context(ctx, population = "ITT",
-#'                       annotations = list(sap_ref = "Section 9.2"))
+#'                       annotations = list(sap_ref = "Section 9.2",
+#'                                          domain = "EFFC"))
 #' }
 #'
 #' @export
