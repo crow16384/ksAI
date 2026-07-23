@@ -190,13 +190,15 @@ store <- as_capsules(
   model = "qwen3.5-4b",
   provider = "lm_studio",
   base_url = "http://127.0.0.1:1234",
-  llm_domain = "unknown"   # or "always" after hard signals
+  llm_domain = "unknown"   # "unknown" | "always" | "never" (never → no LLM at all)
 )
 # Later: re-tag remaining UNKNOWN domains during annotate
 store <- ks_annotate(store, model = "qwen3.5-4b", provider = "lm_studio",
                      base_url = "http://127.0.0.1:1234")
 ```
 
+With `llm_domain = "never"`, `model` is ignored and no ellmer/LM Studio client is
+created (rules / `domain_map` / structure only).
 | Domain | Typical cues (any language) | Typical pilot tables |
 |--------|-----------------------------|----------------------|
 | `AE` | adverse / НДЯ / 不良事件; MedDRA SOC/PT | `14-5.01`, `14-5.02` |

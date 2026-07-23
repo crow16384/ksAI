@@ -130,22 +130,32 @@ print.ks_capsule_store <- function(x, ...) {
 #' Pass `model` to ask a small local LLM when rules leave the domain
 #' `UNKNOWN` (default), or always after hard signals (`llm_domain = "always"`).
 #' The chat is created once per call and reused across tables in a study.
+#' With `llm_domain = "never"`, `model` is ignored and no LLM client is created.
 #'
 #' @param x A `ks_context` or `ks_study`.
 #' @param model Optional small LLM for domain classification (e.g. a 4B
-#'   local model). `NULL` keeps deterministic inference only.
+#'   local model). `NULL` keeps deterministic inference only. Ignored when
+#'   `llm_domain = "never"`.
 #' @param provider LLM provider. Defaults to [ks_get_option()]`"provider"`.
 #' @param base_url Optional provider URL override.
 #' @param llm_domain When to call the model: `"unknown"` (default — only if
 #'   rules yield `UNKNOWN`), `"always"` (after annotation / `domain_map` /
-#'   MedDRA structure; lexicon and id are fallbacks), or `"never"`.
+#'   MedDRA structure; lexicon and id are fallbacks), or `"never"` (rules
+#'   only; never contacts an LLM).
 #' @param llm_min_confidence Minimum confidence (0–1) to accept an LLM
 #'   domain. Below this, rules continue / return `UNKNOWN`.
-#' @param ... Extra args forwarded to the ellmer chat constructor.
+#' @param ... Extra args forwarded to the ellmer chat constructor (only when
+#'   a domain LLM chat is created).
 #'
 #' @return A `ks_capsule_store`.
 #' @export
-as_capsules <- function(x, ...) {
+as_capsules <- function(x,
+                        model = NULL,
+                        provider = ks_get_option("provider"),
+                        base_url = NULL,
+                        llm_domain = "unknown",
+                        llm_min_confidence = 0.5,
+                        ...) {
   UseMethod("as_capsules")
 }
 
@@ -155,17 +165,16 @@ as_capsules.ks_context <- function(x,
                                    model = NULL,
                                    provider = ks_get_option("provider"),
                                    base_url = NULL,
-                                   llm_domain = c("unknown", "always", "never"),
+                                   llm_domain = "unknown",
                                    llm_min_confidence = 0.5,
                                    ...) {
-  llm_domain <- match.arg(llm_domain)
-  dots <- rlang::list2(...)
-  chat <- .make_domain_llm_chat(
+  llm_domain <- .normalize_llm_domain(llm_domain)
+  chat <- .as_capsules_domain_chat(
     model = model,
     provider = provider,
     base_url = base_url,
     llm_domain = llm_domain,
-    dots = dots
+    dots = rlang::list2(...)
   )
   .as_capsules_context(
     x,
@@ -181,17 +190,16 @@ as_capsules.ks_study <- function(x,
                                  model = NULL,
                                  provider = ks_get_option("provider"),
                                  base_url = NULL,
-                                 llm_domain = c("unknown", "always", "never"),
+                                 llm_domain = "unknown",
                                  llm_min_confidence = 0.5,
                                  ...) {
-  llm_domain <- match.arg(llm_domain)
-  dots <- rlang::list2(...)
-  chat <- .make_domain_llm_chat(
+  llm_domain <- .normalize_llm_domain(llm_domain)
+  chat <- .as_capsules_domain_chat(
     model = model,
     provider = provider,
     base_url = base_url,
     llm_domain = llm_domain,
-    dots = dots
+    dots = rlang::list2(...)
   )
   all <- .study_all(x)
   if (!length(all)) {
@@ -230,6 +238,42 @@ as_capsules.ks_study <- function(x,
     capsules = caps,
     study_id = if (!is.null(x$meta_dir)) basename(x$meta_dir) else NULL,
     meta_dir = x$meta_dir
+  )
+}
+
+#' @keywords internal
+#' @noRd
+.normalize_llm_domain <- function(llm_domain) {
+  choices <- c("unknown", "always", "never")
+  if (length(llm_domain) != 1L || is.na(llm_domain[[1]]) || !nzchar(llm_domain[[1]])) {
+    cli::cli_abort(c(
+      "{.arg llm_domain} must be a single string.",
+      i = "Use one of {.val {choices}} (not the full choices vector)."
+    ))
+  }
+  match.arg(as.character(llm_domain[[1]]), choices)
+}
+
+#' @keywords internal
+#' @noRd
+.as_capsules_domain_chat <- function(model,
+                                     provider,
+                                     base_url,
+                                     llm_domain,
+                                     dots = list()) {
+  # Hard stop: never create or contact an LLM client.
+  if (identical(llm_domain, "never")) {
+    return(NULL)
+  }
+  if (is.null(model) || !nzchar(as.character(model)[[1]])) {
+    return(NULL)
+  }
+  .make_domain_llm_chat(
+    model = model,
+    provider = provider,
+    base_url = base_url,
+    llm_domain = llm_domain,
+    dots = dots
   )
 }
 
@@ -694,6 +738,7 @@ load_capsules <- function(path) {
                                   base_url,
                                   llm_domain = "unknown",
                                   dots = list()) {
+  # Defensive: callers should already skip "never", but never contact ellmer.
   if (identical(llm_domain, "never")) {
     return(NULL)
   }

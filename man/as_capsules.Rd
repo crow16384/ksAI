@@ -6,14 +6,22 @@
 \alias{as_capsules.ks_study}
 \title{Build Clinical Capsules from Contexts}
 \usage{
-as_capsules(x, ...)
+as_capsules(
+  x,
+  model = NULL,
+  provider = ks_get_option("provider"),
+  base_url = NULL,
+  llm_domain = "unknown",
+  llm_min_confidence = 0.5,
+  ...
+)
 
 \method{as_capsules}{ks_context}(
   x,
   model = NULL,
   provider = ks_get_option("provider"),
   base_url = NULL,
-  llm_domain = c("unknown", "always", "never"),
+  llm_domain = "unknown",
   llm_min_confidence = 0.5,
   ...
 )
@@ -23,7 +31,7 @@ as_capsules(x, ...)
   model = NULL,
   provider = ks_get_option("provider"),
   base_url = NULL,
-  llm_domain = c("unknown", "always", "never"),
+  llm_domain = "unknown",
   llm_min_confidence = 0.5,
   ...
 )
@@ -31,10 +39,9 @@ as_capsules(x, ...)
 \arguments{
 \item{x}{A \code{ks_context} or \code{ks_study}.}
 
-\item{...}{Extra args forwarded to the ellmer chat constructor.}
-
 \item{model}{Optional small LLM for domain classification (e.g. a 4B
-local model). \code{NULL} keeps deterministic inference only.}
+local model). \code{NULL} keeps deterministic inference only. Ignored when
+\code{llm_domain = "never"}.}
 
 \item{provider}{LLM provider. Defaults to \code{\link[=ks_get_option]{ks_get_option()}}\code{"provider"}.}
 
@@ -42,10 +49,14 @@ local model). \code{NULL} keeps deterministic inference only.}
 
 \item{llm_domain}{When to call the model: \code{"unknown"} (default — only if
 rules yield \code{UNKNOWN}), \code{"always"} (after annotation / \code{domain_map} /
-MedDRA structure; lexicon and id are fallbacks), or \code{"never"}.}
+MedDRA structure; lexicon and id are fallbacks), or \code{"never"} (rules
+only; never contacts an LLM).}
 
 \item{llm_min_confidence}{Minimum confidence (0–1) to accept an LLM
 domain. Below this, rules continue / return \code{UNKNOWN}.}
+
+\item{...}{Extra args forwarded to the ellmer chat constructor (only when
+a domain LLM chat is created).}
 }
 \value{
 A \code{ks_capsule_store}.
@@ -60,4 +71,5 @@ Domain codes are inferred once per output (language-agnostic rules first).
 Pass \code{model} to ask a small local LLM when rules leave the domain
 \code{UNKNOWN} (default), or always after hard signals (\code{llm_domain = "always"}).
 The chat is created once per call and reused across tables in a study.
+With \code{llm_domain = "never"}, \code{model} is ignored and no LLM client is created.
 }

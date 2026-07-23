@@ -128,6 +128,46 @@ test_that("small LLM can resolve UNKNOWN domains (mocked chat)", {
   expect_true(all(vapply(store$capsules, function(c) c$domain, character(1)) == "EX"))
 })
 
+test_that("llm_domain = 'never' does not create or call an LLM", {
+  opaque <- ksAI:::new_ks_context(
+    id = "custom-xyz",
+    type = "Table",
+    title = "Сводная таблица показателей",
+    rows = list(
+      list(kind = "detail", cells = list(ROW_LABEL = "Item A"), section = NA_character_)
+    ),
+    n_rows_total = 1L
+  )
+
+  testthat::local_mocked_bindings(
+    .make_ellmer_chat = function(...) {
+      stop("ellmer chat must not be created when llm_domain = 'never'")
+    },
+    .make_domain_llm_chat = function(...) {
+      stop(".make_domain_llm_chat must not be called when llm_domain = 'never'")
+    },
+    .capsule_domain_from_llm = function(...) {
+      stop("domain LLM inference must not run when llm_domain = 'never'")
+    }
+  )
+
+  store <- as_capsules(
+    opaque,
+    model = "tiny-domain",
+    provider = "lm_studio",
+    base_url = "http://127.0.0.1:1234",
+    llm_domain = "never"
+  )
+  expect_true(length(store$capsules) > 0L)
+  expect_true(all(vapply(store$capsules, function(c) c$domain, character(1)) == "UNKNOWN"))
+
+  # Accidental choices-vector must error (not silently become "unknown").
+  expect_error(
+    as_capsules(opaque, model = "tiny", llm_domain = c("unknown", "always", "never")),
+    "llm_domain"
+  )
+})
+
 test_that("ks_annotate re-tags UNKNOWN domains with mocked LLM", {
   opaque <- ksAI:::new_ks_context(
     id = "custom-xyz",
