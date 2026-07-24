@@ -9,10 +9,10 @@ save_capsules(store, path)
 \arguments{
 \item{store}{A \code{ks_capsule_store}.}
 
-\item{path}{Output path. If extension is missing, \code{.ksc} is appended.}
+\item{path}{Output path (\code{.ksc} appended if missing).}
 }
 \value{
-Invisibly, written path.
+The path written, invisibly.
 }
 \description{
 Save a Capsule Store to a \code{.ksc} File

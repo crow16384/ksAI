@@ -63,5 +63,5 @@ test_that("as_markdown notes truncation and pipes are escaped", {
 test_that("as_markdown handles non-table outputs without rows", {
   fig <- ksAI:::new_ks_context(id = "F1", type = "Figure", title = "A Figure")
   md <- as_markdown(fig)
-  expect_true(grepl("Figure output", md, fixed = TRUE))
+  expect_true(grepl("Figure image available for vision models", md, fixed = TRUE))
 })

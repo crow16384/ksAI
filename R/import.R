@@ -303,10 +303,16 @@
 #' @param data_json Named list or `NULL`. The columnar data for the spec.
 #' @param id Character scalar. The output identifier (from `docFileName`).
 #' @param max_rows Integer. Row embedding budget.
+#' @param meta_dir Character scalar or `NULL`. Meta folder used to resolve
+#'   figure image assets next to the dataRef.
 #' @return A `ks_context` object.
 #' @keywords internal
 #' @noRd
-.compile_context_from_spec <- function(spec_entry, data_json, id, max_rows = 200L) {
+.compile_context_from_spec <- function(spec_entry,
+                                       data_json,
+                                       id,
+                                       max_rows = 200L,
+                                       meta_dir = NULL) {
   type <- spec_entry$document$docType %||% "Table"
 
   columns <- .extract_columns(spec_entry$columns)
@@ -324,17 +330,37 @@
   title <- .extract_text_entries(spec_entry$titles)
   subtitles <- .extract_text_entries(spec_entry$subtitles)
   footnotes <- .extract_text_entries(spec_entry$footnotes)
+  body_text <- .extract_text_entries(spec_entry$bodyText)
   population <- .parse_population(spec_entry$headers)
   source <- .parse_source(spec_entry$footers)
+
+  figure <- NULL
+  asset_path <- NA_character_
+  if (identical(type, "Figure")) {
+    figure <- spec_entry$figure %||% list()
+    asset_path <- .resolve_figure_asset(
+      meta_dir = meta_dir,
+      data_ref = spec_entry$dataRef,
+      device = figure$device %||% NULL
+    )
+  }
 
   rows <- list()
   n_rows_total <- 0L
   warnings <- character()
-  if (identical(type, "Table") && !is.null(data_json)) {
+  # Load columnar data for tables, and for figures when a data JSON exists.
+  if (!is.null(data_json) && type %in% c("Table", "Figure")) {
     built <- .build_rows(data_json, spec_entry$columns, max_rows = max_rows)
     rows <- built$rows
     n_rows_total <- built$n_rows_total
     warnings <- built$warnings
+  }
+  if (identical(type, "Figure") &&
+      (is.na(asset_path) || !nzchar(asset_path))) {
+    warnings <- c(
+      warnings,
+      sprintf("Figure asset not found for output '%s'.", id)
+    )
   }
 
   new_ks_context(
@@ -350,8 +376,40 @@
     n_rows_total = n_rows_total,
     footnotes = footnotes,
     annotations = list(),
-    warnings = warnings
+    warnings = warnings,
+    figure = figure,
+    asset_path = asset_path,
+    body_text = body_text
   )
+}
+
+#' Resolve a figure image path next to the meta folder from dataRef + device.
+#'
+#' @keywords internal
+#' @noRd
+.resolve_figure_asset <- function(meta_dir, data_ref, device = NULL) {
+  if (is.null(meta_dir) || !nzchar(as.character(meta_dir)[[1]])) {
+    return(NA_character_)
+  }
+  if (is.null(data_ref) || length(data_ref) == 0) {
+    return(NA_character_)
+  }
+  ref <- as.character(data_ref[[1]])
+  if (!nzchar(ref)) {
+    return(NA_character_)
+  }
+  device <- tolower(as.character(device %||% ""))
+  exts <- unique(c(
+    if (nzchar(device)) device else character(),
+    "svg", "png", "jpeg", "jpg", "webp", "gif"
+  ))
+  for (ext in exts) {
+    path <- file.path(meta_dir, paste0(ref, ".", ext))
+    if (file.exists(path)) {
+      return(normalizePath(path, winslash = "/", mustWork = FALSE))
+    }
+  }
+  NA_character_
 }
 
 # ---------------------------------------------------------------------------
@@ -418,7 +476,13 @@
     data_json <- .load_data_json(meta_dir, spec_entry$dataRef)
     # Disambiguate when one spec file holds several outputs.
     id <- if (length(spec_keys) == 1) base_id else paste0(base_id, "_", k)
-    ctx <- .compile_context_from_spec(spec_entry, data_json, id, max_rows = max_rows)
+    ctx <- .compile_context_from_spec(
+      spec_entry,
+      data_json,
+      id,
+      max_rows = max_rows,
+      meta_dir = meta_dir
+    )
     out[[id]] <- ctx
   }
   out

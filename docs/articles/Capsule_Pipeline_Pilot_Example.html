@@ -30,7 +30,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">ksAI</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -77,13 +77,13 @@
     <section class="level2"><h2 id="what-this-article-is-for">What this article is for<a class="anchor" aria-label="anchor" href="#what-this-article-is-for"></a>
 </h2>
 <p>This article is a <strong>worked, end-to-end walkthrough</strong> of the clinical capsule pipeline on the <strong>bundled CDISC Pilot Study</strong> outputs shipped with ksAI (<code>inst/examples/pilot-study/meta</code>).</p>
-<p>It is intentionally long. Each section explains not only <em>what</em> to call, but <em>why</em> that step exists, how capsules are shaped for that table type, and what you should inspect before moving on. Use it as:</p>
+<p>It is intentionally long. Each section explains not only <em>what</em> to call, but <em>why</em> that step exists, how capsules are shaped by the LLM, and what you should inspect before moving on. Use it as:</p>
 <ul>
 <li>a companion to the <a href="Architecture_and_Pipeline.html">Architecture and Pipeline</a> article (concepts → practice);</li>
 <li>a template for wiring your own study through <code><a href="../reference/as_capsules.html">as_capsules()</a></code> → <code><a href="../reference/ks_annotate.html">ks_annotate()</a></code> → <code><a href="../reference/ks_embed.html">ks_embed()</a></code> → <code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> → <code><a href="../reference/ks_reason.html">ks_reason()</a></code>;</li>
 <li>a reference for LM Studio setup when running the live LLM / embedding steps.</li>
 </ul>
-<p>Live model calls require a local LM Studio server. Structure, inventory, and keyword annotation steps run without any model. Set <code>RUN_LLM &lt;- FALSE</code> below to stop before network-backed steps.</p>
+<p>Capsule <strong>formation</strong> (<code><a href="../reference/as_capsules.html">as_capsules()</a></code>) always needs a chat model — there is no rule-based / CDISC domain path. Keyword annotation can still run offline once you have a store. Set <code>RUN_LLM &lt;- FALSE</code> below to skip the optional LLM annotate pass, embeddings, live retrieval scoring, and reasoning (you can still inspect a previously saved <code>.ksc</code>).</p>
 <hr></section><section class="level2"><h2 id="why-a-capsule-pipeline-instead-of-dumping-full-tables">Why a capsule pipeline (instead of dumping full tables)<a class="anchor" aria-label="anchor" href="#why-a-capsule-pipeline-instead-of-dumping-full-tables"></a>
 </h2>
 <p>Medical writers rarely need every row of every table for one question. Full injection of a large AE or laboratory table into an 8k-token local model fails or forces aggressive <code>max_rows</code> truncation that silently drops evidence.</p>
@@ -109,20 +109,20 @@
 <tr class="even">
 <td>Capsule pipeline</td>
 <td>Only top-<em>n</em> concept summaries (and optional children)</td>
-<td>Many tables, exploratory Q&amp;A, token limits</td>
+<td>Many tables/figures, exploratory Q&amp;A, token limits</td>
 </tr>
 </tbody>
 </table>
-<p>A <strong>clinical capsule</strong> is a concept-centric unit (for example one SOC, one PT, one demographic parameter) with:</p>
+<p>A <strong>clinical capsule</strong> is a named semantic unit (for example “cardiac adverse events”, “ADAS-Cog efficacy”, “vital signs change from baseline”) with:</p>
 <ul>
 <li>
-<strong>traceability</strong> — <code>source_id</code> + <code>source_rows</code> point back to the table;</li>
+<strong>membership</strong> — <code>member_ids</code> lists whole table/figure output ids (one output may belong to several capsules);</li>
 <li>
-<strong>compact evidence</strong> — <code>compact_text</code> and parsed <code>stats</code> for the LLM;</li>
+<strong>compact evidence</strong> — <code>compact_text</code> concatenates member excerpts for the LLM;</li>
 <li>
-<strong>hierarchy</strong> — <code>parent_id</code> / <code>child_ids</code> for progressive disclosure;</li>
+<strong>hierarchy</strong> — <code>parent_id</code> / <code>child_ids</code> from the LLM tree (not MedDRA <code>ROW_KIND</code>);</li>
 <li>
-<strong>retrieval handles</strong> — <code>domain</code>, <code>keywords</code>, optional <code>embedding</code>.</li>
+<strong>retrieval handles</strong> — <code>label</code>, <code>keywords</code>, optional <code>embedding</code>, and optional <code>population</code>.</li>
 </ul>
 <div class="cell" data-layout-align="default">
 <div class="cell-output-display">
@@ -159,7 +159,7 @@
 <pre><code>inst/examples/pilot-study/meta/
   _index.json
   *.json          # specs + data
-  *.svg           # figures (ignored by capsule build for tables)</code></pre>
+  *.svg           # figures (included when loaded; vision models get pixels)</code></pre>
 <p>Resolve it at runtime with:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="downlit sourceCode r">
@@ -190,10 +190,10 @@
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>Domain + semantic (small)</td>
+<td>Capsule formation + semantic (small)</td>
 <td><code>qwen3.5-4b</code></td>
 <td>
-<code>as_capsules(..., model = ...)</code>, <code>ks_annotate(..., model = ...)</code>
+<code>as_capsules(..., model = ...)</code>, <code>ks_annotate(..., model = ...)</code>, optional <code><a href="../reference/ks_review_capsules.html">ks_review_capsules()</a></code>
 </td>
 </tr>
 <tr class="even">
@@ -215,6 +215,7 @@
 </tr>
 </tbody>
 </table>
+<p>Prefer a <strong>vision-capable</strong> small model when the study includes figures — <code>as_capsules(..., attach_images = TRUE)</code> attaches readable image assets so the classifier can use plot pixels, not only titles.</p>
 <p><strong>URL rule that matters:</strong></p>
 <ul>
 <li>Chat / annotate / reason: <code>http://127.0.0.1:1234</code> (<strong>no</strong> <code>/v1</code>)</li>
@@ -227,13 +228,14 @@
 <div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://crow16384.github.io/ksAI/">ksAI</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Capsule demos keep tables modest so compact_text stays readable.</span></span>
-<span><span class="co"># The full pilot AE table can exceed 200 capsules at max_rows = 200;</span></span>
+<span><span class="co"># Capsule demos keep tables modest so compact excerpts stay readable.</span></span>
+<span><span class="co"># The full pilot AE table can be large at max_rows = 200;</span></span>
 <span><span class="co"># 20–50 is enough to demonstrate hierarchy and retrieval.</span></span>
+<span><span class="va">PROVIDER</span> <span class="op">&lt;-</span> <span class="st">"lm_studio"</span></span>
 <span><span class="fu"><a href="../reference/ks_get_option.html">ks_set_option</a></span><span class="op">(</span></span>
 <span>  max_rows <span class="op">=</span> <span class="fl">40L</span>,</span>
 <span>  context_format <span class="op">=</span> <span class="st">"compact"</span>,</span>
-<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="va">PROVIDER</span>,</span>
 <span>  embed_model <span class="op">=</span> <span class="st">"text-embedding-nomic-embed-text-v1.5"</span>,</span>
 <span>  embed_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234/v1"</span></span>
 <span><span class="op">)</span></span>
@@ -247,244 +249,234 @@
 <span><span class="va">OUT_DIR</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"ksAI-capsule-pilot"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">OUT_DIR</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span>, showWarnings <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
-<hr></section></section><section class="level2"><h2 id="step-0-choose-outputs-that-span-clinical-domains">Step 0 — Choose outputs that span clinical domains<a class="anchor" aria-label="anchor" href="#step-0-choose-outputs-that-span-clinical-domains"></a>
+<hr></section></section><section class="level2"><h2 id="step-0-choose-outputs-that-span-clinical-topics">Step 0 — Choose outputs that span clinical topics<a class="anchor" aria-label="anchor" href="#step-0-choose-outputs-that-span-clinical-topics"></a>
 </h2>
-<p>Domain tags on capsules are inferred by <code>.capsule_infer_domain()</code> in a <strong>language-agnostic</strong> order:</p>
-<ol type="1">
-<li>Explicit <code>annotations$domain</code> via <code><a href="../reference/enrich_context.html">enrich_context()</a></code>
-</li>
-<li>Session <code>domain_map</code> (<code><a href="../reference/ks_get_option.html">ks_set_option()</a></code>) — exact output id or regex</li>
-<li>Structural cues (<code>ROW_KIND</code> SOC/PT/HLGT/… → <code>AE</code>)</li>
-<li>Optional small LLM when <code>as_capsules(..., model = ..., llm_domain = "always")</code>
-</li>
-<li>Multilingual title/subtitle/source lexicon (EN, DE, FR, ES, IT, RU, ZH, JA, …)</li>
-<li>ICH/CSR-style numbering in the output id (<code>14-5.x</code> → AE, <code>14-6.x</code> → LB, …)</li>
-<li>Optional small LLM when still <code>UNKNOWN</code> (<code>model</code> + default <code>llm_domain = "unknown"</code>)</li>
-<li><code>"UNKNOWN"</code></li>
-</ol>
-<p>Bare English <code>"baseline"</code> alone is <strong>not</strong> mapped to <code>DM</code> (avoids tagging efficacy change-from-baseline tables as demographics). Prefer <code>enrich_context(..., annotations = list(domain = ...))</code>, <code>domain_map</code>, or a small local model for study-specific / non-English titles:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span></span>
-<span>  <span class="va">study</span>,</span>
-<span>  model <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
-<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
-<span>  base_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
-<span>  llm_domain <span class="op">=</span> <span class="st">"unknown"</span>   <span class="co"># or "always" after hard signals</span></span>
-<span><span class="op">)</span></span>
-<span><span class="co"># Later: re-tag remaining UNKNOWN domains during annotate</span></span>
-<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span><span class="va">store</span>, model <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>, provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
-<span>                     base_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span><span class="op">)</span></span></code></pre></div>
-</div>
+<p><code><a href="../reference/as_capsules.html">as_capsules()</a></code> does <strong>not</strong> assign CDISC domains. The LLM groups loaded <strong>tables and figures</strong> by meaning into a named capsule tree. Membership is by whole output id (<code>member_ids</code>); multi-membership is allowed (one AE table can sit under both a safety root and a cardiac child).</p>
+<p>We deliberately load <strong>six tables across five clinical topics</strong> so retrieval and inventory are non-trivial:</p>
 <table class="table caption-top">
-<colgroup>
-<col style="width: 13%">
-<col style="width: 49%">
-<col style="width: 37%">
-</colgroup>
 <thead><tr class="header">
-<th>Domain</th>
-<th>Typical cues (any language)</th>
+<th>Topic</th>
 <th>Typical pilot tables</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>AE</code></td>
-<td>adverse / НДЯ / 不良事件; MedDRA SOC/PT</td>
-<td>
-<code>14-5.01</code>, <code>14-5.02</code>
-</td>
-</tr>
-<tr class="even">
-<td><code>DM</code></td>
-<td>demograph / демограф / 人口学</td>
+<td>Demographics</td>
 <td><code>14-2.01</code></td>
 </tr>
-<tr class="odd">
-<td><code>VS</code></td>
-<td>vital / витальн / バイタル</td>
+<tr class="even">
+<td>Efficacy (ADAS / CIBIC)</td>
 <td>
-<code>14-7.01</code>, <code>14-7.02</code>
+<code>14-3.01</code>, <code>14-3.02</code>
 </td>
 </tr>
-<tr class="even">
-<td><code>LB</code></td>
-<td>lab / лаборатор / 实验室</td>
-<td>
-<code>14-6.01</code>, <code>14-6.02</code>, …</td>
-</tr>
 <tr class="odd">
-<td><code>EFFC</code></td>
-<td>efficacy / эффективност / 疗效</td>
-<td>
-<code>14-3.01</code>, <code>14-3.02</code>, …</td>
+<td>Adverse events</td>
+<td><code>14-5.01</code></td>
 </tr>
 <tr class="even">
-<td>
-<code>EX</code> / <code>DS</code>
-</td>
-<td>exposure / disposition (lexicon or id)</td>
-<td>—</td>
+<td>Laboratory</td>
+<td><code>14-6.01</code></td>
 </tr>
 <tr class="odd">
-<td><code>UNKNOWN</code></td>
-<td>no match (until LLM / override)</td>
-<td>figures, untitled stubs</td>
+<td>Vital signs</td>
+<td><code>14-7.02</code></td>
 </tr>
 </tbody>
 </table>
-<p>We deliberately load <strong>six tables across five domains</strong> so retrieval filters and domain inventory are non-trivial:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">meta_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples"</span>, <span class="st">"pilot-study"</span>, <span class="st">"meta"</span>, package <span class="op">=</span> <span class="st">"ksAI"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">TABLES</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  demographics   <span class="op">=</span> <span class="st">"14-2.01"</span>,  <span class="co"># DM  — Age, Sex, Race, …</span></span>
-<span>  efficacy_adas  <span class="op">=</span> <span class="st">"14-3.01"</span>,  <span class="co"># EFFC</span></span>
-<span>  efficacy_cibic <span class="op">=</span> <span class="st">"14-3.02"</span>,  <span class="co"># EFFC</span></span>
-<span>  adverse_events <span class="op">=</span> <span class="st">"14-5.01"</span>,  <span class="co"># AE   — SOC / PT hierarchy</span></span>
-<span>  laboratory     <span class="op">=</span> <span class="st">"14-6.01"</span>,  <span class="co"># LB   — visit / parameter rows</span></span>
-<span>  vital_signs    <span class="op">=</span> <span class="st">"14-7.02"</span>   <span class="co"># VS   — change from baseline</span></span>
+<span>  demographics   <span class="op">=</span> <span class="st">"14-2.01"</span>,</span>
+<span>  efficacy_adas  <span class="op">=</span> <span class="st">"14-3.01"</span>,</span>
+<span>  efficacy_cibic <span class="op">=</span> <span class="st">"14-3.02"</span>,</span>
+<span>  adverse_events <span class="op">=</span> <span class="st">"14-5.01"</span>,</span>
+<span>  laboratory     <span class="op">=</span> <span class="st">"14-6.01"</span>,</span>
+<span>  vital_signs    <span class="op">=</span> <span class="st">"14-7.02"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Discover without loading data JSON:</span></span>
 <span><span class="va">catalog</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_list_ids.html">ks_list_ids</a></span><span class="op">(</span><span class="va">meta_path</span><span class="op">)</span></span>
 <span><span class="va">catalog</span><span class="op">[</span><span class="va">catalog</span><span class="op">$</span><span class="va">id</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">TABLES</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"type"</span>, <span class="st">"title"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 </div>
+<p>Figures in the same meta folder can be loaded alongside tables. When <code>attach_images = TRUE</code> (default), readable <code>asset_path</code> images are sent to vision-capable models during classification and deep review.</p>
 <hr></section><section class="level2"><h2 id="step-1-load-a-targeted-study">Step 1 — Load a targeted study<a class="anchor" aria-label="anchor" href="#step-1-load-a-targeted-study"></a>
 </h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">study</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_load.html">ks_load</a></span><span class="op">(</span><span class="va">meta_path</span>, ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="va">TABLES</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">study</span></span>
 <span><span class="co"># 6 tables, 0 figures, 0 texts (for this subset)</span></span></code></pre></div>
 </div>
-<p>Each <code>study[["14-5.01"]]</code> is a <code>ks_context</code>: title, population, columns, span headers, rendered rows (with <code>section</code> / <code>kind</code>), footnotes. Capsules are built from those rows — they never re-open the original ksTFL session.</p>
+<p>Each <code>study[["14-5.01"]]</code> is a <code>ks_context</code>: title, population, columns, span headers, rendered rows (with <code>section</code> / <code>kind</code>), footnotes. Capsule <code>compact_text</code> is built from member excerpts of these contexts — formation never re-opens the original ksTFL session.</p>
 <p>Inspect one context before capsule construction:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ctx_ae</span> <span class="op">&lt;-</span> <span class="va">study</span><span class="op">[[</span><span class="st">"14-5.01"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">ctx_ae</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substr.html" class="external-link">substr</a></span><span class="op">(</span><span class="fu"><a href="../reference/as_compact.html">as_compact</a></span><span class="op">(</span><span class="va">ctx_ae</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">700</span><span class="op">)</span>, <span class="st">"\n...\n"</span><span class="op">)</span></span></code></pre></div>
 </div>
-<p>You should see the compact DSL: <code>SPANS:</code> legend, SOC section headers, PT lines with arm-keyed <code>n(%)</code> values. That same DSL is what each capsule stores in <code>compact_text</code> for its row group.</p>
+<p>You should see the compact DSL: <code>SPANS:</code> legend, SOC section headers, PT lines with arm-keyed <code>n(%)</code> values. Similar excerpts (truncated by <code>max_excerpt_rows</code>) are what the structure LLM sees in the classify catalog.</p>
 <hr></section><section class="level2"><h2 id="step-2-structure-agent-as_capsules">Step 2 — Structure agent: <code>as_capsules()</code>
 <a class="anchor" aria-label="anchor" href="#step-2-structure-agent-as_capsules"></a>
 </h2>
 <section class="level3"><h3 id="what-the-structure-agent-does">What the structure agent does<a class="anchor" aria-label="anchor" href="#what-the-structure-agent-does"></a>
 </h3>
-<p><code>as_capsules(study)</code> walks every loaded context and:</p>
+<p><code>as_capsules(study, model = ...)</code> is <strong>LLM-only</strong>. It:</p>
 <ol type="1">
-<li>Infers a <strong>domain</strong> once per output (rules; optional <code>model</code> / <code>llm_domain</code> / <code>llm_min_confidence</code> when a small LLM is available).</li>
-<li>Identifies a <strong>row-label column</strong> (first visible column).</li>
-<li>Assigns each row (or section block) a <strong>level</strong>:
-<ul>
-<li>AE-style: <code>OVERALL</code> → <code>SOC</code> → <code>PT</code> (from <code>ROW_KIND</code> / section headers);</li>
-<li>continuous / demo / lab: <code>OVERALL</code> → <code>PARAM</code>.</li>
-</ul>
-</li>
-<li>Builds synthetic <strong>SOC</strong> capsules when a section header exists without an explicit SOC kind row.</li>
-<li>Parses arm-wise <strong>stats</strong> where possible.</li>
-<li>Renders <strong>compact_text</strong> for that row slice only.</li>
-<li>Wires <strong>parent_id</strong> / <strong>child_ids</strong>.</li>
-<li>Links <strong>linked_ids</strong> to text listings in the same inferred domain (if any text outputs were loaded).</li>
+<li>Builds a catalog of Table/Figure contexts (titles, populations, compact or full excerpts, figure assets when available).</li>
+<li>Asks the chat model to propose a named semantic tree (<code>capsule_id</code>, <code>label</code>, <code>member_ids</code>, <code>parent_id</code>, confidence).</li>
+<li>Batches large catalogs (<code>batch_size</code>) and merges partial trees when needed.</li>
+<li>Drops capsules below <code>min_confidence</code>.</li>
+<li>Materializes each capsule with <code>compact_text</code> from its members and wires <code>parent_id</code> / <code>child_ids</code>.</li>
 </ol>
+<p>There is <strong>no</strong> rule-based domain inference, no MedDRA <code>ROW_KIND</code> hierarchy, and no <code>linked_ids</code> / CDISC domain chain. Hierarchy is whatever meaning the LLM assigns.</p>
+<p><code>model</code> is required. Typical call for this walkthrough:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span><span class="va">study</span><span class="op">)</span></span>
-<span><span class="co"># Optional domain LLM (same signature as Step 0):</span></span>
-<span><span class="co"># store &lt;- as_capsules(study, model = MODEL_SMALL, provider = PROVIDER,</span></span>
-<span><span class="co">#                      base_url = CHAT_URL, llm_domain = "unknown")</span></span>
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span></span>
+<span>  <span class="va">study</span>,</span>
+<span>  model <span class="op">=</span> <span class="va">MODEL_SMALL</span>,</span>
+<span>  provider <span class="op">=</span> <span class="va">PROVIDER</span>,</span>
+<span>  base_url <span class="op">=</span> <span class="va">CHAT_URL</span></span>
+<span><span class="op">)</span></span>
 <span><span class="va">store</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span></span></code></pre></div>
 </div>
-</section><section class="level3"><h3 id="inventory-by-source-table-and-domain">Inventory by source table and domain<a class="anchor" aria-label="anchor" href="#inventory-by-source-table-and-domain"></a>
+<p>Useful knobs when refining locally:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span></span>
+<span>  <span class="va">study</span>,</span>
+<span>  model <span class="op">=</span> <span class="va">MODEL_SMALL</span>,</span>
+<span>  provider <span class="op">=</span> <span class="va">PROVIDER</span>,</span>
+<span>  base_url <span class="op">=</span> <span class="va">CHAT_URL</span>,</span>
+<span>  max_excerpt_rows <span class="op">=</span> <span class="fl">12L</span>,   <span class="co"># rows per catalog excerpt</span></span>
+<span>  detail <span class="op">=</span> <span class="st">"compact"</span>,       <span class="co"># or "full"</span></span>
+<span>  min_confidence <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span>  batch_size <span class="op">=</span> <span class="fl">24L</span>,</span>
+<span>  attach_images <span class="op">=</span> <span class="cn">TRUE</span>      <span class="co"># figure pixels for vision models</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+</section><section class="level3"><h3 id="inventory-by-label-and-members">Inventory by label and members<a class="anchor" aria-label="anchor" href="#inventory-by-label-and-members"></a>
 </h3>
-<p>Always print an inventory before annotation. It surfaces domain mis-tags and unexpected capsule counts early.</p>
+<p>Always print an inventory before annotation. It surfaces odd labels, empty membership, and unexpected multi-membership early.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inventory</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">cid</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">cap</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">cid</span><span class="op">]</span><span class="op">]</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>    capsule_id <span class="op">=</span> <span class="va">cid</span>,</span>
-<span>    source_id  <span class="op">=</span> <span class="va">cap</span><span class="op">$</span><span class="va">source_id</span>,</span>
-<span>    domain     <span class="op">=</span> <span class="va">cap</span><span class="op">$</span><span class="va">domain</span>,</span>
-<span>    level      <span class="op">=</span> <span class="va">cap</span><span class="op">$</span><span class="va">level</span>,</span>
 <span>    label      <span class="op">=</span> <span class="va">cap</span><span class="op">$</span><span class="va">label</span>,</span>
-<span>    n_rows     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">cap</span><span class="op">$</span><span class="va">source_rows</span><span class="op">)</span>,</span>
+<span>    members    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">cap</span><span class="op">$</span><span class="va">member_ids</span>, collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>,</span>
+<span>    n_members  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">cap</span><span class="op">$</span><span class="va">member_ids</span><span class="op">)</span>,</span>
+<span>    parent_id  <span class="op">=</span> <span class="va">cap</span><span class="op">$</span><span class="va">parent_id</span> <span class="op"><a href="https://rdrr.io/r/base/Control.html" class="external-link">%||%</a></span> <span class="cn">NA_character_</span>,</span>
 <span>    n_children <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">cap</span><span class="op">$</span><span class="va">child_ids</span><span class="op">)</span>,</span>
 <span>    stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">inventory</span></span>
 <span></span>
-<span><span class="co"># Counts by table × domain × level</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span></span>
-<span>  source <span class="op">=</span> <span class="va">inventory</span><span class="op">$</span><span class="va">source_id</span>,</span>
-<span>  domain <span class="op">=</span> <span class="va">inventory</span><span class="op">$</span><span class="va">domain</span></span>
-<span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Which capsules claim each output?</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">cid</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">cap</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">cid</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">cid</span>, <span class="st">": "</span>, <span class="va">cap</span><span class="op">$</span><span class="va">label</span>, <span class="st">" — members "</span>,</span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">cap</span><span class="op">$</span><span class="va">member_ids</span>, collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>, <span class="st">"\n"</span>, sep <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</div>
+<p>Structural review helpers (no LLM for <code>review_capsules</code> / <code>capsule_tree</code>):</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/review_capsules.html">review_capsules</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">study</span><span class="op">)</span><span class="op">)</span>   <span class="co"># empty / unknown members / cycles / orphans</span></span>
+<span><span class="fu"><a href="../reference/capsule_tree.html">capsule_tree</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span>                    <span class="co"># printable parent → child tree</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span></span>
-<span>  source <span class="op">=</span> <span class="va">inventory</span><span class="op">$</span><span class="va">source_id</span>,</span>
-<span>  level  <span class="op">=</span> <span class="va">inventory</span><span class="op">$</span><span class="va">level</span></span>
-<span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># Membership table (output_id × capsule); multi-membership shows n_capsules &gt; 1</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/capsule_membership.html">capsule_membership</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">study</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+</div>
+<p>Optional deep critique with a (vision-capable) model:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">RUN_LLM</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">rev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_review_capsules.html">ks_review_capsules</a></span><span class="op">(</span></span>
+<span>    <span class="va">store</span>,</span>
+<span>    <span class="va">study</span>,</span>
+<span>    model <span class="op">=</span> <span class="va">MODEL_SMALL</span>,</span>
+<span>    provider <span class="op">=</span> <span class="va">PROVIDER</span>,</span>
+<span>    base_url <span class="op">=</span> <span class="va">CHAT_URL</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">rev</span><span class="op">$</span><span class="va">response</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</div>
+<p>Inspect one capsule’s full member renders from the live study (not the truncated build excerpt):</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sample_id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/capsule_content.html">capsule_content</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">sample_id</span>, <span class="va">study</span>, format <span class="op">=</span> <span class="st">"compact"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 </section><section class="level3"><h3 id="anatomy-of-one-capsule-inspect-deeply">Anatomy of one capsule (inspect deeply)<a class="anchor" aria-label="anchor" href="#anatomy-of-one-capsule-inspect-deeply"></a>
 </h3>
-<p>Pick one AE SOC capsule and one demographic PARAM capsule:</p>
+<p>Pick capsules by <strong>label</strong> (exact ids are LLM-assigned slugs):</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Exact IDs depend on labels; search rather than hard-coding when exploring:</span></span>
-<span><span class="va">cardiac_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grep</a></span><span class="op">(</span><span class="st">"CARDIAC"</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span>, value <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Exact IDs depend on the model; search labels rather than hard-coding:</span></span>
+<span><span class="va">cardiac_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"cardiac|bradycardia|heart"</span>,</span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span>, <span class="kw">function</span><span class="op">(</span><span class="va">c</span><span class="op">)</span> <span class="va">c</span><span class="op">$</span><span class="va">label</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        ignore.case <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">]</span></span>
 <span><span class="va">cardiac_ids</span></span>
 <span></span>
-<span><span class="va">cap_soc</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">cardiac_ids</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="va">cap_soc</span></span>
+<span><span class="va">cap</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">cardiac_ids</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">cap</span></span>
 <span></span>
-<span><span class="co"># Traceability — which table rows produced this capsule?</span></span>
-<span><span class="va">cap_soc</span><span class="op">$</span><span class="va">source_id</span></span>
-<span><span class="va">cap_soc</span><span class="op">$</span><span class="va">source_rows</span></span>
+<span><span class="co"># Membership — which outputs belong to this concept?</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">member_ids</span></span>
 <span></span>
-<span><span class="co"># Hierarchy</span></span>
-<span><span class="va">cap_soc</span><span class="op">$</span><span class="va">parent_id</span></span>
-<span><span class="va">cap_soc</span><span class="op">$</span><span class="va">child_ids</span>   <span class="co"># PT capsules under this SOC</span></span>
+<span><span class="co"># Hierarchy (LLM tree, not MedDRA ROW_KIND)</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">parent_id</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">child_ids</span></span>
 <span></span>
-<span><span class="co"># Evidence the LLM will see later</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">cap_soc</span><span class="op">$</span><span class="va">compact_text</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Parsed statistics (list structure; arm / measure dependent)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">cap_soc</span><span class="op">$</span><span class="va">stats</span>, max.level <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="co"># Evidence the reasoning model will see later</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">cap</span><span class="op">$</span><span class="va">compact_text</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Semantic slots (empty until annotate / embed)</span></span>
-<span><span class="va">cap_soc</span><span class="op">$</span><span class="va">concepts</span></span>
-<span><span class="va">cap_soc</span><span class="op">$</span><span class="va">keywords</span></span>
-<span><span class="va">cap_soc</span><span class="op">$</span><span class="va">embedding</span>   <span class="co"># NULL until ks_embed()</span></span></code></pre></div>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">concepts</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">keywords</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">embedding</span>   <span class="co"># NULL until ks_embed()</span></span></code></pre></div>
 </div>
-<p><strong>What “good” looks like for an AE SOC capsule:</strong></p>
+<p><strong>What “good” looks like:</strong></p>
 <ul>
 <li>
-<code>level == "SOC"</code>, <code>domain == "AE"</code>;</li>
+<code>label</code> is a readable clinical concept name (any language the titles use);</li>
 <li>
-<code>child_ids</code> lists PT capsule ids under that SOC;</li>
+<code>member_ids</code> are real study output ids (audit with <code><a href="../reference/review_capsules.html">review_capsules()</a></code>);</li>
+<li>multi-membership is coherent (same table under related parent/child labels);</li>
 <li>
-<code>compact_text</code> contains arm-keyed incidence lines, not the whole AE table;</li>
+<code>compact_text</code> is a member excerpt bundle, not the entire study;</li>
 <li>
-<code>source_rows</code> is a contiguous or section-scoped index set you could audit against <code>study[["14-5.01"]]$rows</code>.</li>
+<code>child_ids</code> refine the parent when the tree has depth.</li>
 </ul>
-<p>Compare with a demographics capsule:</p>
+<p>Compare with a demographics- or efficacy-oriented capsule:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">age_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grep</a></span><span class="op">(</span><span class="st">"AGE|Age"</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span>, value <span class="op">=</span> <span class="cn">TRUE</span>, ignore.case <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">cap_age</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">age_ids</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="va">cap_age</span><span class="op">$</span><span class="va">level</span>      <span class="co"># typically PARAM</span></span>
-<span><span class="va">cap_age</span><span class="op">$</span><span class="va">domain</span>     <span class="co"># typically DM</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">cap_age</span><span class="op">$</span><span class="va">compact_text</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">age_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"age|demographic|baseline characteristic"</span>,</span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span>, <span class="kw">function</span><span class="op">(</span><span class="va">c</span><span class="op">)</span> <span class="va">c</span><span class="op">$</span><span class="va">label</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>        ignore.case <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">]</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">age_ids</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">cap_age</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">age_ids</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="va">cap_age</span><span class="op">$</span><span class="va">label</span></span>
+<span>  <span class="va">cap_age</span><span class="op">$</span><span class="va">member_ids</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">cap_age</span><span class="op">$</span><span class="va">compact_text</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
-<p>PARAM capsules are flatter: fewer children, one characteristic or visit row, still arm-spanned compact text when the source table uses span headers.</p>
-</section><section class="level3"><h3 id="persist-the-empty-structure-only-store">Persist the empty (structure-only) store<a class="anchor" aria-label="anchor" href="#persist-the-empty-structure-only-store"></a>
+</section><section class="level3"><h3 id="persist-the-store-after-formation">Persist the store after formation<a class="anchor" aria-label="anchor" href="#persist-the-store-after-formation"></a>
 </h3>
-<p>Even before enrichment, save the store so you can resume without rebuilding:</p>
+<p>Save early so you can resume without re-calling the structure model:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">path_struct</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">OUT_DIR</span>, <span class="st">"pilot_capsules_structure.ksc"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/save_capsules.html">save_capsules</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">path_struct</span><span class="op">)</span></span>
 <span><span class="co"># Later: store &lt;- load_capsules(path_struct)</span></span></code></pre></div>
@@ -502,29 +494,27 @@
 <li>seeds <code>concepts</code> from the label when empty.</li>
 </ul>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Keywords are now retrieval fodder even without embeddings</span></span>
-<span><span class="va">cap_soc</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">cardiac_ids</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cap_soc</span><span class="op">$</span><span class="va">keywords</span>, <span class="fl">30</span><span class="op">)</span></span>
-<span><span class="va">cap_soc</span><span class="op">$</span><span class="va">synonyms</span></span>
-<span><span class="va">cap_soc</span><span class="op">$</span><span class="va">concepts</span></span></code></pre></div>
+<span><span class="va">cap</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">cardiac_ids</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cap</span><span class="op">$</span><span class="va">keywords</span>, <span class="fl">30</span><span class="op">)</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">synonyms</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">concepts</span></span></code></pre></div>
 </div>
 <p><strong>Why this pass matters:</strong> keyword overlap is 30% of the default <code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> score. A capsule with empty keywords and no embedding ranks only on metadata filters. Always run at least the R pass before retrieval demos.</p>
 </section><section class="level3"><h3 id="pass-2-optional-small-llm-enrichment">Pass 2 — optional small-LLM enrichment<a class="anchor" aria-label="anchor" href="#pass-2-optional-small-llm-enrichment"></a>
 </h3>
-<p>A 4B local model can add clinical concepts and synonyms that pure tokenization misses (for example mapping “SINUS BRADYCARDIA” to broader cardiac terms). The same <code>model</code> argument also reclassifies capsules still tagged <code>UNKNOWN</code> (once per <code>source_id</code>). Use <code>force_domain = TRUE</code> to reclassify every table. This is slower and memory-heavy: unload the 26B model in LM Studio first if needed.</p>
+<p>A 4B local model can add clinical concepts and synonyms that pure tokenization misses (for example mapping “SINUS BRADYCARDIA” to broader cardiac terms). <code>model</code> is optional and only used for concept / synonym / keyword extraction.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">RUN_LLM</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Annotate a representative subset first — full stores can be large.</span></span>
 <span>  <span class="va">demo_ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="va">cardiac_ids</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>    <span class="va">age_ids</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grep</a></span><span class="op">(</span><span class="st">"14-3.01"</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span>, value <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grep</a></span><span class="op">(</span><span class="st">"14-6.01"</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span>, value <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grep</a></span><span class="op">(</span><span class="st">"14-7.02"</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span>, value <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cardiac_ids</span>, <span class="fl">1L</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">age_ids</span>, <span class="fl">1L</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span>, <span class="fl">3L</span><span class="op">)</span></span>
 <span>  <span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">demo</span> <span class="op">&lt;-</span> <span class="va">store</span></span>
@@ -532,12 +522,10 @@
 <span></span>
 <span>  <span class="va">demo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span></span>
 <span>    <span class="va">demo</span>,</span>
-<span>    model              <span class="op">=</span> <span class="va">MODEL_SMALL</span>,</span>
-<span>    provider           <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
-<span>    base_url           <span class="op">=</span> <span class="va">CHAT_URL</span>,</span>
-<span>    force              <span class="op">=</span> <span class="cn">TRUE</span>,   <span class="co"># re-run even if concepts already seeded</span></span>
-<span>    force_domain       <span class="op">=</span> <span class="cn">FALSE</span>,  <span class="co"># only repair UNKNOWN domains</span></span>
-<span>    llm_min_confidence <span class="op">=</span> <span class="fl">0.5</span></span>
+<span>    model    <span class="op">=</span> <span class="va">MODEL_SMALL</span>,</span>
+<span>    provider <span class="op">=</span> <span class="va">PROVIDER</span>,</span>
+<span>    base_url <span class="op">=</span> <span class="va">CHAT_URL</span>,</span>
+<span>    force    <span class="op">=</span> <span class="cn">TRUE</span>   <span class="co"># re-run even if concepts already seeded</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[</span><span class="va">demo_ids</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">demo</span><span class="op">$</span><span class="va">capsules</span></span>
@@ -555,7 +543,7 @@
 </h2>
 <p>Embeddings turn capsule <code>compact_text</code> into dense vectors for semantic similarity. Without them, <code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> still works (keyword + metadata only); with them, natural-language queries align better to clinical phrasing that does not share surface tokens with the table.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">RUN_LLM</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_embed.html">ks_embed</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span>   <span class="co"># uses embed_model / embed_url options</span></span>
 <span></span>
@@ -577,7 +565,7 @@
 <li>Persist after embedding so you do not re-hit the endpoint every session:</li>
 </ul>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">path_full</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">OUT_DIR</span>, <span class="st">"pilot_capsules.ksc"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/save_capsules.html">save_capsules</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">path_full</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -616,35 +604,35 @@
 <tr class="odd">
 <td>Metadata</td>
 <td>0–1</td>
-<td>Fraction of supplied <code>filter</code> fields that match exactly</td>
+<td>Fraction of supplied <code>filter</code> fields that match</td>
 </tr>
 </tbody>
 </table>
-<p>Filters (<code>domain</code>, <code>level</code>, <code>population</code>) <strong>do not hard-exclude</strong> capsules in the current implementation; they contribute to the metadata score. Prefer post-filtering the subset or inspecting scores when you need a hard domain gate.</p>
-</section><section class="level3"><h3 id="domain-specific-queries-on-the-pilot-store">Domain-specific queries on the pilot store<a class="anchor" aria-label="anchor" href="#domain-specific-queries-on-the-pilot-store"></a>
+<p>Filters accept <code>label</code>, <code>member_id</code>, and/or <code>population</code>. They <strong>do not hard-exclude</strong> capsules in the current implementation; they contribute to the metadata score. Prefer post-filtering the subset or inspecting scores when you need a hard gate (for example “must include table <code>14-5.01</code>”).</p>
+</section><section class="level3"><h3 id="content-queries-on-the-pilot-store">Content queries on the pilot store<a class="anchor" aria-label="anchor" href="#content-queries-on-the-pilot-store"></a>
 </h3>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">queries</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  ae_cardiac <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    query  <span class="op">=</span> <span class="st">"cardiac disorders and bradycardia in the high dose arm"</span>,</span>
-<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"AE"</span>, level <span class="op">=</span> <span class="st">"SOC"</span><span class="op">)</span></span>
+<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>member_id <span class="op">=</span> <span class="st">"14-5.01"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  efficacy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    query  <span class="op">=</span> <span class="st">"ADAS-Cog change from baseline week 24 treatment difference"</span>,</span>
-<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>level <span class="op">=</span> <span class="st">"PARAM"</span><span class="op">)</span></span>
+<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>member_id <span class="op">=</span> <span class="st">"14-3.01"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  laboratory <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    query  <span class="op">=</span> <span class="st">"laboratory summary statistics change from baseline over visits"</span>,</span>
-<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"LB"</span><span class="op">)</span></span>
+<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>member_id <span class="op">=</span> <span class="st">"14-6.01"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  vital_signs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    query  <span class="op">=</span> <span class="st">"systolic blood pressure change from baseline end of treatment"</span>,</span>
-<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>level <span class="op">=</span> <span class="st">"PARAM"</span><span class="op">)</span></span>
+<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>label <span class="op">=</span> <span class="st">"vital"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  demographics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    query  <span class="op">=</span> <span class="st">"age sex race baseline demographic characteristics"</span>,</span>
-<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"DM"</span>, level <span class="op">=</span> <span class="st">"PARAM"</span><span class="op">)</span></span>
+<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>member_id <span class="op">=</span> <span class="st">"14-2.01"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -669,7 +657,7 @@
 <span>    <span class="va">store</span>,</span>
 <span>    query <span class="op">=</span> <span class="st">"cardiac bradycardia"</span>,</span>
 <span>    n <span class="op">=</span> <span class="fl">5L</span>,</span>
-<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"AE"</span><span class="op">)</span>,</span>
+<span>    filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>member_id <span class="op">=</span> <span class="st">"14-5.01"</span><span class="op">)</span>,</span>
 <span>    <span class="co"># Without embeddings, semantic weight is wasted — shift mass to keywords:</span></span>
 <span>    weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>semantic <span class="op">=</span> <span class="fl">0</span>, keyword <span class="op">=</span> <span class="fl">0.8</span>, metadata <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
@@ -685,7 +673,7 @@
 </ul>
 <p>Inspect the winning capsule’s evidence before reasoning:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Using the offline or first live subset:</span></span>
 <span><span class="va">top_id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">sub_offline</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">top_id</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">compact_text</span><span class="op">)</span></span></code></pre></div>
@@ -702,41 +690,41 @@
 <li>chat with a larger model under a system prompt that forbids inventing statistics.</li>
 </ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">RUN_LLM</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="co"># 6a. Safety narrative at SOC level, then expand PT children</span></span>
+<span>  <span class="co"># 6a. Safety narrative, then expand child capsules under retrieved parents</span></span>
 <span>  <span class="va">out_ae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>    <span class="va">store</span>,</span>
 <span>    query    <span class="op">=</span> <span class="st">"Summarize cardiac disorder incidence across treatment arms. Cite specific n(%) values from the capsules."</span>,</span>
 <span>    n        <span class="op">=</span> <span class="fl">6L</span>,</span>
 <span>    expand   <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>    model    <span class="op">=</span> <span class="va">MODEL_LARGE</span>,</span>
-<span>    provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>    provider <span class="op">=</span> <span class="va">PROVIDER</span>,</span>
 <span>    base_url <span class="op">=</span> <span class="va">CHAT_URL</span></span>
 <span>  <span class="op">)</span></span>
 <span>  <span class="va">out_ae</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">out_ae</span><span class="op">$</span><span class="va">response</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="co"># 6b. Efficacy question — usually PARAM capsules, expand often unnecessary</span></span>
+<span>  <span class="co"># 6b. Efficacy question — expand often unnecessary if leaves already answer</span></span>
 <span>  <span class="va">out_eff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>    <span class="va">store</span>,</span>
 <span>    query    <span class="op">=</span> <span class="st">"What treatment differences for ADAS-Cog change from baseline at Week 24 appear in the capsules?"</span>,</span>
 <span>    n        <span class="op">=</span> <span class="fl">6L</span>,</span>
 <span>    expand   <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    model    <span class="op">=</span> <span class="va">MODEL_LARGE</span>,</span>
-<span>    provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>    provider <span class="op">=</span> <span class="va">PROVIDER</span>,</span>
 <span>    base_url <span class="op">=</span> <span class="va">CHAT_URL</span></span>
 <span>  <span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">out_eff</span><span class="op">$</span><span class="va">response</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="co"># 6c. Cross-domain question — do not over-filter; let retrieval pick</span></span>
+<span>  <span class="co"># 6c. Cross-topic question — do not over-filter; let retrieval pick</span></span>
 <span>  <span class="va">out_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>    <span class="va">store</span>,</span>
 <span>    query    <span class="op">=</span> <span class="st">"Are there safety signals that should contextualize interpretation of the primary efficacy results?"</span>,</span>
 <span>    n        <span class="op">=</span> <span class="fl">5L</span>,</span>
 <span>    expand   <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    model    <span class="op">=</span> <span class="va">MODEL_LARGE</span>,</span>
-<span>    provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>    provider <span class="op">=</span> <span class="va">PROVIDER</span>,</span>
 <span>    base_url <span class="op">=</span> <span class="va">CHAT_URL</span></span>
 <span>  <span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">out_mix</span><span class="op">$</span><span class="va">response</span><span class="op">)</span></span>
@@ -748,15 +736,15 @@
 <section class="level3"><h3 id="progressive-disclosure-in-practice">Progressive disclosure in practice<a class="anchor" aria-label="anchor" href="#progressive-disclosure-in-practice"></a>
 </h3>
 <pre><code>expand = FALSE  →  only the top-n retrieved capsules
-expand = TRUE   →  top-n plus all of their child_ids (e.g. SOC → PTs)</code></pre>
-<p>Use <code>expand = TRUE</code> when the question needs preferred-term detail under a system organ class. Use <code>FALSE</code> when SOC-level (or PARAM-level) summaries already answer the question — smaller prompts, less noise, lower chance of context overflow on local 8k models.</p>
+expand = TRUE   →  top-n plus all of their child_ids</code></pre>
+<p>Use <code>expand = TRUE</code> when the question needs finer detail under a broad parent capsule (for example a safety root whose children split cardiac vs hepatic). Use <code>FALSE</code> when the retrieved leaves already answer the question — smaller prompts, less noise, lower chance of context overflow on local 8k models.</p>
 </section><section class="level3"><h3 id="guardrails-you-should-still-enforce-as-a-writer">Guardrails you should still enforce as a writer<a class="anchor" aria-label="anchor" href="#guardrails-you-should-still-enforce-as-a-writer"></a>
 </h3>
 <p>The model is instructed not to invent numbers, but you must:</p>
 <ol type="1">
-<li>Check that cited <code>n(%)</code> values appear in the printed capsule <code>compact_text</code> or original table;</li>
-<li>Remember <code>max_rows</code> truncated the source table — rare PTs below the row cap never became capsules;</li>
-<li>Treat domain tags as retrieval aids, not regulatory classifications.</li>
+<li>Check that cited <code>n(%)</code> values appear in the printed capsule <code>compact_text</code>, <code><a href="../reference/capsule_content.html">capsule_content()</a></code>, or original table;</li>
+<li>Remember <code>max_rows</code> / <code>max_excerpt_rows</code> truncated what the structure model and capsules could see — rare rows below the cap may never appear;</li>
+<li>Treat capsule labels as retrieval aids, not regulatory classifications.</li>
 </ol>
 <hr></section></section><section class="level2"><h2 id="step-7-chain-capsule-reasoning-into-csr-drafting">Step 7 — Chain capsule reasoning into CSR drafting<a class="anchor" aria-label="anchor" href="#step-7-chain-capsule-reasoning-into-csr-drafting"></a>
 </h2>
@@ -771,7 +759,7 @@ expand = TRUE   →  top-n plus all of their child_ids (e.g. SOC → PTs)</code>
 </ol>
 <p>Keep the second step on a compact table (ADAS or CIBIC, not the full AE listing). Prior text plus a large table overflows local contexts.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">RUN_LLM</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_result.html">load_result</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">OUT_DIR</span>, <span class="st">"reason-cardiac"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -789,7 +777,7 @@ expand = TRUE   →  top-n plus all of their child_ids (e.g. SOC → PTs)</code>
 <span>    <span class="op">)</span>,</span>
 <span>    prior    <span class="op">=</span> <span class="va">prior</span>,</span>
 <span>    model    <span class="op">=</span> <span class="va">MODEL_LARGE</span>,</span>
-<span>    provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>    provider <span class="op">=</span> <span class="va">PROVIDER</span>,</span>
 <span>    base_url <span class="op">=</span> <span class="va">CHAT_URL</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
@@ -801,46 +789,47 @@ expand = TRUE   →  top-n plus all of their child_ids (e.g. SOC → PTs)</code>
 </h2>
 <ol type="1">
 <li>
-<strong>Load targeted ids</strong> — start with the domains your question needs; add tables later rather than always loading the full meta folder.</li>
+<strong>Load targeted ids</strong> — start with the tables/figures your question needs; add outputs later rather than always loading the full meta folder.</li>
 <li>
-<strong>Set <code>max_rows</code> deliberately</strong> — capsules cannot recover rows never imported.</li>
+<strong>Set <code>max_rows</code> deliberately</strong> — capsules cannot recover rows never imported; <code>max_excerpt_rows</code> further limits what the structure LLM sees.</li>
 <li>
-<strong><code>as_capsules(study)</code></strong> — inventory <code>domain</code> × <code>level</code> × <code>source_id</code>; optional <code>model</code> / <code>llm_domain</code> for UNKNOWN titles.</li>
+<strong><code>as_capsules(study, model = ...)</code></strong> — required model; inventory labels and <code>member_ids</code>; review with <code><a href="../reference/review_capsules.html">review_capsules()</a></code>, <code><a href="../reference/capsule_tree.html">capsule_tree()</a></code>, <code><a href="../reference/capsule_membership.html">capsule_membership()</a></code>, and optionally <code><a href="../reference/ks_review_capsules.html">ks_review_capsules()</a></code>.</li>
 <li>
-<strong>Fix or accept domain tags</strong> — use <code>enrich_context(..., annotations = list(domain = ...))</code>, <code>domain_map</code>, or <code>ks_annotate(..., model = ..., force_domain = ...)</code> for non-English / custom titles.</li>
+<strong>Accept multi-membership</strong> — one output in several capsules is intentional; audit with <code><a href="../reference/capsule_membership.html">capsule_membership()</a></code> rather than forcing a single domain tag.</li>
 <li>
-<strong><code>ks_annotate(store)</code></strong> — always; add <code>model =</code> for concepts/keywords and UNKNOWN domain repair on high-value capsules if needed.</li>
+<strong><code>ks_annotate(store)</code></strong> — always; add <code>model =</code> for concepts/keywords on high-value capsules if needed (no domain re-tagging).</li>
 <li>
 <strong><code>ks_embed(store)</code></strong> — when an embedding endpoint is available.</li>
 <li>
 <strong><code><a href="../reference/save_capsules.html">save_capsules()</a></code></strong> — <code>.ksc</code> is the reusable artefact.</li>
 <li>
-<strong><code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> / <code><a href="../reference/ks_reason.html">ks_reason()</a></code></strong> — tune <code>n</code>, <code>expand</code>, <code>filter</code>, and <code>weights</code> per question type.</li>
+<strong><code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> / <code><a href="../reference/ks_reason.html">ks_reason()</a></code></strong> — tune <code>n</code>, <code>expand</code>, <code>filter</code> (<code>label</code> / <code>member_id</code> / <code>population</code>), and <code>weights</code> per question.</li>
 <li>
-<strong>Audit</strong> — every claim against <code>compact_text</code> or the source <code>ks_context</code>.</li>
+<strong>Audit</strong> — every claim against <code>compact_text</code>, <code><a href="../reference/capsule_content.html">capsule_content()</a></code>, or the source <code>ks_context</code>.</li>
 <li>
 <strong>Chain</strong> — optional <code>ks_llm(..., prior =)</code> on a small table for CSR polish.</li>
 </ol>
 <hr></section><section class="level2"><h2 id="runnable-script-twin">Runnable script twin<a class="anchor" aria-label="anchor" href="#runnable-script-twin"></a>
 </h2>
 <p>The same pilot meta folder powers the executable script:</p>
-<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Development checkout</span></span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>Rscript inst<span class="sc">/</span>examples<span class="sc">/</span>pilot<span class="sc">-</span>study<span class="sc">-</span>workflows.R</span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Installed package</span></span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>Rscript <span class="fu">system.file</span>(</span>
-<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"examples"</span>, <span class="st">"pilot-study-workflows.R"</span>,</span>
-<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">package =</span> <span class="st">"ksAI"</span></span>
-<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Development checkout</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>Rscript inst<span class="sc">/</span>examples<span class="sc">/</span>pilot<span class="sc">-</span>study<span class="sc">-</span>workflows.R</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Installed package</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>Rscript <span class="fu">system.file</span>(</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"examples"</span>, <span class="st">"pilot-study-workflows.R"</span>,</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">package =</span> <span class="st">"ksAI"</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
 <p>That script covers direct LLM skills, fact filtering, capsules, and chaining in one file. This article isolates the <strong>capsule pipeline</strong> and documents the decisions behind each call.</p>
 <hr></section><section class="level2"><h2 id="design-takeaways">Design takeaways<a class="anchor" aria-label="anchor" href="#design-takeaways"></a>
 </h2>
 <ul>
 <li>Capsules are the <strong>unit of retrieval and reasoning</strong>, not whole tables.</li>
-<li>Structure is deterministic R; semantics can be cheap (keywords) or richer (small LLM + embeddings).</li>
-<li>Reasoning models should see <strong>evidence subsets</strong>, with PT detail pulled on demand via <code>expand</code>.</li>
-<li>Traceability (<code>source_id</code>, <code>source_rows</code>) is what makes capsule-based CSR drafts auditable in a regulated setting.</li>
-<li>The bundled pilot study is enough to exercise AE hierarchy, lab/visit PARAMs, demographics, vitals, and efficacy tables in one store — use the inventory tables in Step 2 as your ground truth before trusting retrieval filters.</li>
+<li>Formation is <strong>LLM-only</strong>: named semantic tree + <code>member_ids</code>, with optional figure images for vision models — not CDISC domains or MedDRA <code>ROW_KIND</code>.</li>
+<li>Semantics can be cheap (keywords) or richer (small LLM + embeddings).</li>
+<li>Reasoning models should see <strong>evidence subsets</strong>, with child detail pulled on demand via <code>expand</code>.</li>
+<li>Traceability is via <code>member_ids</code> plus <code><a href="../reference/capsule_content.html">capsule_content()</a></code> / source <code>ks_context</code> — that audit path is what makes capsule-based CSR drafts usable in a regulated setting.</li>
+<li>The bundled pilot study is enough to exercise AE, lab/visit, demographics, vitals, and efficacy content in one store — use the inventory in Step 2 as your ground truth before trusting retrieval filters.</li>
 </ul></section><script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);

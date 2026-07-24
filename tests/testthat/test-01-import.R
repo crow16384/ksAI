@@ -134,3 +134,18 @@ test_that(".extract_columns keeps is_grouping flag", {
   expect_true(out$VISIT$is_grouping)
   expect_false(out$MEAN$is_grouping)
 })
+
+test_that("ks_load resolves figure asset_path and compact header", {
+  dir <- make_fixture_figure()
+  study <- ks_load(dir, ids = NULL)
+  expect_equal(length(study$figures), 1L)
+  ctx <- study$figures[[1]]
+  expect_equal(ctx$type, "Figure")
+  expect_true(!is.na(ctx$asset_path) && file.exists(ctx$asset_path))
+  expect_match(ctx$asset_path, "\\.svg$", perl = TRUE)
+  expect_true(length(ctx$body_text) >= 1L)
+  cmp <- as_compact(ctx)
+  expect_match(cmp, "^FIGURE:", perl = TRUE)
+  expect_match(cmp, "ASSET:", fixed = TRUE)
+  expect_match(as_markdown(ctx), "Asset", fixed = TRUE)
+})

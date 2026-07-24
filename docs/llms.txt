@@ -67,10 +67,11 @@ loaded_out <- load_result("analysis/table-14-3-01")
   /
   [`load_result()`](https://crow16384.github.io/ksAI/reference/load_result.md).
 - **Clinical capsules** —
-  [`as_capsules()`](https://crow16384.github.io/ksAI/reference/as_capsules.md)
-  decomposes large studies into concept-level units with
-  language-agnostic domain tags (`domain_map`, multilingual lexicon,
-  optional small-LLM via `model` / `llm_domain`). Enrich with
+  [`as_capsules(study, model = ...)`](https://crow16384.github.io/ksAI/reference/as_capsules.md)
+  asks an LLM to group tables and figures into a named semantic tree
+  (`member_ids`, multi-membership). Vision-capable models receive figure
+  images. Review with `review_capsules()` / `capsule_content()` /
+  `ks_review_capsules()`, then enrich with
   [`ks_annotate()`](https://crow16384.github.io/ksAI/reference/ks_annotate.md),
   embed, retrieve, and reason.
 - **Skills** — customizable Markdown prompt templates. Built-ins:

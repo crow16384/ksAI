@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">ksAI</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -221,39 +221,42 @@ build on it:</p>
 <h2 id="build-a-clinical-capsule-store">5. Build a Clinical Capsule store<a class="anchor" aria-label="anchor" href="#build-a-clinical-capsule-store"></a>
 </h2>
 <p>When a study has many outputs or individual tables are too large to
-fit in one prompt, decompose them into <strong>clinical
-capsules</strong> — concept-centric, hierarchical summaries with parsed
-statistics, domain tags, and links.</p>
-<p>Domain codes are inferred once per output (multilingual rules;
-optional small LLM). Hard overrides win first:
-<code>enrich_context(annotations$domain)</code> and
-<code>ks_set_option(domain_map = ...)</code>.</p>
+fit in one prompt, ask an LLM to group <strong>tables and
+figures</strong> into <strong>clinical capsules</strong> — named
+semantic units with a meaning-based tree and multi-membership
+(<code>member_ids</code>). There is no rule-based / CDISC formation
+path: <code>model</code> is required. Vision-capable models receive
+figure images; R only attaches assets.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Build capsule store from the entire study (or a single context).</span></span>
-<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span><span class="va">study</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># LLM-only capsule formation (small or large model).</span></span>
+<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span></span>
+<span>  <span class="va">study</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>  base_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
+<span>  max_excerpt_rows <span class="op">=</span> <span class="fl">12L</span>,</span>
+<span>  attach_images <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
 <span><span class="va">store</span></span>
 <span></span>
-<span><span class="co"># Optional: resolve UNKNOWN domains with a small local model (once per table).</span></span>
-<span><span class="co"># store &lt;- as_capsules(</span></span>
-<span><span class="co">#   study,</span></span>
-<span><span class="co">#   model = "qwen3.5-4b",</span></span>
-<span><span class="co">#   provider = "lm_studio",</span></span>
-<span><span class="co">#   base_url = "http://127.0.0.1:1234",</span></span>
-<span><span class="co">#   llm_domain = "unknown",</span></span>
-<span><span class="co">#   llm_min_confidence = 0.5</span></span>
-<span><span class="co"># )</span></span>
+<span><span class="co"># Structural review (no LLM) and tree printout.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/review_capsules.html">review_capsules</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">study</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/capsule_tree.html">capsule_tree</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Inspect individual capsules.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span></span>
-<span><span class="va">cap</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="st">"14-5.01::SOC::CARDIAC_DISORDERS"</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="va">cap</span>                    <span class="co"># print: domain, level, label, row span, child count</span></span>
-<span><span class="va">cap</span><span class="op">$</span><span class="va">stats</span>              <span class="co"># parsed statistics per treatment arm</span></span>
-<span><span class="va">cap</span><span class="op">$</span><span class="va">compact_text</span>       <span class="co"># the text a model will see for this capsule</span></span>
-<span><span class="va">cap</span><span class="op">$</span><span class="va">child_ids</span>          <span class="co"># PT-level capsule IDs nested under this SOC</span></span>
-<span><span class="va">cap</span><span class="op">$</span><span class="va">linked_ids</span>         <span class="co"># listing output IDs in the same study / same domain</span></span></code></pre></div>
-<p>The hierarchy has three levels by default: OVERALL → SOC → PT (for AE
-tables), or OVERALL → PARAM (for continuous endpoints). Parent/child IDs
-are wired automatically.</p>
+<span><span class="va">cap</span> <span class="op">&lt;-</span> <span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">cap</span>                    <span class="co"># print: label, members, parent, children</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">member_ids</span>         <span class="co"># table/figure output ids in this capsule</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">compact_text</span>       <span class="co"># text a model will see for this capsule</span></span>
+<span><span class="va">cap</span><span class="op">$</span><span class="va">child_ids</span>          <span class="co"># child capsule ids in the semantic tree</span></span>
+<span></span>
+<span><span class="co"># Expand full member content from the live study.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/capsule_content.html">capsule_content</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">cap</span><span class="op">$</span><span class="va">capsule_id</span>, <span class="va">study</span>, format <span class="op">=</span> <span class="st">"compact"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The hierarchy is an LLM-assigned tree (<code>parent_id</code> /
+<code>child_ids</code>) by information meaning — not MedDRA
+<code>ROW_KIND</code> levels. One output may appear in several
+capsules.</p>
 <p>Persist the store alongside your <code>.ks</code> file:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/save_capsules.html">save_capsules</a></span><span class="op">(</span><span class="va">store</span>, <span class="st">"my_study.ksc"</span><span class="op">)</span></span>
@@ -268,35 +271,27 @@ are wired automatically.</p>
 </h3>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
-<span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="st">"14-5.01::SOC::CARDIAC_DISORDERS"</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">keywords</span></span></code></pre></div>
-<p>This tokenizes <code>label</code>, <code>compact_text</code>, and
-existing concepts, strips stop words, and detects known clinical
+<span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">keywords</span></span></code></pre></div>
+<p>This tokenizes <code>label</code>, <code>member_ids</code>, and
+<code>compact_text</code>, strips stop words, and detects known clinical
 abbreviations (<code>TEAE</code>, <code>SOC</code>, <code>PT</code>,
 etc.).</p>
 </div>
 <div class="section level3">
 <h3 id="b--optional-small-llm-enrichment-pass">6b. Optional small-LLM enrichment pass<a class="anchor" aria-label="anchor" href="#b--optional-small-llm-enrichment-pass"></a>
 </h3>
-<p>A 4B model running locally can identify medical concepts, synonyms,
-and richer keywords. The same <code>model</code> also reclassifies
-capsules still tagged <code>UNKNOWN</code> (once per
-<code>source_id</code>). Use <code>force_domain = TRUE</code> to
-reclassify every table. LM Studio with <code>qwen3.5-4b</code> or
-similar works well:</p>
+<p>A small local model can identify medical concepts, synonyms, and
+richer keywords (JSON keys <code>concepts</code>, <code>synonyms</code>,
+<code>keywords</code>). Domain reclassification is not part of
+annotation.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span></span>
 <span>  <span class="va">store</span>,</span>
-<span>  model              <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
-<span>  provider           <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
-<span>  base_url           <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
-<span>  force              <span class="op">=</span> <span class="cn">FALSE</span>,  <span class="co"># skip capsules already annotated</span></span>
-<span>  force_domain       <span class="op">=</span> <span class="cn">FALSE</span>,  <span class="co"># only UNKNOWN domains</span></span>
-<span>  llm_min_confidence <span class="op">=</span> <span class="fl">0.5</span></span>
+<span>  model    <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>  base_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
+<span>  force    <span class="op">=</span> <span class="cn">FALSE</span>  <span class="co"># skip capsules already annotated</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The concept response is expected to be JSON with keys
-<code>concepts</code>, <code>synonyms</code>, <code>keywords</code>.
-Domain responses use <code>{"domain":"CODE","confidence":0.0}</code>.
-Any non-JSON wrapper text is stripped automatically.</p>
 </div>
 <div class="section level3">
 <h3 id="c--embedding-vectors">6c. Embedding vectors<a class="anchor" aria-label="anchor" href="#c--embedding-vectors"></a>
@@ -312,7 +307,8 @@ LM Studio:</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_embed.html">ks_embed</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="st">"14-5.01::SOC::CARDIAC_DISORDERS"</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">embedding</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">cid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="va">cid</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">embedding</span><span class="op">)</span></span></code></pre></div>
 <p>Embeddings are stored in <code>capsule$embedding</code> as a numeric
 vector and persisted in the <code>.ksc</code> file.
 <code><a href="../reference/ks_retrieve.html">ks_retrieve()</a></code> falls back to keyword-only scoring when
@@ -346,7 +342,7 @@ three signals blended by configurable weights:</p>
 <tr class="odd">
 <td>Metadata</td>
 <td>0.1</td>
-<td>exact match on <code>domain</code>, <code>level</code>,
+<td>match on <code>label</code>, <code>member_id</code>, and/or
 <code>population</code>
 </td>
 </tr>
@@ -357,7 +353,7 @@ three signals blended by configurable weights:</p>
 <span>  <span class="va">store</span>,</span>
 <span>  query  <span class="op">=</span> <span class="st">"cardiac events in the Xanomeline High Dose arm"</span>,</span>
 <span>  n      <span class="op">=</span> <span class="fl">5L</span>,</span>
-<span>  filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"AE"</span>, level <span class="op">=</span> <span class="st">"SOC"</span><span class="op">)</span></span>
+<span>  filter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>label <span class="op">=</span> <span class="st">"cardiac"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">subset</span>                   <span class="co"># print: query + top-5 ranked capsules with scores</span></span>
@@ -370,31 +366,40 @@ three signals blended by configurable weights:</p>
 </h2>
 <p><code><a href="../reference/ks_reason.html">ks_reason()</a></code> combines retrieval and the reasoning step in
 one call. The model <strong>never sees the full study</strong> — only
-the capsule compact texts for the matched subset, plus its metadata:</p>
+the capsule compact texts for the matched subset, plus label / members /
+tree metadata:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>  <span class="va">store</span>,</span>
 <span>  query    <span class="op">=</span> <span class="st">"Summarize cardiac findings and statistical significance"</span>,</span>
 <span>  n        <span class="op">=</span> <span class="fl">5L</span>,</span>
-<span>  expand   <span class="op">=</span> <span class="cn">FALSE</span>,   <span class="co"># TRUE → also include child PT capsules</span></span>
+<span>  expand   <span class="op">=</span> <span class="cn">FALSE</span>,   <span class="co"># TRUE → also include child capsules</span></span>
 <span>  model    <span class="op">=</span> <span class="st">"gemma-4-26b-a4b-it-mlx"</span>,</span>
 <span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">out</span>                  <span class="co"># ks_result with skill = "reason"</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">out</span><span class="op">$</span><span class="va">response</span><span class="op">)</span></span></code></pre></div>
-<p>Set <code>expand = TRUE</code> for progressive disclosure: the
-initial reasoning pass uses only the retrieved capsules; children are
-loaded on demand:</p>
+<p>Set <code>expand = TRUE</code> for progressive disclosure: children
+of matched capsules are included via <code>child_ids</code>:</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">out_expanded</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>  <span class="va">store</span>,</span>
-<span>  query    <span class="op">=</span> <span class="st">"Which PT-level terms drove cardiac disorder incidence?"</span>,</span>
+<span>  query    <span class="op">=</span> <span class="st">"Which related outputs drove the cardiac safety theme?"</span>,</span>
 <span>  n        <span class="op">=</span> <span class="fl">3L</span>,</span>
-<span>  expand   <span class="op">=</span> <span class="cn">TRUE</span>,          <span class="co"># pulls in all PT children of matched SOC capsules</span></span>
+<span>  expand   <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  model    <span class="op">=</span> <span class="st">"gemma-4-26b-a4b-it-mlx"</span>,</span>
 <span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>Optional LLM critique of the capsule tree (vision models can review
+figures):</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># rev &lt;- ks_review_capsules(</span></span>
+<span><span class="co">#   store, study,</span></span>
+<span><span class="co">#   model = "qwen3:14b",</span></span>
+<span><span class="co">#   provider = "ollama",</span></span>
+<span><span class="co">#   attach_images = TRUE</span></span>
+<span><span class="co"># )</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -423,14 +428,17 @@ token-efficient injection</li>
 </h3>
 <ol style="list-style-type: decimal">
 <li>
-<code>ks_load(ids = NULL)</code> → full study</li>
+<code>ks_load(ids = NULL)</code> → full study (tables +
+figures)</li>
 <li>
-<code>as_capsules(study)</code> → concept-level decomposition
-(optional <code>model</code> / <code>llm_domain</code> for UNKNOWN
-domains)</li>
+<code>as_capsules(study, model = ...)</code> → LLM semantic tree
+(vision for figures)</li>
+<li>
+<code>review_capsules(store, study)</code> /
+<code>capsule_tree(store)</code> → inspect</li>
 <li>
 <code>ks_annotate(store)</code> → keywords (+ optional small-LLM
-enrichment / <code>force_domain</code> for domain repair)</li>
+concepts)</li>
 <li>
 <code>ks_embed(store)</code> → semantic vectors via local embedding
 model</li>

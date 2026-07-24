@@ -182,41 +182,42 @@ out_refined <- ks_llm(
 ## 5. Build a Clinical Capsule store
 
 When a study has many outputs or individual tables are too large to fit in one
-prompt, decompose them into **clinical capsules** — concept-centric,
-hierarchical summaries with parsed statistics, domain tags, and links.
-
-Domain codes are inferred once per output (multilingual rules; optional small
-LLM). Hard overrides win first: `enrich_context(annotations$domain)` and
-`ks_set_option(domain_map = ...)`.
+prompt, ask an LLM to group **tables and figures** into **clinical capsules** —
+named semantic units with a meaning-based tree and multi-membership
+(`member_ids`). There is no rule-based / CDISC formation path: `model` is
+required. Vision-capable models receive figure images; R only attaches assets.
 
 ```{r}
-# Build capsule store from the entire study (or a single context).
-store <- as_capsules(study)
+# LLM-only capsule formation (small or large model).
+store <- as_capsules(
+  study,
+  model = "qwen3.5-4b",
+  provider = "lm_studio",
+  base_url = "http://127.0.0.1:1234",
+  max_excerpt_rows = 12L,
+  attach_images = TRUE
+)
 store
 
-# Optional: resolve UNKNOWN domains with a small local model (once per table).
-# store <- as_capsules(
-#   study,
-#   model = "qwen3.5-4b",
-#   provider = "lm_studio",
-#   base_url = "http://127.0.0.1:1234",
-#   llm_domain = "unknown",
-#   llm_min_confidence = 0.5
-# )
+# Structural review (no LLM) and tree printout.
+print(review_capsules(store, study))
+capsule_tree(store)
 
 # Inspect individual capsules.
 names(store$capsules)[1:6]
-cap <- store$capsules[["14-5.01::SOC::CARDIAC_DISORDERS"]]
-cap                    # print: domain, level, label, row span, child count
-cap$stats              # parsed statistics per treatment arm
-cap$compact_text       # the text a model will see for this capsule
-cap$child_ids          # PT-level capsule IDs nested under this SOC
-cap$linked_ids         # listing output IDs in the same study / same domain
+cap <- store$capsules[[names(store$capsules)[[1]]]]
+cap                    # print: label, members, parent, children
+cap$member_ids         # table/figure output ids in this capsule
+cap$compact_text       # text a model will see for this capsule
+cap$child_ids          # child capsule ids in the semantic tree
+
+# Expand full member content from the live study.
+cat(capsule_content(store, cap$capsule_id, study, format = "compact"))
 ```
 
-The hierarchy has three levels by default: OVERALL → SOC → PT (for AE tables),
-or OVERALL → PARAM (for continuous endpoints). Parent/child IDs are wired
-automatically.
+The hierarchy is an LLM-assigned tree (`parent_id` / `child_ids`) by information
+meaning — not MedDRA `ROW_KIND` levels. One output may appear in several
+capsules.
 
 Persist the store alongside your `.ks` file:
 
@@ -233,34 +234,27 @@ store <- load_capsules("my_study.ksc")
 
 ```{r}
 store <- ks_annotate(store)
-store$capsules[["14-5.01::SOC::CARDIAC_DISORDERS"]]$keywords
+store$capsules[[names(store$capsules)[[1]]]]$keywords
 ```
 
-This tokenizes `label`, `compact_text`, and existing concepts, strips stop
-words, and detects known clinical abbreviations (`TEAE`, `SOC`, `PT`, etc.).
+This tokenizes `label`, `member_ids`, and `compact_text`, strips stop words,
+and detects known clinical abbreviations (`TEAE`, `SOC`, `PT`, etc.).
 
 ### 6b. Optional small-LLM enrichment pass
 
-A 4B model running locally can identify medical concepts, synonyms, and
-richer keywords. The same `model` also reclassifies capsules still tagged
-`UNKNOWN` (once per `source_id`). Use `force_domain = TRUE` to reclassify
-every table. LM Studio with `qwen3.5-4b` or similar works well:
+A small local model can identify medical concepts, synonyms, and richer
+keywords (JSON keys `concepts`, `synonyms`, `keywords`). Domain reclassification
+is not part of annotation.
 
 ```{r}
 store <- ks_annotate(
   store,
-  model              = "qwen3.5-4b",
-  provider           = "lm_studio",
-  base_url           = "http://127.0.0.1:1234",
-  force              = FALSE,  # skip capsules already annotated
-  force_domain       = FALSE,  # only UNKNOWN domains
-  llm_min_confidence = 0.5
+  model    = "qwen3.5-4b",
+  provider = "lm_studio",
+  base_url = "http://127.0.0.1:1234",
+  force    = FALSE  # skip capsules already annotated
 )
 ```
-
-The concept response is expected to be JSON with keys `concepts`, `synonyms`,
-`keywords`. Domain responses use `{"domain":"CODE","confidence":0.0}`.
-Any non-JSON wrapper text is stripped automatically.
 
 ### 6c. Embedding vectors
 
@@ -274,7 +268,8 @@ ks_set_option(
 )
 
 store <- ks_embed(store)
-length(store$capsules[["14-5.01::SOC::CARDIAC_DISORDERS"]]$embedding)
+cid <- names(store$capsules)[[1]]
+length(store$capsules[[cid]]$embedding)
 ```
 
 Embeddings are stored in `capsule$embedding` as a numeric vector and
@@ -292,14 +287,14 @@ blended by configurable weights:
 |--------|---------------|--------|
 | Semantic | 0.6 | cosine similarity with query embedding |
 | Keyword | 0.3 | token overlap between query and `capsule$keywords` |
-| Metadata | 0.1 | exact match on `domain`, `level`, `population` |
+| Metadata | 0.1 | match on `label`, `member_id`, and/or `population` |
 
 ```{r}
 subset <- ks_retrieve(
   store,
   query  = "cardiac events in the Xanomeline High Dose arm",
   n      = 5L,
-  filter = list(domain = "AE", level = "SOC")
+  filter = list(label = "cardiac")
 )
 
 subset                   # print: query + top-5 ranked capsules with scores
@@ -313,14 +308,14 @@ subset$scores            # data.frame: capsule_id, semantic, keyword, metadata, 
 
 `ks_reason()` combines retrieval and the reasoning step in one call. The
 model **never sees the full study** — only the capsule compact texts for the
-matched subset, plus its metadata:
+matched subset, plus label / members / tree metadata:
 
 ```{r}
 out <- ks_reason(
   store,
   query    = "Summarize cardiac findings and statistical significance",
   n        = 5L,
-  expand   = FALSE,   # TRUE → also include child PT capsules
+  expand   = FALSE,   # TRUE → also include child capsules
   model    = "gemma-4-26b-a4b-it-mlx",
   provider = "lm_studio"
 )
@@ -329,18 +324,29 @@ out                  # ks_result with skill = "reason"
 cat(out$response)
 ```
 
-Set `expand = TRUE` for progressive disclosure: the initial reasoning pass
-uses only the retrieved capsules; children are loaded on demand:
+Set `expand = TRUE` for progressive disclosure: children of matched capsules
+are included via `child_ids`:
 
 ```{r}
 out_expanded <- ks_reason(
   store,
-  query    = "Which PT-level terms drove cardiac disorder incidence?",
+  query    = "Which related outputs drove the cardiac safety theme?",
   n        = 3L,
-  expand   = TRUE,          # pulls in all PT children of matched SOC capsules
+  expand   = TRUE,
   model    = "gemma-4-26b-a4b-it-mlx",
   provider = "lm_studio"
 )
+```
+
+Optional LLM critique of the capsule tree (vision models can review figures):
+
+```{r}
+# rev <- ks_review_capsules(
+#   store, study,
+#   model = "qwen3:14b",
+#   provider = "ollama",
+#   attach_images = TRUE
+# )
 ```
 
 ---
@@ -357,15 +363,14 @@ out_expanded <- ks_reason(
 
 ### For broad tasks (many outputs or large tables)
 
-1. `ks_load(ids = NULL)` → full study
-2. `as_capsules(study)` → concept-level decomposition
-   (optional `model` / `llm_domain` for UNKNOWN domains)
-3. `ks_annotate(store)` → keywords (+ optional small-LLM enrichment /
-   `force_domain` for domain repair)
-4. `ks_embed(store)` → semantic vectors via local embedding model
-5. `save_capsules(store, ...)` → persist for reuse
-6. `ks_reason(store, query, n)` → retrieve + reason in one call
-7. `save_result()` → traceable deliverable
+1. `ks_load(ids = NULL)` → full study (tables + figures)
+2. `as_capsules(study, model = ...)` → LLM semantic tree (vision for figures)
+3. `review_capsules(store, study)` / `capsule_tree(store)` → inspect
+4. `ks_annotate(store)` → keywords (+ optional small-LLM concepts)
+5. `ks_embed(store)` → semantic vectors via local embedding model
+6. `save_capsules(store, ...)` → persist for reuse
+7. `ks_reason(store, query, n)` → retrieve + reason in one call
+8. `save_result()` → traceable deliverable
 
 Capsule stores can be built once from the full study and reused across many
 writing sessions without reloading or reprocessing the ksTFL source JSON.

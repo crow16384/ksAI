@@ -14,8 +14,7 @@ population.}
 
 \item{source}{Optional character scalar. Overrides the source program.}
 
-\item{annotations}{Named list of free-form metadata to merge in.
-Use \code{domain} to force the capsule domain code.}
+\item{annotations}{Named list of free-form metadata to merge in.}
 }
 \value{
 A new \code{ks_context} object.
@@ -25,18 +24,11 @@ Returns a new \code{ks_context} with user-supplied metadata overlaid. The
 original object is not modified. \code{annotations} are merged with any existing
 annotations rather than replaced.
 }
-\details{
-Set \code{annotations = list(domain = "AE")} (or any study-specific code) to
-override automatic domain inference used by \code{\link[=as_capsules]{as_capsules()}}. Domain tags
-are language-agnostic: multilingual titles, MedDRA structure, ICH-style
-ids, and \code{\link[=ks_set_option]{ks_set_option()}} \code{domain_map} are also consulted.
-}
 \examples{
 \dontrun{
 ctx <- study$tables[["14-3.01"]]
 ctx <- enrich_context(ctx, population = "ITT",
-                      annotations = list(sap_ref = "Section 9.2",
-                                         domain = "EFFC"))
+                      annotations = list(sap_ref = "Section 9.2"))
 }
 
 }

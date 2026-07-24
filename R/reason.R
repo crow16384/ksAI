@@ -91,11 +91,10 @@ ks_reason <- function(store,
     cap <- capsules[[cid]]
     paste(
       paste0("### Capsule ", cid),
-      paste0("- domain: ", cap$domain),
-      paste0("- level: ", cap$level),
       paste0("- label: ", cap$label),
-      paste0("- source_id: ", cap$source_id),
+      paste0("- members: ", paste(cap$member_ids %||% character(), collapse = ", ")),
       paste0("- parent_id: ", cap$parent_id %||% NA_character_),
+      paste0("- children: ", paste(cap$child_ids %||% character(), collapse = ", ")),
       "",
       cap$compact_text %||% "",
       sep = "\n"

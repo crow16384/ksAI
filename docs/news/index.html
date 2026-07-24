@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">ksAI</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,25 +36,21 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0" id="ksai-020">ksAI 0.2.0<a class="anchor" aria-label="anchor" href="#ksai-020"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.3.0" id="ksai-030">ksAI 0.3.0<a class="anchor" aria-label="anchor" href="#ksai-030"></a></h2>
 <div class="section level3">
-<h3 id="domain-inference-language-agnostic-0-2-0">Domain inference (language-agnostic)<a class="anchor" aria-label="anchor" href="#domain-inference-language-agnostic-0-2-0"></a></h3>
+<h3 id="llm-only-content-capsules-0-3-0">LLM-only content capsules<a class="anchor" aria-label="anchor" href="#llm-only-content-capsules-0-3-0"></a></h3>
 <ul><li>
-<code><a href="../reference/as_capsules.html">as_capsules()</a></code> now infers clinical domain codes with a priority chain that works for non-English titles: <code>enrich_context(annotations$domain)</code>, session <code>domain_map</code>, MedDRA <code>ROW_KIND</code> structure, multilingual lexicon, ICH/CSR-style output ids, then <code>"UNKNOWN"</code>.</li>
-<li>New option <code>domain_map</code> (<code><a href="../reference/ks_get_option.html">ks_get_option()</a></code> / <code><a href="../reference/ks_get_option.html">ks_set_option()</a></code>): named character vector of exact output ids or regex → domain.</li>
-<li>Bare English <code>"baseline"</code> is no longer mapped to <code>DM</code>.</li>
-</ul></div>
-<div class="section level3">
-<h3 id="optional-small-llm-domain-classification-0-2-0">Optional small-LLM domain classification<a class="anchor" aria-label="anchor" href="#optional-small-llm-domain-classification-0-2-0"></a></h3>
-<ul><li>
-<code>as_capsules(x, model = ..., provider = ..., base_url = ..., llm_domain = c("unknown","always","never"), llm_min_confidence = 0.5)</code> can call a small local model once per table (chat reused across a study).</li>
+<code><a href="../reference/as_capsules.html">as_capsules()</a></code> now forms capsules <strong>only via an LLM</strong> (small or large). Deterministic CDISC/domain/row-group formation has been removed. <code>model</code> is required.</li>
+<li>Capsules group whole <strong>tables and figures</strong> (<code>member_ids</code>) into a named semantic tree with multi-membership. Figure image assets are resolved on import and attached for vision-capable models (R does not interpret plots).</li>
+<li>New review helpers: <code><a href="../reference/capsule_tree.html">capsule_tree()</a></code>, <code><a href="../reference/capsule_membership.html">capsule_membership()</a></code>, <code><a href="../reference/review_capsules.html">review_capsules()</a></code>, <code><a href="../reference/capsule_content.html">capsule_content()</a></code>, <code><a href="../reference/ks_review_capsules.html">ks_review_capsules()</a></code>, plus <code><a href="../reference/as_compact.html">as_compact()</a></code> / <code><a href="../reference/as_markdown.html">as_markdown()</a></code> methods for capsules.</li>
+<li>Prompts: <code>inst/prompts/capsule_classify.md</code>, <code>capsule_review.md</code>.</li>
 <li>
-<code>ks_annotate(..., force_domain = FALSE, llm_min_confidence = 0.5)</code> with <code>model</code> set also reclassifies remaining <code>UNKNOWN</code> domains (once per <code>source_id</code>). Use <code>force_domain = TRUE</code> to reclassify every table.</li>
-<li>Closed codes: <code>AE</code>, <code>DM</code>, <code>VS</code>, <code>LB</code>, <code>EFFC</code>, <code>EX</code>, <code>DS</code>, <code>UNKNOWN</code> (plus common aliases).</li>
+<code><a href="../reference/ks_annotate.html">ks_annotate()</a></code> no longer reclassifies CDISC-like domains.</li>
+<li>Removed option <code>domain_map</code> and <code>llm_domain</code> / rule-based domain inference.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="documentation-0-2-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-2-0"></a></h3>
-<ul><li>Architecture, Capsule Pipeline Pilot, and Targeted Workflow articles updated for the new parameters and domain flow.</li>
+<h3 id="documentation-0-3-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-3-0"></a></h3>
+<ul><li>Architecture and capsule pipeline docs describe content-based LLM capsules and figure vision attachment.</li>
 </ul></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

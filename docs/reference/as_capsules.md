@@ -1,83 +1,85 @@
-# Build Clinical Capsules from Contexts
+# as_capsules
 
-Converts one
-[ks_context](https://crow16384.github.io/ksAI/reference/is_ks_context.md)
-(or all contexts in a
-[ks_study](https://crow16384.github.io/ksAI/reference/is_ks_study.md))
-into a concept-centric capsule registry suitable for semantic
-enrichment, retrieval, and progressive-disclosure reasoning.
-
-## Usage
-
-``` r
-as_capsules(x, ...)
-
-# S3 method for class 'ks_context'
-as_capsules(
-  x,
-  model = NULL,
-  provider = ks_get_option("provider"),
-  base_url = NULL,
-  llm_domain = c("unknown", "always", "never"),
-  llm_min_confidence = 0.5,
-  ...
-)
-
-# S3 method for class 'ks_study'
-as_capsules(
-  x,
-  model = NULL,
-  provider = ks_get_option("provider"),
-  base_url = NULL,
-  llm_domain = c("unknown", "always", "never"),
-  llm_min_confidence = 0.5,
-  ...
-)
 ```
+as_capsules                package:ksAI                R Documentation
 
-## Arguments
+_B_u_i_l_d _C_l_i_n_i_c_a_l _C_a_p_s_u_l_e_s _f_r_o_m _C_o_n_t_e_x_t_s (_L_L_M)
 
-- x:
+_D_e_s_c_r_i_p_t_i_o_n:
 
-  A `ks_context` or `ks_study`.
+     Groups *tables* and *figures* into a named semantic capsule tree
+     using an LLM only (small or large). There is no rule-based / CDISC
+     formation path. ‘model’ is required. Figure image pixels are
+     attached for vision-capable models; R does not interpret plots.
 
-- ...:
+_U_s_a_g_e:
 
-  Extra args forwarded to the ellmer chat constructor.
+     as_capsules(
+       x,
+       model,
+       provider = ks_get_option("provider"),
+       base_url = NULL,
+       max_excerpt_rows = 12L,
+       detail = c("compact", "full"),
+       min_confidence = 0.5,
+       batch_size = 24L,
+       attach_images = TRUE,
+       ...
+     )
+     
+     ## S3 method for class 'ks_context'
+     as_capsules(
+       x,
+       model,
+       provider = ks_get_option("provider"),
+       base_url = NULL,
+       max_excerpt_rows = 12L,
+       detail = c("compact", "full"),
+       min_confidence = 0.5,
+       batch_size = 24L,
+       attach_images = TRUE,
+       ...
+     )
+     
+     ## S3 method for class 'ks_study'
+     as_capsules(
+       x,
+       model,
+       provider = ks_get_option("provider"),
+       base_url = NULL,
+       max_excerpt_rows = 12L,
+       detail = c("compact", "full"),
+       min_confidence = 0.5,
+       batch_size = 24L,
+       attach_images = TRUE,
+       ...
+     )
+     
+_A_r_g_u_m_e_n_t_s:
 
-- model:
+       x: A ‘ks_context’ or ‘ks_study’.
 
-  Optional small LLM for domain classification (e.g. a 4B local model).
-  `NULL` keeps deterministic inference only.
+   model: LLM model name (required).
 
-- provider:
+provider: LLM provider. Defaults to ‘ks_get_option()’‘"provider"’.
 
-  LLM provider. Defaults to
-  [`ks_get_option()`](https://crow16384.github.io/ksAI/reference/ks_get_option.md)`"provider"`.
+base_url: Optional provider URL override.
 
-- base_url:
+max_excerpt_rows: Maximum table rows included in each catalog excerpt.
 
-  Optional provider URL override.
+  detail: ‘"compact"’ (default) or ‘"full"’ table excerpts.
 
-- llm_domain:
+min_confidence: Minimum confidence (0–1) to keep an LLM capsule.
 
-  When to call the model: `"unknown"` (default — only if rules yield
-  `UNKNOWN`), `"always"` (after annotation / `domain_map` / MedDRA
-  structure; lexicon and id are fallbacks), or `"never"`.
+batch_size: Maximum catalog items per classify call before an LLM merge
+          pass.
 
-- llm_min_confidence:
+attach_images: Logical. Attach figure assets via ellmer when readable.
 
-  Minimum confidence (0–1) to accept an LLM domain. Below this, rules
-  continue / return `UNKNOWN`.
+     ...: Extra args forwarded to the ellmer chat constructor.
 
-## Value
+_V_a_l_u_e:
 
-A `ks_capsule_store`.
+     A ‘ks_capsule_store’.
 
-## Details
-
-Domain codes are inferred once per output (language-agnostic rules
-first). Pass `model` to ask a small local LLM when rules leave the
-domain `UNKNOWN` (default), or always after hard signals
-(`llm_domain = "always"`). The chat is created once per call and reused
-across tables in a study.
+```

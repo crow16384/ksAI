@@ -1,55 +1,42 @@
-# Enrich a Table Context with User Knowledge
+# enrich_context
 
-Returns a new `ks_context` with user-supplied metadata overlaid. The
-original object is not modified. `annotations` are merged with any
-existing annotations rather than replaced.
-
-## Usage
-
-``` r
-enrich_context(ctx, population = NULL, source = NULL, annotations = list())
 ```
+enrich_context              package:ksAI               R Documentation
 
-## Arguments
+_E_n_r_i_c_h _a _T_a_b_l_e _C_o_n_t_e_x_t _w_i_t_h _U_s_e_r _K_n_o_w_l_e_d_g_e
 
-- ctx:
+_D_e_s_c_r_i_p_t_i_o_n:
 
-  A `ks_context` object.
+     Returns a new ‘ks_context’ with user-supplied metadata overlaid.
+     The original object is not modified. ‘annotations’ are merged with
+     any existing annotations rather than replaced.
 
-- population:
+_U_s_a_g_e:
 
-  Optional character scalar. Overrides the analysis population.
+     enrich_context(ctx, population = NULL, source = NULL, annotations = list())
+     
+_A_r_g_u_m_e_n_t_s:
 
-- source:
+     ctx: A ‘ks_context’ object.
 
-  Optional character scalar. Overrides the source program.
+population: Optional character scalar. Overrides the analysis
+          population.
 
-- annotations:
+  source: Optional character scalar. Overrides the source program.
 
-  Named list of free-form metadata to merge in. Use `domain` to force
-  the capsule domain code.
+annotations: Named list of free-form metadata to merge in.
 
-## Value
+_V_a_l_u_e:
 
-A new `ks_context` object.
+     A new ‘ks_context’ object.
 
-## Details
+_E_x_a_m_p_l_e_s:
 
-Set `annotations = list(domain = "AE")` (or any study-specific code) to
-override automatic domain inference used by
-[`as_capsules()`](https://crow16384.github.io/ksAI/reference/as_capsules.md).
-Domain tags are language-agnostic: multilingual titles, MedDRA
-structure, ICH-style ids, and
-[`ks_set_option()`](https://crow16384.github.io/ksAI/reference/ks_get_option.md)
-`domain_map` are also consulted.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-ctx <- study$tables[["14-3.01"]]
-ctx <- enrich_context(ctx, population = "ITT",
-                      annotations = list(sap_ref = "Section 9.2",
-                                         domain = "EFFC"))
-} # }
+     ## Not run:
+     
+     ctx <- study$tables[["14-3.01"]]
+     ctx <- enrich_context(ctx, population = "ITT",
+                           annotations = list(sap_ref = "Section 9.2"))
+     ## End(Not run)
+     
 ```

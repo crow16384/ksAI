@@ -29,6 +29,11 @@
 #' @param footnotes Character vector. Footnote lines.
 #' @param annotations Named list of free-form user metadata.
 #' @param warnings Character vector. Compilation warnings.
+#' @param figure Optional named list of figure metadata from ksTFL
+#'   (`width`, `height`, `device`, …).
+#' @param asset_path Optional filesystem path to the figure image asset.
+#' @param body_text Optional character vector of body/placeholder text
+#'   (e.g. when a figure has no embedded tabular data).
 #'
 #' @return An object of class `ks_context`.
 #' @keywords internal
@@ -45,7 +50,10 @@ new_ks_context <- function(id,
                            n_rows_total = 0L,
                            footnotes = character(),
                            annotations = list(),
-                           warnings = character()) {
+                           warnings = character(),
+                           figure = NULL,
+                           asset_path = NA_character_,
+                           body_text = character()) {
   structure(
     list(
       id = id,
@@ -60,7 +68,10 @@ new_ks_context <- function(id,
       n_rows_total = as.integer(n_rows_total),
       footnotes = footnotes,
       annotations = annotations,
-      warnings = warnings
+      warnings = warnings,
+      figure = figure,
+      asset_path = as.character(asset_path %||% NA_character_),
+      body_text = as.character(body_text %||% character())
     ),
     class = c("ks_context", "list")
   )
@@ -109,6 +120,12 @@ print.ks_context <- function(x, ...) {
     cli::cli_text("{.strong Span headers}: {paste(sp, collapse = ', ')}")
   }
   cli::cli_text("{.strong Rows}: {length(x$rows)} shown of {x$n_rows_total} total")
+  if (!is.null(x$asset_path) && !is.na(x$asset_path) && nzchar(x$asset_path)) {
+    cli::cli_text("{.strong Asset}: {.path {x$asset_path}}")
+  }
+  if (length(x$body_text)) {
+    cli::cli_text("{.strong Body text}: {length(x$body_text)} line{?s}")
+  }
   if (length(x$footnotes)) {
     cli::cli_text("{.strong Footnotes}: {length(x$footnotes)}")
   }
@@ -191,18 +208,29 @@ as_markdown.ks_context <- function(x, ...) {
   )
   if (!is.na(x$population)) meta <- c(meta, paste0("- **Population**: ", x$population))
   if (!is.na(x$source)) meta <- c(meta, paste0("- **Source**: ", x$source))
+  if (!is.null(x$asset_path) && !is.na(x$asset_path) && nzchar(x$asset_path)) {
+    meta <- c(meta, paste0("- **Asset**: `", x$asset_path, "`"))
+  }
   lines <- c(lines, "", meta)
+
+  if (length(x$body_text)) {
+    lines <- c(lines, "", paste(x$body_text, collapse = "\n"))
+  }
 
   cols <- x$columns
   has_table <- length(cols) > 0 && length(x$rows) > 0
 
   if (!has_table) {
-    note <- if (!identical(x$type, "Table")) {
-      paste0("_(", x$type, " output; no tabular data embedded.)_")
-    } else {
-      "_(No data rows available.)_"
+    if (!identical(x$type, "Figure") || !length(x$body_text)) {
+      note <- if (identical(x$type, "Figure")) {
+        "_(Figure image available for vision models; no tabular data embedded.)_"
+      } else if (!identical(x$type, "Table")) {
+        paste0("_(", x$type, " output; no tabular data embedded.)_")
+      } else {
+        "_(No data rows available.)_"
+      }
+      lines <- c(lines, "", note)
     }
-    lines <- c(lines, "", note)
     lines <- c(lines, .md_footnotes(x$footnotes))
     return(paste(lines, collapse = "\n"))
   }
@@ -293,16 +321,24 @@ as_compact <- function(x, ...) {
 as_compact.ks_context <- function(x, ...) {
   lines <- .compact_header_block(x)
 
+  if (length(x$body_text)) {
+    lines <- c(lines, paste0("BODY: ", paste(x$body_text, collapse = " | ")))
+  }
+
   cols <- x$columns
   has_table <- length(cols) > 0 && length(x$rows) > 0
 
   if (!has_table) {
-    note <- if (!identical(x$type, "Table")) {
-      paste0("(", x$type, " output; no tabular data embedded.)")
-    } else {
-      "(No data rows available.)"
+    if (!identical(x$type, "Figure") || !length(x$body_text)) {
+      note <- if (identical(x$type, "Figure")) {
+        "(Figure image for vision models; no tabular data embedded.)"
+      } else if (!identical(x$type, "Table")) {
+        paste0("(", x$type, " output; no tabular data embedded.)")
+      } else {
+        "(No data rows available.)"
+      }
+      lines <- c(lines, "", note)
     }
-    lines <- c(lines, "", note)
     lines <- c(lines, .compact_footnotes(x$footnotes))
     return(paste(lines, collapse = "\n"))
   }
@@ -312,11 +348,15 @@ as_compact.ks_context <- function(x, ...) {
   paste(lines, collapse = "\n")
 }
 
-#' Compact header: TABLE / TITLE / SUBTITLE lines
+#' Compact header: TABLE|FIGURE|TEXT / TITLE / SUBTITLE / ASSET lines
 #' @keywords internal
 #' @noRd
 .compact_header_block <- function(x) {
-  header <- paste0("TABLE: ", x$id)
+  kind <- toupper(as.character(x$type %||% "Table"))
+  if (!kind %in% c("TABLE", "FIGURE", "TEXT")) {
+    kind <- "TABLE"
+  }
+  header <- paste0(kind, ": ", x$id)
   if (!is.na(x$population) && nzchar(x$population)) {
     header <- paste0(header, " | Population: ", x$population)
   }
@@ -327,6 +367,15 @@ as_compact.ks_context <- function(x, ...) {
   }
   if (length(x$subtitles)) {
     lines <- c(lines, paste0("SUBTITLE: ", paste(x$subtitles, collapse = " \u2014 ")))
+  }
+  if (!is.null(x$asset_path) && !is.na(x$asset_path) && nzchar(x$asset_path)) {
+    lines <- c(lines, paste0("ASSET: ", x$asset_path))
+  }
+  if (!is.null(x$figure) && length(x$figure)) {
+    device <- as.character(x$figure$device %||% "")
+    if (nzchar(device)) {
+      lines <- c(lines, paste0("DEVICE: ", device))
+    }
   }
   lines
 }
@@ -523,17 +572,11 @@ as_compact.ks_context <- function(x, ...) {
 #' original object is not modified. `annotations` are merged with any existing
 #' annotations rather than replaced.
 #'
-#' Set `annotations = list(domain = "AE")` (or any study-specific code) to
-#' override automatic domain inference used by [as_capsules()]. Domain tags
-#' are language-agnostic: multilingual titles, MedDRA structure, ICH-style
-#' ids, and [ks_set_option()] `domain_map` are also consulted.
-#'
 #' @param ctx A `ks_context` object.
 #' @param population Optional character scalar. Overrides the analysis
 #'   population.
 #' @param source Optional character scalar. Overrides the source program.
 #' @param annotations Named list of free-form metadata to merge in.
-#'   Use `domain` to force the capsule domain code.
 #'
 #' @return A new `ks_context` object.
 #'
@@ -541,8 +584,7 @@ as_compact.ks_context <- function(x, ...) {
 #' \dontrun{
 #' ctx <- study$tables[["14-3.01"]]
 #' ctx <- enrich_context(ctx, population = "ITT",
-#'                       annotations = list(sap_ref = "Section 9.2",
-#'                                          domain = "EFFC"))
+#'                       annotations = list(sap_ref = "Section 9.2"))
 #' }
 #'
 #' @export

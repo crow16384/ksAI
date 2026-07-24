@@ -41,8 +41,8 @@ test_that("as_compact renders flat tables without span headers", {
 test_that("as_compact handles non-table outputs without rows", {
   fig <- ksAI:::new_ks_context(id = "F1", type = "Figure", title = "A Figure")
   txt <- as_compact(fig)
-  expect_match(txt, "TABLE: F1", fixed = TRUE)
-  expect_match(txt, "Figure output", fixed = TRUE)
+  expect_match(txt, "FIGURE: F1", fixed = TRUE)
+  expect_match(txt, "Figure image for vision models", fixed = TRUE)
 })
 
 test_that("as_compact handles span cols missing from visible columns", {
@@ -105,7 +105,22 @@ test_that("as_capsules survives span/column mismatches via compact path", {
     n_rows_total = 2L
   )
 
-  store <- as_capsules(ctx)
+  fake_json <- jsonlite::toJSON(
+    list(capsules = list(list(
+      capsule_id = "ae_cardiac",
+      label = "Cardiac adverse events",
+      parent_id = NULL,
+      member_ids = list("14-9.99"),
+      confidence = 0.95
+    ))),
+    auto_unbox = TRUE,
+    null = "null"
+  )
+  fake_chat <- list(chat = function(...) as.character(fake_json))
+  testthat::local_mocked_bindings(
+    .make_ellmer_chat = function(...) fake_chat
+  )
+  store <- as_capsules(ctx, model = "tiny")
   expect_true(is_ks_capsule_store(store))
   expect_gt(length(store$capsules), 0L)
   expect_true(any(nzchar(vapply(store$capsules, function(c) c$compact_text, ""))))

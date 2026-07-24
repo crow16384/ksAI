@@ -239,53 +239,40 @@ cat(as_compact(facts_bsln_high), "\n")
 
 hr("5. Workflow C — Capsule pipeline")
 
-# 5a. Build capsule store from all six tables.
-# Domain tags: rules first (lexicon / structure / ICH id / domain_map).
-# Optional: pass model = MODEL_SMALL, llm_domain = "unknown" to classify
-# remaining UNKNOWN titles with a small LLM (once per table).
-store <- as_capsules(study)
-cli_alert_success("Built {length(store$capsules)} capsules from {length(TABLES)} tables")
+# 5a. Build capsule store from tables + figures (LLM required).
+# Prefer a vision-capable model when figures are included.
+store <- as_capsules(
+  study,
+  model = MODEL_SMALL,
+  provider = PROVIDER,
+  base_url = CHAT_URL
+)
+cli_alert_success("Built {length(store$capsules)} capsules")
 
-# Show capsule inventory per source table.
-for (label in names(TABLES)) {
-  id <- TABLES[[label]]
-  n <- sum(vapply(store$capsules, function(c) identical(c$source_id, id), logical(1)))
-  domains <- unique(vapply(
-    store$capsules[vapply(store$capsules, function(c) c$source_id == id, logical(1))],
-    function(c) c$domain, character(1)
-  ))
-  cli_text("{label} ({id}): {n} capsules, domain(s) = {paste(domains, collapse = ', ')}")
+# Inventory by capsule label / members.
+for (cid in names(store$capsules)) {
+  cap <- store$capsules[[cid]]
+  cli_text(
+    "{cid}: {cap$label} — members {paste(cap$member_ids, collapse = ', ')}"
+  )
 }
 
-# Inspect one capsule per table type.
-cli_h2("Sample capsules")
-sample_caps <- vapply(TABLES, function(id) {
-  ids <- names(store$capsules)[vapply(store$capsules, function(c) c$source_id == id, logical(1))]
-  ids[[1]]
-}, character(1), USE.NAMES = TRUE)
-for (label in names(sample_caps)) {
-  cap <- store$capsules[[sample_caps[[label]]]]
-  cli_text("{label}: {cap$capsule_id} [{cap$level}] {cap$label}")
-}
+# Structural review (no LLM) and optional deep review.
+print(review_capsules(store, study))
+capsule_tree(store)
 
 # 5b. Semantic enrichment — pass 1: deterministic keywords (fast, no model).
 cli_h2("5b. Keyword pass (pure R)")
 store <- ks_annotate(store)
+sample_id <- names(store$capsules)[[1]]
 cli_text(
-  "Keywords for {sample_caps['adverse_events']}: ",
-  paste(store$capsules[[sample_caps["adverse_events"]]]$keywords, collapse = ", ")
+  "Keywords for {sample_id}: ",
+  paste(store$capsules[[sample_id]]$keywords, collapse = ", ")
 )
 
-# 5c. Semantic enrichment — pass 2: small 4B LLM on representative capsules.
+# 5c. Semantic enrichment — pass 2: small LLM concepts (optional).
 cli_h2("5c. LLM annotation pass ({MODEL_SMALL})")
-DEMO_CAPSULE_IDS <- c(
-  sample_caps[["demographics"]],
-  sample_caps[["efficacy_adas"]],
-  sample_caps[["efficacy_cibic"]],
-  "14-5.01::SOC::CARDIAC_DISORDERS",
-  sample_caps[["laboratory"]],
-  sample_caps[["vital_signs"]]
-)
+DEMO_CAPSULE_IDS <- head(names(store$capsules), 6L)
 
 if (RUN_LLM) {
   demo_store <- store
@@ -295,9 +282,7 @@ if (RUN_LLM) {
     model = MODEL_SMALL,
     provider = PROVIDER,
     base_url = CHAT_URL,
-    force = TRUE,
-    force_domain = FALSE,
-    llm_min_confidence = 0.5
+    force = TRUE
   )
   store$capsules[DEMO_CAPSULE_IDS] <- demo_store$capsules
   for (cid in DEMO_CAPSULE_IDS) {
@@ -305,7 +290,7 @@ if (RUN_LLM) {
     cli_text("{cid}: concepts = {paste(head(cap$concepts, 4), collapse = ', ')}")
   }
 } else {
-  cli_alert_warning("RUN_LLM = FALSE — skipping 4B annotation pass")
+  cli_alert_warning("RUN_LLM = FALSE — skipping annotation pass")
 }
 
 # 5d. Embedding vectors (OpenAI-compatible endpoint in LM Studio).
@@ -324,7 +309,7 @@ save_capsules(store, ksc_path)
 cli_alert_info("Saved capsule store to {.path {ksc_path}}")
 
 # ---------------------------------------------------------------------------
-# 6. Retrieval — domain-specific queries
+# 6. Retrieval — content queries
 # ---------------------------------------------------------------------------
 
 hr("6. Retrieval (ks_retrieve)")
@@ -332,23 +317,23 @@ hr("6. Retrieval (ks_retrieve)")
 queries <- list(
   adverse_events = list(
     query = "cardiac disorders and bradycardia in the high dose arm",
-    filter = list(domain = "AE", level = "SOC")
+    filter = list()
   ),
   efficacy = list(
     query = "ADAS-Cog change from baseline week 24 treatment difference",
-    filter = list(level = "PARAM")
+    filter = list()
   ),
   laboratory = list(
     query = "liver enzymes ALT AST laboratory abnormalities",
-    filter = list(domain = "LB")
+    filter = list()
   ),
   vital_signs = list(
     query = "systolic blood pressure change from baseline end of treatment",
-    filter = list(level = "PARAM")
+    filter = list()
   ),
   demographics = list(
     query = "age sex race baseline demographic characteristics",
-    filter = list(domain = "DM", level = "PARAM")
+    filter = list()
   )
 )
 

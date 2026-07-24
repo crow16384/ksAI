@@ -201,3 +201,108 @@ make_fixture_demographics <- function() {
   )))
   dir
 }
+
+# Minimal figure fixture with an SVG (or PNG) asset beside the meta folder.
+make_fixture_figure <- function() {
+  dir <- file.path(tempfile("ksai_fig_"))
+  dir.create(dir, recursive = TRUE)
+  data_ref <- "0001_figfixture"
+  # Tiny valid SVG; vision attach converts via magick when available.
+  svg <- paste(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20">',
+    '<text x="2" y="14">pulse</text></svg>',
+    sep = ""
+  )
+  writeLines(svg, file.path(dir, paste0(data_ref, ".svg")))
+
+  spec_key <- paste0("figure_spec_", data_ref)
+  spec_entry <- list(
+    document = list(docType = "Figure", hasData = FALSE, docOrder = 1L),
+    figure = list(width = "6in", height = "4in", device = "svg"),
+    headers = list(
+      list("Protocol: X", "", "Page {PAGE}"),
+      list("Population: Safety", "", "")
+    ),
+    footers = list(list("Source: tfl-programs/f.R", "", "2026-07-05")),
+    dataRef = list(data_ref),
+    titles = list(
+      title_0001 = list(
+        text = list("Figure 14.09 Mean Pulse Rate Profile"),
+        order = 1L,
+        toclevel = 1L
+      )
+    ),
+    subtitles = list(
+      subtitle_0001 = list(text = list("Safety population"), order = 1L)
+    ),
+    footnotes = list(
+      footnote_0001 = list(text = list("Last on-treatment assessment."), order = 1L)
+    ),
+    bodyText = list(
+      `__default_001` = list(text = list("No data are available for this output."), order = 1L)
+    )
+  )
+  spec <- list(
+    `_metadata` = list(
+      outDir = "/out",
+      docFileName = "f-14-09_pulse.docx",
+      datetime = "2026-07-05T18:00:00",
+      insertTOC = FALSE,
+      tocTitle = "TOC"
+    )
+  )
+  spec[[spec_key]] <- spec_entry
+  spec_file <- paste0("spec_", data_ref, ".json")
+  writeLines(
+    jsonlite::toJSON(spec, auto_unbox = TRUE, null = "null"),
+    file.path(dir, spec_file)
+  )
+  write_fixture_index(dir, list(list(
+    spec_file = spec_file,
+    doc_file = "f-14-09_pulse.docx",
+    datetime = "2026-07-05T18:00:00",
+    n_specs = 1L,
+    data_refs = list(data_ref)
+  )))
+  dir
+}
+
+# Build a capsule store without calling the LLM (for annotate/retrieve tests).
+make_mock_capsule_store <- function(member_ids = "14-3.01",
+                                    labels = NULL,
+                                    study = NULL) {
+  member_ids <- as.character(member_ids)
+  if (is.null(labels)) {
+    labels <- paste("Capsule for", member_ids)
+  }
+  labels <- as.character(labels)
+  if (length(labels) == 1L && length(member_ids) > 1L) {
+    labels <- rep(labels, length(member_ids))
+  }
+  capsules <- list()
+  # One parent with all members + one child overlapping first member (multi-membership).
+  root_id <- "demographics"
+  capsules[[root_id]] <- ksAI:::new_ks_capsule(
+    capsule_id = root_id,
+    label = labels[[1]],
+    member_ids = member_ids,
+    parent_id = NA_character_,
+    compact_text = paste("Members:", paste(member_ids, collapse = ", "))
+  )
+  if (length(member_ids) >= 1L) {
+    child_id <- "demographics_detail"
+    capsules[[child_id]] <- ksAI:::new_ks_capsule(
+      capsule_id = child_id,
+      label = paste(labels[[1]], "detail"),
+      member_ids = member_ids[[1]],
+      parent_id = root_id,
+      compact_text = paste("Detail for", member_ids[[1]])
+    )
+    capsules <- ksAI:::.wire_capsule_children(capsules)
+  }
+  ksAI:::new_ks_capsule_store(
+    capsules = capsules,
+    study_id = "fixture",
+    meta_dir = if (!is.null(study)) study$meta_dir else NULL
+  )
+}

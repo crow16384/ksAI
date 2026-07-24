@@ -58,11 +58,16 @@ reference:
   - retrieve
 - title: Clinical Capsules
   contents:
-  - is_ks_capsule
-  - is_ks_capsule_store
+  - ks_capsule
+  - ks_capsule_store
   - as_capsules
   - save_capsules
   - load_capsules
+  - capsule_tree
+  - capsule_membership
+  - review_capsules
+  - capsule_content
+  - ks_review_capsules
   - ks_annotate
   - ks_embed
   - ks_retrieve

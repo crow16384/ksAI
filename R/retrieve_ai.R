@@ -8,7 +8,8 @@
 #' @param store A `ks_capsule_store`.
 #' @param query User question or retrieval query.
 #' @param n Maximum number of capsules to return.
-#' @param filter Optional named list with any of: `domain`, `level`, `population`.
+#' @param filter Optional named list with any of: `label`, `population`,
+#'   `member_id` (output id that must be among capsule members).
 #' @param weights Named numeric list with `semantic`, `keyword`, `metadata`.
 #' @param model Embedding model for query embedding.
 #' @param base_url Embedding endpoint base URL.
@@ -98,13 +99,18 @@ print.ks_capsule_subset <- function(x, ...) {
 
     meta <- 0
     checks <- 0
-    if (!is.null(filter$domain)) {
+    if (!is.null(filter$label)) {
       checks <- checks + 1
-      if (identical(as.character(filter$domain), as.character(cap$domain))) meta <- meta + 1
+      if (grepl(as.character(filter$label), as.character(cap$label %||% ""), ignore.case = TRUE, fixed = TRUE) ||
+          identical(as.character(filter$label), as.character(cap$label))) {
+        meta <- meta + 1
+      }
     }
-    if (!is.null(filter$level)) {
+    if (!is.null(filter$member_id)) {
       checks <- checks + 1
-      if (identical(as.character(filter$level), as.character(cap$level))) meta <- meta + 1
+      if (as.character(filter$member_id) %in% as.character(cap$member_ids %||% character())) {
+        meta <- meta + 1
+      }
     }
     if (!is.null(filter$population)) {
       checks <- checks + 1

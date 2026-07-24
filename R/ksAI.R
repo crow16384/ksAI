@@ -34,11 +34,7 @@
     # Default embedding model for capsule semantic retrieval.
     embed_model = "text-embedding-nomic-embed-text-v1.5",
     # OpenAI-compatible embeddings endpoint.
-    embed_url = "http://127.0.0.1:1234/v1",
-    # Optional named character vector mapping output id (or regex) → domain.
-    # Exact id matches win over regex. Example:
-    #   c("14-5.01" = "AE", "^табл-ндя" = "AE", "^14-7" = "VS")
-    domain_map = character()
+    embed_url = "http://127.0.0.1:1234/v1"
   )
 }
 
@@ -60,7 +56,7 @@
 #'
 #' @param key Character scalar. Option name. One of `"max_rows"`,
 #'   `"skills_dir"`, `"provider"`, `"context_format"`, `"embed_model"`,
-#'   `"embed_url"`, `"domain_map"`.
+#'   `"embed_url"`.
 #' @param ... Named `key = value` pairs to set (for `ks_set_option()`).
 #'
 #' @return `ks_get_option()` returns the option value. `ks_set_option()`
@@ -70,9 +66,6 @@
 #' ks_get_option("max_rows")
 #' old <- ks_set_option(max_rows = 300L)
 #' ks_set_option(!!!old)
-#'
-#' # Language-independent domain overrides for capsule building:
-#' ks_set_option(domain_map = c("14-5.01" = "AE", "^табл-ндя" = "AE"))
 #'
 #' @export
 ks_get_option <- function(key) {

@@ -4,72 +4,75 @@
 \alias{as_capsules}
 \alias{as_capsules.ks_context}
 \alias{as_capsules.ks_study}
-\title{Build Clinical Capsules from Contexts}
+\title{Build Clinical Capsules from Contexts (LLM)}
 \usage{
 as_capsules(
   x,
-  model = NULL,
+  model,
   provider = ks_get_option("provider"),
   base_url = NULL,
-  llm_domain = "unknown",
-  llm_min_confidence = 0.5,
+  max_excerpt_rows = 12L,
+  detail = c("compact", "full"),
+  min_confidence = 0.5,
+  batch_size = 24L,
+  attach_images = TRUE,
   ...
 )
 
 \method{as_capsules}{ks_context}(
   x,
-  model = NULL,
+  model,
   provider = ks_get_option("provider"),
   base_url = NULL,
-  llm_domain = "unknown",
-  llm_min_confidence = 0.5,
+  max_excerpt_rows = 12L,
+  detail = c("compact", "full"),
+  min_confidence = 0.5,
+  batch_size = 24L,
+  attach_images = TRUE,
   ...
 )
 
 \method{as_capsules}{ks_study}(
   x,
-  model = NULL,
+  model,
   provider = ks_get_option("provider"),
   base_url = NULL,
-  llm_domain = "unknown",
-  llm_min_confidence = 0.5,
+  max_excerpt_rows = 12L,
+  detail = c("compact", "full"),
+  min_confidence = 0.5,
+  batch_size = 24L,
+  attach_images = TRUE,
   ...
 )
 }
 \arguments{
 \item{x}{A \code{ks_context} or \code{ks_study}.}
 
-\item{model}{Optional small LLM for domain classification (e.g. a 4B
-local model). \code{NULL} keeps deterministic inference only. Ignored when
-\code{llm_domain = "never"}.}
+\item{model}{LLM model name (required).}
 
 \item{provider}{LLM provider. Defaults to \code{\link[=ks_get_option]{ks_get_option()}}\code{"provider"}.}
 
 \item{base_url}{Optional provider URL override.}
 
-\item{llm_domain}{When to call the model: \code{"unknown"} (default — only if
-rules yield \code{UNKNOWN}), \code{"always"} (after annotation / \code{domain_map} /
-MedDRA structure; lexicon and id are fallbacks), or \code{"never"} (rules
-only; never contacts an LLM).}
+\item{max_excerpt_rows}{Maximum table rows included in each catalog excerpt.}
 
-\item{llm_min_confidence}{Minimum confidence (0–1) to accept an LLM
-domain. Below this, rules continue / return \code{UNKNOWN}.}
+\item{detail}{\code{"compact"} (default) or \code{"full"} table excerpts.}
 
-\item{...}{Extra args forwarded to the ellmer chat constructor (only when
-a domain LLM chat is created).}
+\item{min_confidence}{Minimum confidence (0–1) to keep an LLM capsule.}
+
+\item{batch_size}{Maximum catalog items per classify call before an LLM
+merge pass.}
+
+\item{attach_images}{Logical. Attach figure assets via ellmer when readable.}
+
+\item{...}{Extra args forwarded to the ellmer chat constructor.}
 }
 \value{
 A \code{ks_capsule_store}.
 }
 \description{
-Converts one \link{ks_context} (or all contexts in a \link{ks_study}) into a
-concept-centric capsule registry suitable for semantic enrichment,
-retrieval, and progressive-disclosure reasoning.
-}
-\details{
-Domain codes are inferred once per output (language-agnostic rules first).
-Pass \code{model} to ask a small local LLM when rules leave the domain
-\code{UNKNOWN} (default), or always after hard signals (\code{llm_domain = "always"}).
-The chat is created once per call and reused across tables in a study.
-With \code{llm_domain = "never"}, \code{model} is ignored and no LLM client is created.
+Groups \strong{tables} and \strong{figures} into a named semantic capsule tree using
+an LLM only (small or large). There is no rule-based / CDISC formation path.
+\code{model} is required. Figure image pixels are attached for vision-capable
+models; R does not interpret plots.
 }

@@ -1,7 +1,7 @@
 Package: ksAI
 Type: Package
 Title: AI-Native Reasoning Layer for ksTFL Clinical Outputs
-Version: 0.2.0
+Version: 0.3.0
 Authors@R:
     c(
     person("Vladimir", "Larchenko",
@@ -44,7 +44,8 @@ Suggests:
     knitr,
     rmarkdown,
     quarto,
-    pkgdown
+    pkgdown,
+    magick
 Config/testthat/edition: 3
 VignetteBuilder: knitr, quarto
 Config/roxygen2/version: 8.0.0

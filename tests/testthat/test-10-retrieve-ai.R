@@ -1,6 +1,5 @@
 test_that("ks_annotate deterministic pass adds keywords/concepts", {
-  dir <- make_fixture_demographics()
-  store <- as_capsules(ks_load(dir, ids = "14-3.01"))
+  store <- make_mock_capsule_store(member_ids = "14-3.01", labels = "Cardiac adverse events")
   out <- ks_annotate(store)
   expect_true(is_ks_capsule_store(out))
   kws <- vapply(out$capsules, function(c) length(c$keywords), integer(1))
@@ -8,8 +7,7 @@ test_that("ks_annotate deterministic pass adds keywords/concepts", {
 })
 
 test_that("ks_embed stores numeric vectors (mocked endpoint)", {
-  dir <- make_fixture_demographics()
-  store <- as_capsules(ks_load(dir, ids = "14-3.01"))
+  store <- make_mock_capsule_store()
   testthat::local_mocked_bindings(
     .embed_text = function(text, model, base_url) c(0.1, 0.2, 0.3)
   )
@@ -19,10 +17,11 @@ test_that("ks_embed stores numeric vectors (mocked endpoint)", {
 })
 
 test_that("ks_retrieve ranks capsules with embedding + keyword signals", {
-  dir <- make_fixture_demographics()
-  store <- as_capsules(ks_load(dir, ids = "14-3.01"))
+  store <- make_mock_capsule_store(
+    member_ids = "14-3.01",
+    labels = "Cardiac disorders adverse events"
+  )
   store <- ks_annotate(store)
-  # deterministic embeddings by capsule id length to keep test stable
   for (cid in names(store$capsules)) {
     l <- nchar(cid)
     store$capsules[[cid]]$embedding <- c(l, l / 2, 1)
@@ -33,21 +32,22 @@ test_that("ks_retrieve ranks capsules with embedding + keyword signals", {
   sub <- ks_retrieve(
     store,
     query = "cardiac disorders adverse events",
-    n = 3L,
-    filter = list(domain = "AE"),
+    n = 2L,
+    filter = list(member_id = "14-3.01"),
     model = "m",
     base_url = "http://localhost:1234/v1"
   )
   expect_s3_class(sub, "ks_capsule_subset")
-  expect_equal(length(sub$capsules), 3L)
+  expect_equal(length(sub$capsules), 2L)
   expect_true(all(c("capsule_id", "score") %in% names(sub$scores)))
 })
 
 test_that("ks_retrieve works without embeddings (keyword fallback)", {
-  dir <- make_fixture_demographics()
-  store <- as_capsules(ks_load(dir, ids = "14-3.01"))
+  store <- make_mock_capsule_store(
+    member_ids = "14-3.01",
+    labels = "Weight baseline demographics"
+  )
   store <- ks_annotate(store)
-  # no embeddings
   for (cid in names(store$capsules)) {
     store$capsules[[cid]]$embedding <- NULL
   }
@@ -60,8 +60,10 @@ test_that("ks_retrieve works without embeddings (keyword fallback)", {
 })
 
 test_that("ks_reason builds ks_result from retrieved capsules (mocked chat)", {
-  dir <- make_fixture_demographics()
-  store <- as_capsules(ks_load(dir, ids = "14-3.01"))
+  store <- make_mock_capsule_store(
+    member_ids = "14-3.01",
+    labels = "Cardiac findings"
+  )
   store <- ks_annotate(store)
   for (cid in names(store$capsules)) {
     store$capsules[[cid]]$embedding <- c(1, 1, 1)

@@ -31,8 +31,8 @@ complementary pipelines:
 1. **Direct context pipeline** — when you already know which outputs matter and
    they fit in the model window.
 2. **Clinical capsule pipeline** — when the study is large, exploratory, or
-   token-constrained; decompose, enrich, retrieve, then reason over a minimal
-   evidence set.
+   token-constrained; an LLM groups tables and figures into semantic capsules,
+   then enrich, retrieve, and reason over a minimal evidence set.
 
 Both pipelines share the same import layer and the same **CKR** (Clinical
 Knowledge Representation) serialization formats. They differ in how much
@@ -147,8 +147,9 @@ ks_context
 - `section` — for example `Baseline`, `Week 24`, `Change from Baseline`
 - `kind` — for AE tables: `SOC`, `PT`, `OVERALL`; for continuous endpoints: `PARAM`
 
-This metadata drives both CSR writing ("describe Week 24 vs Baseline") and
-capsule hierarchy inference.
+This metadata drives CSR writing ("describe Week 24 vs Baseline") and
+fact-store filtering (`section` / `kind` in `as_facts()`). Capsule trees are
+built separately by an LLM over whole outputs, not from row hierarchy.
 
 ### Import options
 
@@ -323,9 +324,13 @@ Built-in system prompts instruct the model to:
 
 ## Clinical capsule pipeline
 
-For large studies or exploratory questions, ksAI decomposes outputs into
-**clinical capsules** — concept-centric, traceable semantic units — then
-runs a four-stage agent pipeline.
+For large studies or exploratory questions, ksAI asks an LLM to group tables
+and figures into **clinical capsules** — concept-centric semantic units — then
+runs a four-stage agent pipeline over that store.
+
+Membership is by **whole output id** (`member_ids`). Capsules form a tree via
+`parent_id` / `child_ids`. Formation is LLM-only: meaning over titles, excerpts,
+and figure images — not domain codes, filename conventions, or row hierarchy.
 
 ```{mermaid}
 flowchart LR
@@ -352,31 +357,38 @@ flowchart LR
 
 ### Structure agent: `as_capsules()`
 
-Splits each `ks_context` into hierarchical row groups and builds a
-`ks_capsule_store`. Domain is inferred **once per output** (not per capsule).
+`as_capsules(x, model, ...)` **requires** `model`. It builds a catalog of
+Table and Figure contexts (Text is excluded), sends compact excerpts to the
+LLM using `inst/prompts/capsule_classify.md`, and validates the returned
+JSON into a `ks_capsule_store`.
 
-**Domain inference** (language-agnostic; first hit wins):
+**What the LLM sees:**
 
-1. `enrich_context(..., annotations = list(domain = ...))`
-2. Session `domain_map` (`ks_set_option()`) — exact id or regex
-3. MedDRA-like structure (`ROW_KIND` SOC/PT/…) → `AE`
-4. Optional small LLM when `model` is set and `llm_domain = "always"`
-5. Multilingual title/subtitle/source lexicon
-6. ICH/CSR-style numbering in the output id (`14-5.x` → AE, …)
-7. Optional small LLM when still `UNKNOWN` (`llm_domain = "unknown"`, default)
-8. `"UNKNOWN"`
+- Titles, subtitles, population, source, and a compact content excerpt
+  (`max_excerpt_rows`, `detail = "compact"` or `"full"`)
+- For figures: `asset_path` resolved at import; when `attach_images = TRUE`,
+  R attaches image bytes via ellmer so a **vision** model can read the plot.
+  R does not interpret pixels itself.
+
+**Formation rules** (enforced in the prompt and in R validation):
+
+- Group by information meaning only — not domain codes, ICH/CSR numbering,
+  or filenames
+- Build a tree of themes → sub-themes with stable ASCII `capsule_id` slugs
+- **Multi-membership** is allowed: one output may support several capsules
+- Large catalogs are batched (`batch_size`); multiple chunks are merged with a
+  second LLM pass
+- Capsules below `min_confidence` are dropped; unknown member ids are ignored
 
 ```{r}
 #| eval: false
-store <- as_capsules(study)   # rules only
-
 store <- as_capsules(
   study,
   model = "qwen3.5-4b",
   provider = "lm_studio",
   base_url = "http://127.0.0.1:1234",
-  llm_domain = "unknown",
-  llm_min_confidence = 0.5
+  max_excerpt_rows = 12L,
+  min_confidence = 0.5
 )
 ```
 
@@ -384,55 +396,72 @@ store <- as_capsules(
 
 ```
 ks_capsule
-├── capsule_id          # e.g. 14-5.01::SOC::CARDIAC_DISORDERS
-├── source_id           # output id
-├── source_rows         # traceable row indices
-├── domain              # AE, EFFC, DM, LB, VS, EX, DS, … (rules + optional small LLM)
-├── level               # OVERALL → SOC → PT  (or OVERALL → PARAM)
-├── label, population
+├── capsule_id          # stable slug from the LLM
+├── label               # human name (any language)
+├── member_ids          # table/figure output ids (multi-membership OK)
 ├── parent_id, child_ids
-├── linked_ids          # text listings in same domain
-├── stats               # parsed n(%), means per arm
-├── compact_text        # token-efficient summary for the LLM
+├── population          # set when all members share one population
+├── compact_text        # concatenated member compact excerpts
 ├── concepts, keywords, synonyms
-└── embedding           # numeric vector (after ks_embed)
+├── embedding           # numeric vector (after ks_embed)
+└── confidence          # LLM confidence kept at formation
 ```
 
-**Hierarchy inference** uses `ROW_KIND`, `SECTION`, and row labels:
-
-| Table type | Typical levels |
-|------------|----------------|
-| AE incidence | OVERALL → SOC → PT |
-| Continuous / lab | OVERALL → PARAM (per visit or parameter row) |
-| Demographics | OVERALL → PARAM (per characteristic) |
-
-Synthetic SOC capsules are created for section blocks when the source table
-uses section headers without explicit `ROW_KIND = SOC`.
+Traceability is through `member_ids` back to loaded `ks_context` objects.
+Use `capsule_content()` when you need full member renders rather than the
+formation excerpts stored in `compact_text`.
 
 Persist with `save_capsules(store, "study.ksc")` / `load_capsules()`.
 
-### Semantic agent: `ks_annotate()`
+### Review APIs
 
-Two-pass enrichment, plus optional domain repair:
+Formation and inspection are separate. After `as_capsules()`:
 
-1. **Pure R pass** (always): tokenize `label` + `compact_text`, strip stop
-   words, detect clinical abbreviations (`TEAE`, `SOC`, `PT`, `LOCF`, …).
-2. **Optional small-LLM pass**: structured JSON extraction of `concepts`,
-   `synonyms`, `keywords`. A 4B local model is sufficient.
-3. **Domain fallback** (when `model` is set): reclassify capsules still tagged
-   `UNKNOWN`, once per `source_id`. Use `force_domain = TRUE` to reclassify
-   every table.
+| Function | Role |
+|----------|------|
+| `capsule_tree(store)` | Print / return the parent→child tree |
+| `capsule_membership(store, study)` | Output id ↔ capsule membership table |
+| `review_capsules(store, study)` | Offline structural audit (empty capsules, unknown members, cycles, orphans, multi-membership) |
+| `capsule_content(store, id, study)` | Expand full member renders from a live study |
+| `ks_review_capsules(store, study, model, ...)` | LLM deep review (`capsule_review.md`); attaches figure images when requested |
 
 ```{r}
 #| eval: false
-store <- ks_annotate(store)
+capsule_tree(store)
+capsule_membership(store, study)
+review_capsules(store, study)
+
+ks_review_capsules(
+  store, study,
+  model = "qwen3.5-4b",
+  provider = "lm_studio",
+  base_url = "http://127.0.0.1:1234"
+)
+```
+
+### Semantic agent: `ks_annotate()`
+
+Two-pass enrichment of capsule labels and compact text — keywords and optional
+concepts only:
+
+1. **Pure R pass** (always): tokenize `label`, `member_ids`, and
+   `compact_text`; strip stop words; detect clinical abbreviations
+   (`TEAE`, `SOC`, `PT`, …).
+2. **Optional small-LLM pass** (when `model` is set): structured JSON
+   extraction of `concepts`, `synonyms`, `keywords`. A 4B local model is
+   sufficient. Use `force = TRUE` to recompute even when keywords already
+   exist.
+
+```{r}
+#| eval: false
+store <- ks_annotate(store)   # keywords only
+
 store <- ks_annotate(
   store,
   model = "qwen3.5-4b",
   provider = "lm_studio",
   base_url = "http://127.0.0.1:1234",
-  force_domain = FALSE,
-  llm_min_confidence = 0.5
+  force = TRUE
 )
 ```
 
@@ -449,18 +478,18 @@ vectors in `capsule$embedding`.
 |--------|---------------|-----------|
 | Semantic | 0.6 | Cosine similarity: query embedding vs capsule embedding |
 | Keyword | 0.3 | Token overlap with `capsule$keywords` |
-| Metadata | 0.1 | Exact match on `domain`, `level`, `population` |
+| Metadata | 0.1 | Match on `label`, `member_id`, and/or `population` |
 
 Returns a `ks_capsule_subset` with ranked capsules and score breakdown.
 
-Filters narrow candidates before scoring:
+Optional `filter` fields contribute to the metadata score:
 
 ```{r}
 #| eval: false
 ks_retrieve(store,
   query = "cardiac bradycardia high dose",
   n = 5,
-  filter = list(domain = "AE", level = "SOC"))
+  filter = list(population = "Safety", member_id = "14-5.01"))
 ```
 
 If embeddings are absent, semantic score falls back to 0 and keyword/metadata
@@ -471,7 +500,8 @@ signals still rank results.
 Combines retrieval and generation:
 
 1. `ks_retrieve()` → top *n* capsules
-2. Optionally `expand = TRUE` → include child PT capsules (progressive disclosure)
+2. Optionally `expand = TRUE` → include child capsules from the LLM tree
+   (progressive disclosure)
 3. Format capsule `compact_text` + metadata into a context block
 4. Send to a larger reasoning model with a focused system prompt
 
@@ -491,14 +521,14 @@ ks_reason(store,
 ### Progressive disclosure
 
 ```
-Query → retrieve SOC capsules (compact summaries)
-      → reason at SOC level
-      → expand = TRUE pulls PT children on demand
-      → linked_ids connect to patient listings (same domain)
+Query → retrieve theme capsules (compact summaries)
+      → reason at parent level
+      → expand = TRUE pulls child capsules on demand
 ```
 
-High-level reasoning happens over SOC summaries; detail rows are fetched only
-when the query or `expand` flag requires them.
+High-level reasoning happens over parent capsule summaries; child themes are
+fetched only when the query or `expand` flag requires them. For full member
+table/figure text outside reasoning, use `capsule_content()`.
 
 ---
 
@@ -520,7 +550,7 @@ Embeddings (`ks_embed`, query vectors in `ks_retrieve`) use the
 
 | Task | Model size | Function |
 |------|------------|----------|
-| Domain classification / annotation | 4B | `as_capsules(..., model = ...)`, `ks_annotate(..., model = ...)` |
+| Capsule formation / annotation / review | 4B+ (vision if figures) | `as_capsules()`, `ks_annotate(..., model = ...)`, `ks_review_capsules()` |
 | CSR drafting / reasoning | 26B+ | `ks_llm()`, `ks_reason()` |
 | Embeddings | dedicated | `text-embedding-nomic-embed-text-v1.5` |
 
@@ -539,7 +569,6 @@ constrained.
 | `skills_dir` | `NULL` | User skill template directory |
 | `embed_model` | `text-embedding-nomic-embed-text-v1.5` | Embedding model name |
 | `embed_url` | `http://127.0.0.1:1234/v1` | Embeddings endpoint |
-| `domain_map` | `character()` | Named id/regex → domain overrides for capsules |
 
 Set `context_format` and `max_rows` **before** `ks_chat()` — the chat system
 prompt is built at construction time.
@@ -553,7 +582,7 @@ prompt is built at construction time.
 | One known table, CSR section | Direct | `ks_llm(study, ids, skill = "csr_section")` |
 | Two tables, consistency check | Direct | `ks_llm(..., skill = "review")` |
 | Filter to one SOC / visit / row | CKR facts | `retrieve(as_facts(ctx), rows = ...)` |
-| Many outputs, exploratory Q&A | Capsule | `as_capsules()` → `ks_reason()` |
+| Many outputs, exploratory Q&A | Capsule | `as_capsules(..., model)` → `ks_reason()` |
 | Large AE / lab table, token limit | Capsule or facts | `ks_retrieve()` or `retrieve()` |
 | Iterative refinement | Direct + chain | `save_result()` → `prior = load_result()` |
 | Conversational follow-ups | Direct chat | `ks_chat(small_study)` → `chat$chat$chat()` |
@@ -597,8 +626,8 @@ ships with the package:
 ```
 
 Bundled pilot-study meta data lives in `inst/examples/pilot-study/meta`.
-Set `RUN_LLM <- FALSE` in the script to exercise import, CKR, and capsule
-building without a live model.
+Set `RUN_LLM <- FALSE` in the script to exercise import and CKR without live
+chat/embed calls. Capsule formation (`as_capsules`) always requires a model.
 
 ---
 
@@ -606,10 +635,10 @@ building without a live model.
 
 1. **Deterministic upstream** — ksTFL numbers are final; ksAI never recomputes statistics.
 2. **Targeted loading** — load only the ids you need; scale to full studies via capsules.
-3. **Traceability** — every capsule and fact links back to `source_id` + `source_rows`.
+3. **Traceability** — every capsule links to member output ids; facts retain row structure from `ks_context`.
 4. **Token economy** — compact DSL, fact filtering, and capsule retrieval minimize model input.
 5. **Offline-first** — JSON-only import; local models via Ollama or LM Studio.
-6. **Separation of concerns** — structure (R), retrieval (C++23), semantics (small LLM), reasoning (large LLM).
+6. **Separation of concerns** — capsule formation (LLM over catalog + vision), enrichment (R + optional small LLM), retrieval (embeddings + keywords), reasoning (large LLM).
 
 These layers compose: you can use `as_compact()` without capsules, capsules
 without embeddings (keyword-only retrieval), or the full stack for large-study

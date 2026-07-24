@@ -1,4 +1,4 @@
-## Clinical capsules: concept-centric, traceable summaries over ks_context rows.
+## Clinical capsules: LLM-formed semantic groups over tables and figures.
 
 # ---------------------------------------------------------------------------
 # Constructors / predicates
@@ -7,39 +7,31 @@
 #' @keywords internal
 #' @noRd
 new_ks_capsule <- function(capsule_id,
-                           source_id,
-                           source_rows = integer(),
-                           domain = "UNKNOWN",
-                           level = "ROW",
                            label = "",
-                           population = NA_character_,
+                           member_ids = character(),
                            parent_id = NA_character_,
                            child_ids = character(),
-                           linked_ids = character(),
-                           stats = list(),
+                           population = NA_character_,
                            compact_text = "",
                            concepts = character(),
                            keywords = character(),
                            embedding = NULL,
-                           synonyms = character()) {
+                           synonyms = character(),
+                           confidence = NA_real_) {
   structure(
     list(
       capsule_id = as.character(capsule_id),
-      source_id = as.character(source_id),
-      source_rows = as.integer(source_rows),
-      domain = as.character(domain),
-      level = as.character(level),
       label = as.character(label),
-      population = as.character(population),
-      parent_id = as.character(parent_id),
-      child_ids = as.character(child_ids),
-      linked_ids = as.character(linked_ids),
-      stats = stats %||% list(),
-      compact_text = as.character(compact_text),
-      concepts = as.character(concepts),
-      keywords = as.character(keywords),
+      member_ids = as.character(member_ids %||% character()),
+      parent_id = as.character(parent_id %||% NA_character_),
+      child_ids = as.character(child_ids %||% character()),
+      population = as.character(population %||% NA_character_),
+      compact_text = as.character(compact_text %||% ""),
+      concepts = as.character(concepts %||% character()),
+      keywords = as.character(keywords %||% character()),
       embedding = embedding,
-      synonyms = as.character(synonyms)
+      synonyms = as.character(synonyms %||% character()),
+      confidence = suppressWarnings(as.numeric(confidence %||% NA_real_))
     ),
     class = c("ks_capsule", "list")
   )
@@ -64,12 +56,14 @@ new_ks_capsule_store <- function(capsules = list(),
 
 #' The `ks_capsule` Class
 #'
-#' A `ks_capsule` is a concept-centric, traceable semantic unit derived from a
-#' [ks_context] row group (for example OVERALL, SOC, PT). Each capsule stores
-#' compact text, parsed statistics, hierarchy links, and optional embeddings.
+#' A `ks_capsule` is a named semantic unit grouping one or more table/figure
+#' outputs (`member_ids`) produced by [as_capsules()]. Capsules form a tree via
+#' `parent_id` / `child_ids` and store compact text plus optional embeddings.
 #'
 #' @param x An object.
 #' @return `TRUE` if `x` is a `ks_capsule`, otherwise `FALSE`.
+#' @name ks_capsule
+#' @aliases is_ks_capsule
 #' @export
 is_ks_capsule <- function(x) {
   inherits(x, "ks_capsule")
@@ -77,11 +71,13 @@ is_ks_capsule <- function(x) {
 
 #' The `ks_capsule_store` Class
 #'
-#' A `ks_capsule_store` is a named registry of [ks_capsule] objects produced by
+#' A `ks_capsule_store` is a named registry of capsules produced by
 #' [as_capsules()], with study-level metadata for persistence and retrieval.
 #'
 #' @param x An object.
 #' @return `TRUE` if `x` is a `ks_capsule_store`, otherwise `FALSE`.
+#' @name ks_capsule_store
+#' @aliases is_ks_capsule_store
 #' @export
 is_ks_capsule_store <- function(x) {
   inherits(x, "ks_capsule_store")
@@ -90,10 +86,9 @@ is_ks_capsule_store <- function(x) {
 #' @export
 print.ks_capsule <- function(x, ...) {
   cli::cli_h1("ks_capsule: {x$capsule_id}")
-  cli::cli_text("{.strong Source}: {x$source_id}")
-  cli::cli_text("{.strong Domain}: {x$domain} ({x$level})")
   cli::cli_text("{.strong Label}: {x$label}")
-  cli::cli_text("{.strong Rows}: {if (length(x$source_rows)) paste(range(x$source_rows), collapse = '...') else '(none)'}")
+  cli::cli_text("{.strong Members}: {paste(x$member_ids, collapse = ', ')}")
+  cli::cli_text("{.strong Parent}: {x$parent_id %||% NA_character_}")
   cli::cli_text("{.strong Children}: {length(x$child_ids)}")
   cli::cli_text("{.strong Keywords}: {length(x$keywords)}")
   if (!is.null(x$embedding)) {
@@ -117,44 +112,39 @@ print.ks_capsule_store <- function(x, ...) {
 }
 
 # ---------------------------------------------------------------------------
-# as_capsules
+# as_capsules — LLM-only formation
 # ---------------------------------------------------------------------------
 
-#' Build Clinical Capsules from Contexts
+#' Build Clinical Capsules from Contexts (LLM)
 #'
-#' Converts one [ks_context] (or all contexts in a [ks_study]) into a
-#' concept-centric capsule registry suitable for semantic enrichment,
-#' retrieval, and progressive-disclosure reasoning.
-#'
-#' Domain codes are inferred once per output (language-agnostic rules first).
-#' Pass `model` to ask a small local LLM when rules leave the domain
-#' `UNKNOWN` (default), or always after hard signals (`llm_domain = "always"`).
-#' The chat is created once per call and reused across tables in a study.
-#' With `llm_domain = "never"`, `model` is ignored and no LLM client is created.
+#' Groups **tables** and **figures** into a named semantic capsule tree using
+#' an LLM only (small or large). There is no rule-based / CDISC formation path.
+#' `model` is required. Figure image pixels are attached for vision-capable
+#' models; R does not interpret plots.
 #'
 #' @param x A `ks_context` or `ks_study`.
-#' @param model Optional small LLM for domain classification (e.g. a 4B
-#'   local model). `NULL` keeps deterministic inference only. Ignored when
-#'   `llm_domain = "never"`.
+#' @param model LLM model name (required).
 #' @param provider LLM provider. Defaults to [ks_get_option()]`"provider"`.
 #' @param base_url Optional provider URL override.
-#' @param llm_domain When to call the model: `"unknown"` (default — only if
-#'   rules yield `UNKNOWN`), `"always"` (after annotation / `domain_map` /
-#'   MedDRA structure; lexicon and id are fallbacks), or `"never"` (rules
-#'   only; never contacts an LLM).
-#' @param llm_min_confidence Minimum confidence (0–1) to accept an LLM
-#'   domain. Below this, rules continue / return `UNKNOWN`.
-#' @param ... Extra args forwarded to the ellmer chat constructor (only when
-#'   a domain LLM chat is created).
+#' @param max_excerpt_rows Maximum table rows included in each catalog excerpt.
+#' @param detail `"compact"` (default) or `"full"` table excerpts.
+#' @param min_confidence Minimum confidence (0–1) to keep an LLM capsule.
+#' @param batch_size Maximum catalog items per classify call before an LLM
+#'   merge pass.
+#' @param attach_images Logical. Attach figure assets via ellmer when readable.
+#' @param ... Extra args forwarded to the ellmer chat constructor.
 #'
 #' @return A `ks_capsule_store`.
 #' @export
 as_capsules <- function(x,
-                        model = NULL,
+                        model,
                         provider = ks_get_option("provider"),
                         base_url = NULL,
-                        llm_domain = "unknown",
-                        llm_min_confidence = 0.5,
+                        max_excerpt_rows = 12L,
+                        detail = c("compact", "full"),
+                        min_confidence = 0.5,
+                        batch_size = 24L,
+                        attach_images = TRUE,
                         ...) {
   UseMethod("as_capsules")
 }
@@ -162,178 +152,107 @@ as_capsules <- function(x,
 #' @rdname as_capsules
 #' @export
 as_capsules.ks_context <- function(x,
-                                   model = NULL,
+                                   model,
                                    provider = ks_get_option("provider"),
                                    base_url = NULL,
-                                   llm_domain = "unknown",
-                                   llm_min_confidence = 0.5,
+                                   max_excerpt_rows = 12L,
+                                   detail = c("compact", "full"),
+                                   min_confidence = 0.5,
+                                   batch_size = 24L,
+                                   attach_images = TRUE,
                                    ...) {
-  llm_domain <- .normalize_llm_domain(llm_domain)
-  chat <- .as_capsules_domain_chat(
+  if (!identical(as.character(x$type %||% ""), "Text")) {
+    ctxs <- list(x)
+    names(ctxs) <- x$id
+    study <- new_ks_study(ctxs, meta_dir = NULL)
+  } else {
+    cli::cli_abort("{.fn as_capsules} accepts Table/Figure contexts, not Text.")
+  }
+  as_capsules.ks_study(
+    study,
     model = model,
     provider = provider,
     base_url = base_url,
-    llm_domain = llm_domain,
-    dots = rlang::list2(...)
-  )
-  .as_capsules_context(
-    x,
-    chat = chat,
-    llm_domain = llm_domain,
-    llm_min_confidence = llm_min_confidence
+    max_excerpt_rows = max_excerpt_rows,
+    detail = detail,
+    min_confidence = min_confidence,
+    batch_size = batch_size,
+    attach_images = attach_images,
+    ...
   )
 }
 
 #' @rdname as_capsules
 #' @export
 as_capsules.ks_study <- function(x,
-                                 model = NULL,
+                                 model,
                                  provider = ks_get_option("provider"),
                                  base_url = NULL,
-                                 llm_domain = "unknown",
-                                 llm_min_confidence = 0.5,
+                                 max_excerpt_rows = 12L,
+                                 detail = c("compact", "full"),
+                                 min_confidence = 0.5,
+                                 batch_size = 24L,
+                                 attach_images = TRUE,
                                  ...) {
-  llm_domain <- .normalize_llm_domain(llm_domain)
-  chat <- .as_capsules_domain_chat(
+  checkmate::assert_string(model, min.chars = 1L)
+  checkmate::assert_int(max_excerpt_rows, lower = 1L)
+  checkmate::assert_number(min_confidence, lower = 0, upper = 1)
+  checkmate::assert_int(batch_size, lower = 1L)
+  checkmate::assert_flag(attach_images)
+  detail <- match.arg(detail)
+  dots <- rlang::list2(...)
+
+  catalog <- .capsule_catalog_contexts(x)
+  if (!length(catalog)) {
+    return(new_ks_capsule_store(
+      capsules = list(),
+      study_id = if (!is.null(x$meta_dir)) basename(x$meta_dir) else NULL,
+      meta_dir = x$meta_dir
+    ))
+  }
+
+  chat <- .make_capsule_classify_chat(
     model = model,
     provider = provider,
     base_url = base_url,
-    llm_domain = llm_domain,
-    dots = rlang::list2(...)
+    dots = dots
   )
-  all <- .study_all(x)
-  if (!length(all)) {
-    return(new_ks_capsule_store(capsules = list(), meta_dir = x$meta_dir))
-  }
-  pieces <- lapply(names(all), function(id) {
-    ctx <- all[[id]]
-    tryCatch(
-      .as_capsules_context(
-        ctx,
-        chat = chat,
-        llm_domain = llm_domain,
-        llm_min_confidence = llm_min_confidence
-      ),
-      error = function(e) {
-        cli::cli_warn(c(
-          "Skipping capsule build for output {.val {id}}.",
-          x = conditionMessage(e)
-        ))
-        new_ks_capsule_store(capsules = list())
-      }
+
+  ids <- names(catalog)
+  chunks <- split(ids, ceiling(seq_along(ids) / batch_size))
+  partials <- lapply(chunks, function(chunk_ids) {
+    .capsule_classify_chunk(
+      chat = chat,
+      catalog = catalog[chunk_ids],
+      max_excerpt_rows = max_excerpt_rows,
+      detail = detail,
+      attach_images = attach_images
     )
   })
-  caps <- Reduce(c, lapply(pieces, function(s) s$capsules))
-  if (is.null(caps)) {
-    caps <- list()
+
+  raw_caps <- if (length(partials) == 1L) {
+    partials[[1]]
+  } else {
+    .capsule_llm_merge(
+      chat = chat,
+      partials = partials,
+      catalog_ids = ids
+    )
   }
-  caps <- .link_capsules_to_text_outputs(
-    caps,
-    x,
-    chat = chat,
-    llm_domain = llm_domain,
-    llm_min_confidence = llm_min_confidence
+
+  capsules <- .capsule_validate_and_build(
+    raw_caps = raw_caps,
+    catalog = catalog,
+    min_confidence = min_confidence,
+    max_excerpt_rows = max_excerpt_rows,
+    detail = detail
   )
+
   new_ks_capsule_store(
-    capsules = caps,
+    capsules = capsules,
     study_id = if (!is.null(x$meta_dir)) basename(x$meta_dir) else NULL,
     meta_dir = x$meta_dir
   )
-}
-
-#' @keywords internal
-#' @noRd
-.normalize_llm_domain <- function(llm_domain) {
-  choices <- c("unknown", "always", "never")
-  if (length(llm_domain) != 1L || is.na(llm_domain[[1]]) || !nzchar(llm_domain[[1]])) {
-    cli::cli_abort(c(
-      "{.arg llm_domain} must be a single string.",
-      i = "Use one of {.val {choices}} (not the full choices vector)."
-    ))
-  }
-  match.arg(as.character(llm_domain[[1]]), choices)
-}
-
-#' @keywords internal
-#' @noRd
-.as_capsules_domain_chat <- function(model,
-                                     provider,
-                                     base_url,
-                                     llm_domain,
-                                     dots = list()) {
-  # Hard stop: never create or contact an LLM client.
-  if (identical(llm_domain, "never")) {
-    return(NULL)
-  }
-  if (is.null(model) || !nzchar(as.character(model)[[1]])) {
-    return(NULL)
-  }
-  .make_domain_llm_chat(
-    model = model,
-    provider = provider,
-    base_url = base_url,
-    llm_domain = llm_domain,
-    dots = dots
-  )
-}
-
-#' @keywords internal
-#' @noRd
-.as_capsules_context <- function(x,
-                                 chat = NULL,
-                                 llm_domain = "unknown",
-                                 llm_min_confidence = 0.5) {
-  if (!length(x$rows)) {
-    return(new_ks_capsule_store(capsules = list()))
-  }
-
-  domain <- .capsule_infer_domain(
-    x,
-    chat = chat,
-    llm_domain = llm_domain,
-    llm_min_confidence = llm_min_confidence
-  )
-
-  row_label_col <- .capsule_row_label_col(x)
-  groups <- .capsule_groups_from_rows(x$rows, row_label_col)
-  ids <- vapply(groups, function(g) {
-    paste(x$id, g$level, .capsule_safe_id(if (nzchar(g$label)) g$label else paste0("ROW_", g$idx)), sep = "::")
-  }, character(1))
-  parent_ids <- rep(NA_character_, length(groups))
-  overall_id <- NA_character_
-  sec_parent <- list()
-  for (i in seq_along(groups)) {
-    g <- groups[[i]]
-    if (identical(g$level, "OVERALL")) {
-      overall_id <- ids[[i]]
-    } else if (identical(g$level, "SOC")) {
-      parent_ids[[i]] <- overall_id
-      sec_key <- if (!is.null(g$section) && !is.na(g$section) && nzchar(g$section)) {
-        g$section
-      } else {
-        g$label
-      }
-      sec_parent[[sec_key]] <- ids[[i]]
-    } else if (identical(g$level, "PT")) {
-      sec_key <- g$section %||% ""
-      parent_ids[[i]] <- sec_parent[[sec_key]] %||% overall_id
-    } else {
-      parent_ids[[i]] <- overall_id
-    }
-  }
-
-  capsules <- lapply(seq_along(groups), function(i) {
-    g <- groups[[i]]
-    .capsule_from_group(
-      x, g, row_label_col,
-      capsule_id = ids[[i]],
-      parent_id = parent_ids[[i]],
-      domain = domain
-    )
-  })
-  names(capsules) <- vapply(capsules, function(c) c$capsule_id, character(1))
-  capsules <- .wire_capsule_children(capsules)
-  new_ks_capsule_store(capsules = capsules)
 }
 
 # ---------------------------------------------------------------------------
@@ -343,8 +262,8 @@ as_capsules.ks_study <- function(x,
 #' Save a Capsule Store to a `.ksc` File
 #'
 #' @param store A `ks_capsule_store`.
-#' @param path Output path. If extension is missing, `.ksc` is appended.
-#' @return Invisibly, written path.
+#' @param path Output path (`.ksc` appended if missing).
+#' @return The path written, invisibly.
 #' @export
 save_capsules <- function(store, path) {
   if (!is_ks_capsule_store(store)) {
@@ -386,23 +305,24 @@ load_capsules <- function(path) {
   }
   capsules <- payload$capsules %||% list()
   capsules <- lapply(capsules, function(c) {
+    # Backward-compatible load: prefer member_ids; fall back to source_id.
+    member_ids <- as.character(unlist(c$member_ids) %||% character())
+    if (!length(member_ids) && !is.null(c$source_id) && nzchar(as.character(c$source_id))) {
+      member_ids <- as.character(c$source_id)
+    }
     new_ks_capsule(
       capsule_id = c$capsule_id %||% "",
-      source_id = c$source_id %||% "",
-      source_rows = as.integer(unlist(c$source_rows) %||% integer()),
-      domain = c$domain %||% "UNKNOWN",
-      level = c$level %||% "ROW",
       label = c$label %||% "",
-      population = c$population %||% NA_character_,
+      member_ids = member_ids,
       parent_id = c$parent_id %||% NA_character_,
       child_ids = as.character(unlist(c$child_ids) %||% character()),
-      linked_ids = as.character(unlist(c$linked_ids) %||% character()),
-      stats = c$stats %||% list(),
+      population = c$population %||% NA_character_,
       compact_text = c$compact_text %||% "",
       concepts = as.character(unlist(c$concepts) %||% character()),
       keywords = as.character(unlist(c$keywords) %||% character()),
       embedding = if (is.null(c$embedding)) NULL else as.numeric(unlist(c$embedding)),
-      synonyms = as.character(unlist(c$synonyms) %||% character())
+      synonyms = as.character(unlist(c$synonyms) %||% character()),
+      confidence = c$confidence %||% NA_real_
     )
   })
   names(capsules) <- vapply(capsules, function(c) c$capsule_id, character(1))
@@ -415,346 +335,406 @@ load_capsules <- function(path) {
 }
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Review APIs (inspect LLM-built stores; not formation)
 # ---------------------------------------------------------------------------
 
-#' @keywords internal
-#' @noRd
-.capsule_row_label_col <- function(ctx) {
-  if (!length(ctx$columns)) {
-    return(NA_character_)
+#' Capsule Tree as Nested List / Printable Structure
+#'
+#' @param store A `ks_capsule_store`.
+#' @param print Logical. If `TRUE`, print a tree to the console.
+#' @return Invisibly, a named list of tree nodes.
+#' @export
+capsule_tree <- function(store, print = TRUE) {
+  if (!is_ks_capsule_store(store)) {
+    cli::cli_abort("{.arg store} must be a {.cls ks_capsule_store} object.")
   }
-  as.character(ctx$columns[[1]]$name %||% NA_character_)
+  checkmate::assert_flag(print)
+  caps <- store$capsules
+  if (!length(caps)) {
+    if (print) cli::cli_text("(empty capsule store)")
+    return(invisible(list()))
+  }
+  roots <- names(Filter(
+    function(c) is.na(c$parent_id) || !nzchar(c$parent_id) ||
+      !(c$parent_id %in% names(caps)),
+    caps
+  ))
+  walk <- function(cid, depth = 0L) {
+    cap <- caps[[cid]]
+    node <- list(
+      capsule_id = cid,
+      label = cap$label,
+      n_members = length(cap$member_ids),
+      children = lapply(cap$child_ids, walk, depth = depth + 1L)
+    )
+    if (print) {
+      pad <- paste(rep("  ", depth), collapse = "")
+      cli::cli_text("{pad}{.strong {cid}} — {cap$label} ({length(cap$member_ids)} member{?s})")
+    }
+    node
+  }
+  tree <- lapply(roots, walk)
+  names(tree) <- roots
+  invisible(tree)
 }
 
-#' @keywords internal
-#' @noRd
-.capsule_groups_from_rows <- function(rows, row_label_col) {
-  out <- vector("list", length(rows))
-  for (i in seq_along(rows)) {
-    row <- rows[[i]]
-    label <- ""
-    if (!is.na(row_label_col) && !is.null(row$cells[[row_label_col]])) {
-      label <- as.character(row$cells[[row_label_col]])
+#' Capsule Membership Table
+#'
+#' @param store A `ks_capsule_store`.
+#' @param study Optional `ks_study` to include catalog ids with zero membership.
+#' @return A data.frame with columns `output_id`, `capsule_id`, `label`, `n_capsules`.
+#' @export
+capsule_membership <- function(store, study = NULL) {
+  if (!is_ks_capsule_store(store)) {
+    cli::cli_abort("{.arg store} must be a {.cls ks_capsule_store} object.")
+  }
+  rows <- list()
+  for (cid in names(store$capsules)) {
+    cap <- store$capsules[[cid]]
+    for (mid in cap$member_ids) {
+      rows[[length(rows) + 1L]] <- data.frame(
+        output_id = mid,
+        capsule_id = cid,
+        label = cap$label,
+        stringsAsFactors = FALSE
+      )
     }
-    section <- row$section %||% NA_character_
-    kind <- toupper(as.character(row$kind %||% ""))
-    level <- if (identical(kind, "OVERALL")) {
-      "OVERALL"
-    } else if (identical(kind, "SOC")) {
-      "SOC"
-    } else if (identical(kind, "PT")) {
-      "PT"
-    } else if (!is.null(section) && !is.na(section) && nzchar(section) &&
-               identical(toupper(trimws(label)), toupper(trimws(section)))) {
-      "SOC"
-    } else if (!is.null(section) && !is.na(section) && nzchar(section)) {
-      "PT"
-    } else if (i == 1L) {
-      "OVERALL"
-    } else {
-      "PARAM"
-    }
-    out[[i]] <- list(
-      idx = i,
-      rows = i,
-      label = label,
-      section = section,
-      level = level
+  }
+  df <- if (length(rows)) {
+    do.call(rbind, rows)
+  } else {
+    data.frame(
+      output_id = character(),
+      capsule_id = character(),
+      label = character(),
+      stringsAsFactors = FALSE
     )
   }
-  # Add synthetic SOC capsules for section blocks when not explicitly present.
-  secs <- unique(vapply(out, function(g) as.character(g$section %||% NA_character_), character(1)))
-  secs <- secs[!is.na(secs) & nzchar(secs)]
-  if (length(secs)) {
-    for (sec in secs) {
-      in_sec <- which(vapply(out, function(g) identical(as.character(g$section %||% ""), sec), logical(1)))
-      has_soc <- any(vapply(out[in_sec], function(g) identical(g$level, "SOC"), logical(1)))
-      if (!has_soc) {
-        out[[length(out) + 1L]] <- list(
-          idx = in_sec[[1]],
-          rows = in_sec,
-          label = sec,
-          section = sec,
-          level = "SOC"
+  if (!is.null(study)) {
+    if (!is_ks_study(study)) {
+      cli::cli_abort("{.arg study} must be a {.cls ks_study} object.")
+    }
+    catalog_ids <- names(.capsule_catalog_contexts(study))
+    missing <- setdiff(catalog_ids, unique(df$output_id))
+    if (length(missing)) {
+      df <- rbind(
+        df,
+        data.frame(
+          output_id = missing,
+          capsule_id = NA_character_,
+          label = NA_character_,
+          stringsAsFactors = FALSE
         )
-        # Re-label row-level entries in this section as PT unless explicitly OVERALL.
-        for (j in in_sec) {
-          if (!identical(out[[j]]$level, "OVERALL")) {
-            out[[j]]$level <- "PT"
-          }
+      )
+    }
+  }
+  if (NROW(df)) {
+    counts <- table(df$output_id[!is.na(df$capsule_id)])
+    df$n_capsules <- as.integer(counts[df$output_id])
+    df$n_capsules[is.na(df$n_capsules)] <- 0L
+  } else {
+    df$n_capsules <- integer()
+  }
+  df
+}
+
+#' Structural Audit of a Capsule Store
+#'
+#' Offline checks (no LLM): empty capsules, unknown members, cycles, orphans.
+#'
+#' @param store A `ks_capsule_store`.
+#' @param study Optional `ks_study` for catalog membership checks.
+#' @return A `ks_capsule_review` list with findings.
+#' @export
+review_capsules <- function(store, study = NULL) {
+  if (!is_ks_capsule_store(store)) {
+    cli::cli_abort("{.arg store} must be a {.cls ks_capsule_store} object.")
+  }
+  catalog_ids <- if (!is.null(study)) {
+    if (!is_ks_study(study)) {
+      cli::cli_abort("{.arg study} must be a {.cls ks_study} object.")
+    }
+    names(.capsule_catalog_contexts(study))
+  } else {
+    character()
+  }
+
+  findings <- character()
+  caps <- store$capsules
+  for (cid in names(caps)) {
+    cap <- caps[[cid]]
+    if (!length(cap$member_ids)) {
+      findings <- c(findings, sprintf("Capsule '%s' has no members.", cid))
+    }
+    if (length(catalog_ids)) {
+      unknown <- setdiff(cap$member_ids, catalog_ids)
+      if (length(unknown)) {
+        findings <- c(
+          findings,
+          sprintf(
+            "Capsule '%s' references unknown member id(s): %s.",
+            cid,
+            paste(unknown, collapse = ", ")
+          )
+        )
+      }
+    }
+    pid <- cap$parent_id
+    if (!is.na(pid) && nzchar(pid) && !(pid %in% names(caps))) {
+      findings <- c(findings, sprintf("Capsule '%s' parent '%s' is missing.", cid, pid))
+    }
+  }
+  if (.capsule_has_cycle(caps)) {
+    findings <- c(findings, "Capsule parent/child graph contains a cycle.")
+  }
+  if (length(catalog_ids)) {
+    assigned <- unique(unlist(lapply(caps, `[[`, "member_ids"), use.names = FALSE))
+    orphans <- setdiff(catalog_ids, assigned)
+    if (length(orphans)) {
+      findings <- c(
+        findings,
+        sprintf("Unassigned catalog id(s): %s.", paste(orphans, collapse = ", "))
+      )
+    }
+    mem <- capsule_membership(store)
+    multi <- unique(mem$output_id[mem$n_capsules > 1L])
+    if (length(multi)) {
+      findings <- c(
+        findings,
+        sprintf(
+          "Multi-membership output id(s): %s.",
+          paste(multi, collapse = ", ")
+        )
+      )
+    }
+  }
+
+  structure(
+    list(
+      ok = !length(findings),
+      findings = findings,
+      n_capsules = length(caps),
+      n_members = length(unique(unlist(lapply(caps, `[[`, "member_ids"), use.names = FALSE)))
+    ),
+    class = c("ks_capsule_review", "list")
+  )
+}
+
+#' @export
+print.ks_capsule_review <- function(x, ...) {
+  cli::cli_h1("ks_capsule_review")
+  cli::cli_text("{.strong Capsules}: {x$n_capsules}")
+  cli::cli_text("{.strong Unique members}: {x$n_members}")
+  if (isTRUE(x$ok)) {
+    cli::cli_alert_success("No structural findings.")
+  } else {
+    cli::cli_alert_warning("{length(x$findings)} finding{?s}:")
+    for (f in x$findings) cli::cli_li("{f}")
+  }
+  invisible(x)
+}
+
+#' Render Capsule Compact Text
+#'
+#' @param x A `ks_capsule`.
+#' @param ... Unused.
+#' @return Character scalar.
+#' @rdname as_compact
+#' @export
+as_compact.ks_capsule <- function(x, ...) {
+  paste(
+    paste0("CAPSULE: ", x$capsule_id),
+    paste0("LABEL: ", x$label),
+    paste0("MEMBERS: ", paste(x$member_ids, collapse = ", ")),
+    paste0("PARENT: ", x$parent_id %||% ""),
+    "",
+    x$compact_text %||% "",
+    sep = "\n"
+  )
+}
+
+#' Render Capsule as Markdown
+#'
+#' @param x A `ks_capsule`.
+#' @param ... Unused.
+#' @return Character scalar.
+#' @rdname as_markdown
+#' @export
+as_markdown.ks_capsule <- function(x, ...) {
+  paste(
+    paste0("# Capsule ", x$capsule_id),
+    "",
+    paste0("- **Label**: ", x$label),
+    paste0("- **Members**: ", paste(x$member_ids, collapse = ", ")),
+    paste0("- **Parent**: ", x$parent_id %||% ""),
+    paste0("- **Children**: ", paste(x$child_ids, collapse = ", ")),
+    "",
+    x$compact_text %||% "",
+    sep = "\n"
+  )
+}
+
+#' Detailed Member Content for One Capsule
+#'
+#' Expands full member contexts from a live [ks_study] (not truncated build
+#' excerpts).
+#'
+#' @param store A `ks_capsule_store`.
+#' @param capsule_id Capsule id.
+#' @param study A `ks_study` containing the member contexts.
+#' @param format `"compact"` or `"markdown"`.
+#' @return Character scalar with concatenated member renders.
+#' @export
+capsule_content <- function(store,
+                            capsule_id,
+                            study,
+                            format = c("compact", "markdown")) {
+  if (!is_ks_capsule_store(store)) {
+    cli::cli_abort("{.arg store} must be a {.cls ks_capsule_store} object.")
+  }
+  if (!is_ks_study(study)) {
+    cli::cli_abort("{.arg study} must be a {.cls ks_study} object.")
+  }
+  checkmate::assert_string(capsule_id)
+  format <- match.arg(format)
+  if (!capsule_id %in% names(store$capsules)) {
+    cli::cli_abort("Unknown capsule {.val {capsule_id}}.")
+  }
+  cap <- store$capsules[[capsule_id]]
+  all <- .study_all(study)
+  blocks <- lapply(cap$member_ids, function(mid) {
+    ctx <- all[[mid]]
+    if (is.null(ctx)) {
+      return(paste0("### Missing member: ", mid))
+    }
+    body <- if (identical(format, "markdown")) as_markdown(ctx) else as_compact(ctx)
+    paste0("### Member ", mid, "\n\n", body)
+  })
+  paste(
+    paste0("## Capsule ", capsule_id, ": ", cap$label),
+    "",
+    paste(blocks, collapse = "\n\n"),
+    sep = "\n"
+  )
+}
+
+#' LLM Deep Review of Capsules
+#'
+#' Asks an LLM (typically vision-capable for figures) to critique capsule
+#' grouping and member content.
+#'
+#' @param store A `ks_capsule_store`.
+#' @param study A `ks_study` for member expansion and figure assets.
+#' @param model LLM model name.
+#' @param capsule_ids Optional subset of capsule ids (default: all).
+#' @param provider LLM provider.
+#' @param base_url Optional provider URL.
+#' @param attach_images Logical. Attach figure images for vision models.
+#' @param echo Echo mode for ellmer.
+#' @param ... Extra args to the chat constructor.
+#' @return A [ks_result].
+#' @export
+ks_review_capsules <- function(store,
+                               study,
+                               model,
+                               capsule_ids = NULL,
+                               provider = ks_get_option("provider"),
+                               base_url = NULL,
+                               attach_images = TRUE,
+                               echo = "none",
+                               ...) {
+  if (!is_ks_capsule_store(store)) {
+    cli::cli_abort("{.arg store} must be a {.cls ks_capsule_store} object.")
+  }
+  if (!is_ks_study(study)) {
+    cli::cli_abort("{.arg study} must be a {.cls ks_study} object.")
+  }
+  checkmate::assert_string(model, min.chars = 1L)
+  checkmate::assert_flag(attach_images)
+  dots <- rlang::list2(...)
+
+  ids <- capsule_ids %||% names(store$capsules)
+  ids <- intersect(ids, names(store$capsules))
+  context_txt <- paste(
+    vapply(ids, function(cid) {
+      capsule_content(store, cid, study, format = "compact")
+    }, character(1)),
+    collapse = "\n\n---\n\n"
+  )
+  tmpl <- tryCatch(.load_prompt("capsule_review"), error = function(e) NULL)
+  if (is.null(tmpl)) {
+    tmpl <- "Review these capsules:\n{{context}}"
+  }
+  prompt_txt <- .fill_prompt(tmpl, context = context_txt)
+
+  system_prompt <- paste(
+    "You are a senior clinical reviewer of semantic capsule groupings.",
+    "Use attached figure images when present. Return a clear written review.",
+    sep = " "
+  )
+  chat <- rlang::exec(
+    .make_ellmer_chat,
+    provider = provider,
+    model = model,
+    system_prompt = system_prompt,
+    base_url = base_url,
+    echo = echo,
+    !!!dots
+  )
+
+  turn <- list(prompt_txt)
+  if (attach_images) {
+    all <- .study_all(study)
+    for (cid in ids) {
+      for (mid in store$capsules[[cid]]$member_ids) {
+        ctx <- all[[mid]]
+        img <- .capsule_image_content(ctx)
+        if (!is.null(img)) {
+          turn[[length(turn) + 1L]] <- paste0("Image for member ", mid, ":")
+          turn[[length(turn) + 1L]] <- img
         }
       }
     }
   }
-  # Ensure stable order by first row index then level priority.
-  pr <- function(level) {
-    if (identical(level, "OVERALL")) return(1L)
-    if (identical(level, "SOC")) return(2L)
-    if (identical(level, "PT")) return(3L)
-    4L
-  }
-  ord <- order(
-    vapply(out, `[[`, integer(1), "idx"),
-    vapply(out, function(g) pr(g$level), integer(1))
-  )
-  out <- out[ord]
-  out
-}
-
-#' @keywords internal
-#' @noRd
-.capsule_from_group <- function(ctx, g, row_label_col, capsule_id, parent_id,
-                                domain = NULL) {
-  idx <- g$idx
-  row <- ctx$rows[[idx]]
-  source_rows <- as.integer(g$rows %||% idx)
-  label <- if (nzchar(g$label)) g$label else paste0("ROW_", idx)
-  stats <- .capsule_extract_stats(row$cells, row_label_col, ctx$span_headers)
-  compact_text <- .capsule_compact_for_rows(ctx, source_rows)
-  if (is.null(domain)) {
-    domain <- .capsule_infer_domain(ctx)
-  }
-  new_ks_capsule(
-    capsule_id = capsule_id,
-    source_id = ctx$id,
-    source_rows = source_rows,
-    domain = domain,
-    level = g$level,
-    label = label,
-    population = ctx$population %||% NA_character_,
-    parent_id = parent_id,
-    child_ids = character(),
-    linked_ids = character(),
-    stats = stats,
-    compact_text = compact_text
+  response <- as.character(do.call(chat$chat, turn))
+  new_ks_result(
+    ids = ids,
+    skill = "capsule_review",
+    prompt = prompt_txt,
+    response = response,
+    model = model,
+    provider = provider
   )
 }
 
+# ---------------------------------------------------------------------------
+# Internal: classify / merge / validate
+# ---------------------------------------------------------------------------
+
 #' @keywords internal
 #' @noRd
-.capsule_safe_id <- function(x) {
-  x <- toupper(as.character(x))
-  x <- gsub("[^A-Z0-9]+", "_", x)
-  x <- gsub("^_+|_+$", "", x)
-  if (!nzchar(x)) {
-    "ROW"
-  } else {
-    x
-  }
+.capsule_catalog_contexts <- function(study) {
+  all <- .study_all(study)
+  keep <- vapply(all, function(ctx) {
+    type <- as.character(ctx$type %||% "")
+    type %in% c("Table", "Figure")
+  }, logical(1))
+  all[keep]
 }
 
 #' @keywords internal
 #' @noRd
-.capsule_extract_stats <- function(cells, row_label_col, span_headers) {
-  keys <- setdiff(names(cells), row_label_col)
-  out <- list(raw = list())
-  if (!length(keys)) {
-    return(out)
-  }
-
-  parse_npct <- function(v) {
-    m <- regexec("^(\\d+)\\s*\\((\\d+\\.?\\d*)%\\)$", v)
-    hit <- regmatches(v, m)[[1]]
-    if (length(hit) == 3L) {
-      list(n = as.integer(hit[[2]]), pct = as.numeric(hit[[3]]))
-    } else {
-      NULL
-    }
-  }
-  parse_events <- function(v) {
-    m <- regexec("^\\[(\\d+)\\]$", v)
-    hit <- regmatches(v, m)[[1]]
-    if (length(hit) == 2L) as.integer(hit[[2]]) else NULL
-  }
-  parse_p <- function(v) {
-    vv <- trimws(v)
-    if (grepl("^>?\\.?\\d", vv)) {
-      suppressWarnings(as.numeric(sub("^>", "", vv)))
-    } else {
-      NA_real_
-    }
-  }
-
-  group_for_col <- function(col) {
-    if (!length(span_headers)) {
-      return(col)
-    }
-    for (sp in span_headers) {
-      if (col %in% (sp$cols %||% character())) {
-        return(sp$label %||% col)
-      }
-    }
-    col
-  }
-
-  for (nm in keys) {
-    v <- as.character(cells[[nm]] %||% "")
-    grp <- group_for_col(nm)
-    if (is.null(out[[grp]])) out[[grp]] <- list()
-    np <- parse_npct(v)
-    ev <- parse_events(v)
-    pv <- parse_p(v)
-    if (!is.null(np)) out[[grp]] <- utils::modifyList(out[[grp]], np)
-    if (!is.null(ev)) out[[grp]]$events <- ev
-    if (!is.na(pv) && grepl("^P_|_P$|PVALUE|PVAL|P_", toupper(nm))) {
-      out[[grp]][[tolower(nm)]] <- pv
-    }
-    if (is.null(np) && is.null(ev) && is.na(pv)) {
-      out$raw[[nm]] <- v
-    }
-  }
-  out
-}
-
-#' @keywords internal
-#' @noRd
-.capsule_compact_for_rows <- function(ctx, idx) {
-  if (!length(ctx$rows)) {
-    return("")
-  }
-  sub_ctx <- new_ks_context(
-    id = ctx$id,
-    type = ctx$type,
-    title = ctx$title,
-    subtitles = ctx$subtitles,
-    population = ctx$population,
-    source = ctx$source,
-    columns = ctx$columns,
-    span_headers = ctx$span_headers,
-    rows = ctx$rows[idx],
-    n_rows_total = length(idx),
-    footnotes = ctx$footnotes,
-    annotations = ctx$annotations,
-    warnings = character()
-  )
-  as_compact(sub_ctx)
-}
-
-#' Infer a clinical domain code for a context (language-agnostic).
-#'
-#' Priority (first hit wins):
-#' 1. Explicit `ctx$annotations$domain` (set via [enrich_context()]).
-#' 2. Session `domain_map` option (exact output id, then regex keys).
-#' 3. Structural cues from rows (`ROW_KIND` SOC/PT → AE) — no language needed.
-#' 4. Optional small LLM when `llm_domain = "always"` and `chat` is set.
-#' 5. Multilingual title/subtitle/source keyword lexicon.
-#' 6. ICH/CSR-style output id numbering (`14-5.x` → AE, `14-6.x` → LB, …).
-#' 7. Optional small LLM when `llm_domain = "unknown"` and still unresolved.
-#' 8. `"UNKNOWN"`.
-#'
-#' @keywords internal
-#' @noRd
-.capsule_infer_domain <- function(ctx,
-                                  chat = NULL,
-                                  llm_domain = "unknown",
-                                  llm_min_confidence = 0.5) {
-  # 1. Explicit annotation override (any language / custom study taxonomy).
-  ann <- ctx$annotations %||% list()
-  if (!is.null(ann$domain) && nzchar(as.character(ann$domain)[[1]])) {
-    return(toupper(as.character(ann$domain)[[1]]))
-  }
-
-  # 2. User domain_map: exact id, then regex patterns.
-  mapped <- .capsule_domain_from_map(ctx$id %||% "")
-  if (!is.null(mapped)) {
-    return(mapped)
-  }
-
-  # 3. Structure from MedDRA-like hierarchy markers (language-independent).
-  if (.capsule_has_ae_structure(ctx)) {
-    return("AE")
-  }
-
-  # 4. Optional LLM before soft lexical / id heuristics.
-  if (identical(llm_domain, "always") && !is.null(chat)) {
-    hit <- .capsule_domain_from_llm(ctx, chat, llm_min_confidence)
-    if (!is.null(hit) && !identical(hit, "UNKNOWN")) {
-      return(hit)
-    }
-  }
-
-  # 5. Multilingual lexical cues in title / subtitles / source.
-  lex <- .capsule_domain_from_lexicon(ctx)
-  if (!is.null(lex)) {
-    return(lex)
-  }
-
-  # 6. CSR / ICH table-number conventions encoded in the output id.
-  by_id <- .capsule_domain_from_id(ctx$id %||% "")
-  if (!is.null(by_id)) {
-    return(by_id)
-  }
-
-  # 7. Optional LLM fallback when rules leave the domain unresolved.
-  if (identical(llm_domain, "unknown") && !is.null(chat)) {
-    hit <- .capsule_domain_from_llm(ctx, chat, llm_min_confidence)
-    if (!is.null(hit) && !identical(hit, "UNKNOWN")) {
-      return(hit)
-    }
-  }
-
-  "UNKNOWN"
-}
-
-#' @keywords internal
-#' @noRd
-.capsule_allowed_domains <- function() {
-  c("AE", "DM", "VS", "LB", "EFFC", "EX", "DS", "UNKNOWN")
-}
-
-#' @keywords internal
-#' @noRd
-.capsule_normalize_domain <- function(x) {
-  if (is.null(x) || !length(x)) {
-    return(NULL)
-  }
-  x <- toupper(trimws(as.character(x)[[1]]))
-  if (!nzchar(x)) {
-    return(NULL)
-  }
-  aliases <- c(
-    LAB = "LB", LABORATORY = "LB", LABS = "LB",
-    DEMO = "DM", DEMOGRAPHICS = "DM", DEMOGRAPHY = "DM",
-    EFFICACY = "EFFC", EFF = "EFFC",
-    VITAL = "VS", VITALS = "VS",
-    ADVERSE = "AE", TEAE = "AE", SAE = "AE",
-    EXPOSURE = "EX", DISPOSITION = "DS", POPULATION = "DS"
-  )
-  if (x %in% names(aliases)) {
-    x <- unname(aliases[[x]])
-  }
-  if (x %in% .capsule_allowed_domains()) {
-    x
-  } else {
-    NULL
-  }
-}
-
-#' @keywords internal
-#' @noRd
-.make_domain_llm_chat <- function(model,
-                                  provider,
-                                  base_url,
-                                  llm_domain = "unknown",
-                                  dots = list()) {
-  # Defensive: callers should already skip "never", but never contact ellmer.
-  if (identical(llm_domain, "never")) {
-    return(NULL)
-  }
-  if (is.null(model) || !nzchar(as.character(model)[[1]])) {
-    return(NULL)
-  }
+.make_capsule_classify_chat <- function(model, provider, base_url, dots = list()) {
   system_prompt <- paste(
-    "You classify clinical statistical outputs into CDISC-like domains.",
-    "Return strict JSON only: {\"domain\":\"CODE\",\"confidence\":0.0}.",
-    "Allowed domain codes:",
-    paste(.capsule_allowed_domains(), collapse = ", "),
-    "Use UNKNOWN if unsure. Never invent other codes.",
-    "Titles may be in any language.",
+    "You classify clinical statistical tables and figures into semantic capsules.",
+    "Group by information meaning only — never by CDISC domains, ICH numbers, or filenames.",
+    "Titles may be in any language. Use attached figure images when present.",
+    "Return strict JSON only with key \"capsules\" (array of objects with",
+    "capsule_id, label, parent_id, member_ids, confidence).",
+    "Multi-membership is allowed. Do not invent member ids.",
     sep = " "
   )
-  tryCatch(
+  chat <- tryCatch(
     rlang::exec(
       .make_ellmer_chat,
       provider = provider,
@@ -765,8 +745,105 @@ load_capsules <- function(path) {
       !!!dots
     ),
     error = function(e) {
+      cli::cli_abort(c(
+        "Could not create LLM chat for {.fn as_capsules}.",
+        x = conditionMessage(e)
+      ))
+    }
+  )
+  chat
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_excerpt <- function(ctx, max_excerpt_rows = 12L, detail = "compact") {
+  if (identical(detail, "full")) {
+    return(as_compact(ctx))
+  }
+  # Truncate table rows for compact classify prompts.
+  if (identical(ctx$type, "Table") && length(ctx$rows) > max_excerpt_rows) {
+    ctx2 <- ctx
+    ctx2$rows <- ctx$rows[seq_len(max_excerpt_rows)]
+    return(as_compact(ctx2))
+  }
+  as_compact(ctx)
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_catalog_text <- function(catalog, max_excerpt_rows = 12L, detail = "compact") {
+  blocks <- vapply(names(catalog), function(id) {
+    ctx <- catalog[[id]]
+    paste(
+      paste0("### ", id),
+      paste0("type: ", ctx$type %||% ""),
+      paste0("title: ", paste(ctx$title %||% character(), collapse = " — ")),
+      paste0("subtitles: ", paste(ctx$subtitles %||% character(), collapse = " — ")),
+      paste0("population: ", ctx$population %||% ""),
+      paste0("source: ", ctx$source %||% ""),
+      "content_excerpt:",
+      .capsule_excerpt(ctx, max_excerpt_rows = max_excerpt_rows, detail = detail),
+      sep = "\n"
+    )
+  }, character(1))
+  paste(blocks, collapse = "\n\n")
+}
+
+#' Attach a figure image for ellmer (converts SVG via magick when needed).
+#'
+#' Does not interpret plot content — only prepares bytes for a vision model.
+#'
+#' @keywords internal
+#' @noRd
+.capsule_image_content <- function(ctx) {
+  if (is.null(ctx) || !identical(ctx$type, "Figure")) {
+    return(NULL)
+  }
+  path <- ctx$asset_path %||% NA_character_
+  if (is.na(path) || !nzchar(path) || !file.exists(path)) {
+    return(NULL)
+  }
+  ext <- tolower(tools::file_ext(path))
+  attach_path <- path
+  tmp <- NULL
+  on.exit({
+    if (!is.null(tmp) && file.exists(tmp)) unlink(tmp)
+  }, add = TRUE)
+
+  if (!ext %in% c("png", "jpeg", "jpg", "webp", "gif")) {
+    if (!requireNamespace("magick", quietly = TRUE)) {
       cli::cli_warn(c(
-        "Domain LLM chat could not be created; using rule-based domains only.",
+        "Cannot attach figure {.path {path}}:",
+        i = "Install {.pkg magick} to convert {.val {ext}} for vision models."
+      ))
+      return(NULL)
+    }
+    tmp <- tempfile(fileext = ".png")
+    ok <- tryCatch(
+      {
+        img <- magick::image_read(path)
+        magick::image_write(img, path = tmp, format = "png")
+        TRUE
+      },
+      error = function(e) {
+        cli::cli_warn(c(
+          "Failed to convert figure {.path {path}} for vision.",
+          x = conditionMessage(e)
+        ))
+        FALSE
+      }
+    )
+    if (!isTRUE(ok)) {
+      return(NULL)
+    }
+    attach_path <- tmp
+  }
+
+  tryCatch(
+    ellmer::content_image_file(attach_path, resize = "low"),
+    error = function(e) {
+      cli::cli_warn(c(
+        "Could not attach figure image {.path {path}}.",
         x = conditionMessage(e)
       ))
       NULL
@@ -776,271 +853,203 @@ load_capsules <- function(path) {
 
 #' @keywords internal
 #' @noRd
-.capsule_domain_llm_prompt <- function(ctx) {
-  n_show <- min(8L, length(ctx$rows))
-  row_bits <- character(0)
-  if (n_show > 0L) {
-    row_bits <- vapply(seq_len(n_show), function(i) {
-      r <- ctx$rows[[i]]
-      lab <- ""
-      if (length(r$cells)) {
-        lab <- as.character(r$cells[[1]] %||% "")
-      }
-      sprintf("%s|%s", as.character(r$kind %||% ""), lab)
-    }, character(1))
-  }
-  paste(
-    "Classify this clinical output domain.",
-    paste0("id: ", ctx$id %||% ""),
-    paste0("type: ", ctx$type %||% ""),
-    paste0("title: ", paste(ctx$title %||% character(), collapse = " — ")),
-    paste0("subtitles: ", paste(ctx$subtitles %||% character(), collapse = " — ")),
-    paste0("source: ", ctx$source %||% ""),
-    paste0("population: ", ctx$population %||% ""),
-    paste0("row_kinds_and_labels: ", paste(row_bits, collapse = "; ")),
-    "Return JSON {\"domain\":\"CODE\",\"confidence\":0.0}.",
-    sep = "\n"
+.capsule_classify_chunk <- function(chat,
+                                    catalog,
+                                    max_excerpt_rows = 12L,
+                                    detail = "compact",
+                                    attach_images = TRUE) {
+  catalog_txt <- .capsule_catalog_text(
+    catalog,
+    max_excerpt_rows = max_excerpt_rows,
+    detail = detail
   )
+  tmpl <- tryCatch(.load_prompt("capsule_classify"), error = function(e) NULL)
+  if (is.null(tmpl)) {
+    tmpl <- "Classify into capsules. Catalog:\n{{catalog}}"
+  }
+  prompt_txt <- .fill_prompt(tmpl, catalog = catalog_txt)
+
+  turn <- list(prompt_txt)
+  if (attach_images) {
+    for (id in names(catalog)) {
+      img <- .capsule_image_content(catalog[[id]])
+      if (!is.null(img)) {
+        turn[[length(turn) + 1L]] <- paste0("Figure image for id ", id, ":")
+        turn[[length(turn) + 1L]] <- img
+      }
+    }
+  }
+
+  out <- tryCatch(
+    as.character(do.call(chat$chat, turn)),
+    error = function(e) {
+      cli::cli_abort(c(
+        "Capsule classification LLM call failed.",
+        x = conditionMessage(e)
+      ))
+    }
+  )
+  .capsule_parse_classify_json(out)
 }
 
 #' @keywords internal
 #' @noRd
-.capsule_parse_domain_llm_json <- function(out) {
+.capsule_llm_merge <- function(chat, partials, catalog_ids) {
+  payload <- jsonlite::toJSON(
+    list(
+      catalog_ids = catalog_ids,
+      partial_trees = partials
+    ),
+    auto_unbox = TRUE,
+    null = "null",
+    pretty = TRUE
+  )
+  req <- paste(
+    "Merge these partial capsule trees into one coherent tree.",
+    "Preserve multi-membership when justified. Use only catalog_ids as members.",
+    "Return the same JSON schema: {\"capsules\":[...]} only.",
+    "Partial results:",
+    as.character(payload),
+    sep = "\n\n"
+  )
+  out <- tryCatch(
+    as.character(chat$chat(req)),
+    error = function(e) {
+      cli::cli_abort(c(
+        "Capsule merge LLM call failed.",
+        x = conditionMessage(e)
+      ))
+    }
+  )
+  .capsule_parse_classify_json(out)
+}
+
+#' @keywords internal
+#' @noRd
+.capsule_parse_classify_json <- function(out) {
   if (is.null(out) || !nzchar(out)) {
-    return(NULL)
+    cli::cli_abort("Capsule LLM returned an empty response.")
   }
-  parsed <- tryCatch(jsonlite::fromJSON(out, simplifyVector = TRUE), error = function(e) NULL)
+  parsed <- tryCatch(jsonlite::fromJSON(out, simplifyVector = FALSE), error = function(e) NULL)
   if (is.null(parsed)) {
     json_block <- regmatches(out, regexpr("\\{[\\s\\S]*\\}", out, perl = TRUE))
     if (length(json_block) == 1L && nzchar(json_block[[1]])) {
       parsed <- tryCatch(
-        jsonlite::fromJSON(json_block[[1]], simplifyVector = TRUE),
+        jsonlite::fromJSON(json_block[[1]], simplifyVector = FALSE),
         error = function(e) NULL
       )
     }
   }
-  parsed
+  if (is.null(parsed) || is.null(parsed$capsules)) {
+    cli::cli_abort("Capsule LLM response was not valid JSON with a {.field capsules} array.")
+  }
+  parsed$capsules
 }
 
 #' @keywords internal
 #' @noRd
-.capsule_domain_from_llm <- function(ctx, chat, min_confidence = 0.5) {
-  if (is.null(chat)) {
-    return(NULL)
-  }
-  req <- .capsule_domain_llm_prompt(ctx)
-  out <- tryCatch(as.character(chat$chat(req)), error = function(e) NULL)
-  parsed <- .capsule_parse_domain_llm_json(out)
-  if (is.null(parsed)) {
-    return(NULL)
-  }
-  dom <- .capsule_normalize_domain(parsed$domain)
-  if (is.null(dom)) {
-    return(NULL)
-  }
-  conf <- suppressWarnings(as.numeric(parsed$confidence %||% 1))
-  if (!is.finite(conf)) {
-    conf <- 1
-  }
-  if (conf < min_confidence) {
-    return(NULL)
-  }
-  dom
+.capsule_safe_id <- function(x) {
+  x <- tolower(as.character(x))
+  x <- gsub("[^a-z0-9]+", "_", x)
+  x <- gsub("^_+|_+$", "", x)
+  if (!nzchar(x)) "capsule" else x
 }
 
 #' @keywords internal
 #' @noRd
-.capsule_domain_from_map <- function(id) {
-  id <- as.character(id %||% "")
-  if (!nzchar(id)) {
-    return(NULL)
-  }
-  dm <- ks_get_option("domain_map")
-  if (is.null(dm) || !length(dm)) {
-    return(NULL)
-  }
-  dm <- unlist(dm)
-  if (is.null(names(dm)) || any(names(dm) == "")) {
-    return(NULL)
-  }
-  # Exact id match first.
-  if (id %in% names(dm)) {
-    return(toupper(as.character(unname(dm[[id]]))))
-  }
-  # Then regex keys (e.g. "^14-5", "^табл-ндя").
-  for (pat in names(dm)) {
-    ok <- tryCatch(
-      grepl(pat, id, ignore.case = TRUE, perl = TRUE),
-      error = function(e) FALSE
+.capsule_validate_and_build <- function(raw_caps,
+                                        catalog,
+                                        min_confidence = 0.5,
+                                        max_excerpt_rows = 12L,
+                                        detail = "compact") {
+  catalog_ids <- names(catalog)
+  capsules <- list()
+  used_ids <- character()
+
+  for (raw in raw_caps) {
+    cid <- .capsule_safe_id(raw$capsule_id %||% raw$id %||% "")
+    if (!nzchar(cid)) next
+    # Disambiguate duplicate ids from the model.
+    base <- cid
+    k <- 2L
+    while (cid %in% used_ids) {
+      cid <- paste0(base, "_", k)
+      k <- k + 1L
+    }
+    conf <- suppressWarnings(as.numeric(raw$confidence %||% 1))
+    if (!is.finite(conf)) conf <- 1
+    if (conf < min_confidence) next
+
+    members <- unique(as.character(unlist(raw$member_ids) %||% character()))
+    members <- intersect(members, catalog_ids)
+    if (!length(members)) next
+
+    parent_id <- raw$parent_id %||% NA_character_
+    if (is.null(parent_id) || identical(parent_id, "null") || !nzchar(as.character(parent_id))) {
+      parent_id <- NA_character_
+    } else {
+      parent_id <- .capsule_safe_id(parent_id)
+    }
+
+    pops <- unique(vapply(members, function(mid) {
+      as.character(catalog[[mid]]$population %||% NA_character_)
+    }, character(1)))
+    pops <- pops[!is.na(pops) & nzchar(pops)]
+    population <- if (length(pops) == 1L) pops[[1]] else NA_character_
+
+    compact_bits <- vapply(members, function(mid) {
+      .capsule_excerpt(
+        catalog[[mid]],
+        max_excerpt_rows = max_excerpt_rows,
+        detail = detail
+      )
+    }, character(1))
+
+    capsules[[cid]] <- new_ks_capsule(
+      capsule_id = cid,
+      label = as.character(raw$label %||% cid),
+      member_ids = members,
+      parent_id = parent_id,
+      child_ids = character(),
+      population = population,
+      compact_text = paste(compact_bits, collapse = "\n\n"),
+      confidence = conf
     )
-    if (isTRUE(ok)) {
-      return(toupper(as.character(unname(dm[[pat]]))))
+    used_ids <- c(used_ids, cid)
+  }
+
+  # Drop parent links that point outside the accepted set; then wire children.
+  for (cid in names(capsules)) {
+    pid <- capsules[[cid]]$parent_id
+    if (!is.na(pid) && nzchar(pid) && !(pid %in% names(capsules))) {
+      capsules[[cid]]$parent_id <- NA_character_
+    }
+    if (!is.na(pid) && identical(pid, cid)) {
+      capsules[[cid]]$parent_id <- NA_character_
     }
   }
-  NULL
-}
-
-#' @keywords internal
-#' @noRd
-.capsule_has_ae_structure <- function(ctx) {
-  if (!length(ctx$rows)) {
-    return(FALSE)
-  }
-  kinds <- toupper(vapply(ctx$rows, function(r) {
-    as.character(r$kind %||% "")
-  }, character(1)))
-  any(kinds %in% c("SOC", "PT", "HLGT", "HLT", "LLT"))
-}
-
-#' Multilingual keyword lexicon for domain inference.
-#'
-#' Patterns are matched against a lowercased concatenation of title, subtitles,
-#' and source. Keep this list conservative: prefer structure / id / domain_map
-#' for ambiguous words (e.g. English "baseline" alone is NOT mapped to DM).
-#'
-#' @keywords internal
-#' @noRd
-.capsule_domain_lexicon <- function() {
-  list(
-    AE = paste(
-      # EN
-      "adverse", "teae", "\\bsae\\b", "\\bae\\b", "meddra", "preferred term",
-      "system organ class",
-      # DE
-      "unerw(?:u|ü)nscht", "nebenwirkung",
-      # FR
-      "ind(?:e|é)sirable",
-      # ES / PT
-      "advers[oa]", "acontecimiento advers", "evento advers",
-      # IT
-      "avvers",
-      # RU
-      "нежелательн", "ндя", "серьезн.*событ",
-      "предпочтительн.*термин", "систем.*орган",
-      # ZH / JA / PL
-      "不良事件", "严重不良", "有害事象", "niepożąd",
-      sep = "|"
-    ),
-    DM = paste(
-      "demograph", "demographic", "baseline character",
-      "demografía", "demografia", "demograf",
-      "демограф", "исходн.*характерист",
-      "人口学", "人口統計", "人口统计学",
-      "demographie", "demografie",
-      sep = "|"
-    ),
-    VS = paste(
-      "vital sign", "blood pressure", "heart rate", "\\bpulse\\b",
-      "respiratory rate",
-      "vitalparameter", "vitalzeichen",
-      "signes vitaux", "signos vitales",
-      "витальн", "жизненн.*показател", "артериальн.*давлен", "пульс",
-      "血压", "脉搏", "バイタル",
-      sep = "|"
-    ),
-    LB = paste(
-      "\\blab(?:oratory)?\\b", "chemistry", "hematology", "haematology",
-      "hy.?s law", "liver enzyme",
-      "laborwert", "laborbefund", "laboratoire", "laboratorio",
-      "лаборатор", "биохим", "гематолог",
-      "实验室", "检验", "臨床検査",
-      sep = "|"
-    ),
-    EFFC = paste(
-      "efficac", "endpoint", "primary analysis", "adas", "cibic", "\\bnpi\\b",
-      "\\bmmse\\b", "\\bcdr\\b", "scale score",
-      "wirksamkeit", "efficacité", "eficacia", "efficacia",
-      "эффективност", "конечн.*точк", "первичн.*конечн",
-      "疗效", "有效性", "有効性",
-      sep = "|"
-    ),
-    EX = paste(
-      "exposure", "cumulative dose", "drug administration",
-      "exposit", "posolog",
-      "экспозиц", "дозиров", "приверженност",
-      "暴露", "给药",
-      sep = "|"
-    ),
-    DS = paste(
-      "disposition", "discontinu", "withdrawal", "end of study",
-      "analysis set", "intent.?to.?treat", "\\bitt\\b",
-      "safety population",
-      "выбыван", "исключен", "популац", "анализ.*набор",
-      "受试者分布", "中止",
-      sep = "|"
-    )
-  )
-}
-
-#' @keywords internal
-#' @noRd
-.capsule_domain_from_lexicon <- function(ctx) {
-  txt <- paste(
-    paste(ctx$title %||% character(), collapse = " "),
-    paste(ctx$subtitles %||% character(), collapse = " "),
-    ctx$source %||% "",
-    sep = " "
-  )
-  # Keep original script; case-fold only Latin via tolower for EN/DE/FR/ES…
-  tx <- tolower(txt)
-  lex <- .capsule_domain_lexicon()
-  # Prefer more specific clinical domains before broad ones.
-  order <- c("AE", "LB", "VS", "EFFC", "EX", "DM", "DS")
-  for (dom in order) {
-    pat <- lex[[dom]]
-    if (is.null(pat)) next
-    hit <- tryCatch(
-      grepl(pat, tx, ignore.case = TRUE, perl = TRUE),
-      error = function(e) FALSE
-    )
-    if (isTRUE(hit)) {
-      return(dom)
+  capsules <- .wire_capsule_children(capsules)
+  if (.capsule_has_cycle(capsules)) {
+    # Break cycles by clearing parents that participate in a cycle.
+    for (cid in names(capsules)) {
+      capsules[[cid]]$parent_id <- NA_character_
+      capsules[[cid]]$child_ids <- character()
     }
+    cli::cli_warn("Capsule tree had a cycle; parent links were cleared.")
+  } else {
+    capsules <- .wire_capsule_children(capsules)
   }
-  NULL
-}
-
-#' Infer domain from CSR/ICH-style table numbering in the output id.
-#'
-#' Language-independent fallback used when titles are non-English and no
-#' structural MedDRA markers are present. Matches common CDISC Pilot /
-#' ICH E3 section numbering (14-1 disposition, 14-2 demography, 14-3
-#' efficacy, 14-4 exposure, 14-5 AE, 14-6 laboratory, 14-7 vital signs).
-#'
-#' @keywords internal
-#' @noRd
-.capsule_domain_from_id <- function(id) {
-  id <- as.character(id %||% "")
-  # Accept "14-5.01", "t-14-5-01", "Table_14_5_01", "14.5.01"
-  m <- regmatches(
-    id,
-    regexpr("(?i)(?:^|[^0-9])14[\\._-]?([1-9])(?:[\\._-]|\\b)", id, perl = TRUE)
-  )
-  if (!length(m) || !nzchar(m[[1]])) {
-    return(NULL)
-  }
-  digit <- sub("(?i).*14[\\._-]?([1-9]).*", "\\1", m[[1]], perl = TRUE)
-  switch(
-    digit,
-    "1" = "DS",
-    "2" = "DM",
-    "3" = "EFFC",
-    "4" = "EX",
-    "5" = "AE",
-    "6" = "LB",
-    "7" = "VS",
-    NULL
-  )
+  capsules
 }
 
 #' @keywords internal
 #' @noRd
 .wire_capsule_children <- function(capsules) {
-  if (!length(capsules)) return(capsules)
-  id_to_children <- stats::setNames(vector("list", length(capsules)), names(capsules))
+  id_to_children <- lapply(names(capsules), function(nm) character())
+  names(id_to_children) <- names(capsules)
   for (nm in names(capsules)) {
     p <- capsules[[nm]]$parent_id
-    if (!is.null(p) && !is.na(p) && nzchar(p) && p %in% names(capsules)) {
+    if (!is.na(p) && nzchar(p) && p %in% names(id_to_children)) {
       id_to_children[[p]] <- c(id_to_children[[p]], nm)
     }
   }
@@ -1052,24 +1061,23 @@ load_capsules <- function(path) {
 
 #' @keywords internal
 #' @noRd
-.link_capsules_to_text_outputs <- function(capsules,
-                                          study,
-                                          chat = NULL,
-                                          llm_domain = "unknown",
-                                          llm_min_confidence = 0.5) {
-  if (!length(capsules) || !length(study$texts)) return(capsules)
-  txt_map <- lapply(study$texts, function(ctx) {
-    .capsule_infer_domain(
-      ctx,
-      chat = chat,
-      llm_domain = llm_domain,
-      llm_min_confidence = llm_min_confidence
-    )
-  })
-  txt_ids_by_domain <- split(names(txt_map), unlist(txt_map))
-  for (nm in names(capsules)) {
-    d <- capsules[[nm]]$domain %||% "UNKNOWN"
-    capsules[[nm]]$linked_ids <- as.character(txt_ids_by_domain[[d]] %||% character())
+.capsule_has_cycle <- function(capsules) {
+  if (!length(capsules)) return(FALSE)
+  visiting <- character()
+  visited <- character()
+  dfs <- function(cid) {
+    if (cid %in% visiting) return(TRUE)
+    if (cid %in% visited) return(FALSE)
+    visiting <<- c(visiting, cid)
+    for (ch in capsules[[cid]]$child_ids %||% character()) {
+      if (ch %in% names(capsules) && dfs(ch)) return(TRUE)
+    }
+    visiting <<- setdiff(visiting, cid)
+    visited <<- c(visited, cid)
+    FALSE
   }
-  capsules
+  for (cid in names(capsules)) {
+    if (dfs(cid)) return(TRUE)
+  }
+  FALSE
 }

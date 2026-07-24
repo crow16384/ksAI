@@ -99,8 +99,11 @@ ks_list_skills <- function() {
     character()
   }
   builtin_names <- sub("\\.md$", "", builtin_files)
-  # system.md and system_single.md are infrastructure prompts.
-  builtin_names <- setdiff(builtin_names, c(.KS_SYSTEM_PROMPT, "system_single"))
+  # system*.md and capsule_*.md are infrastructure prompts, not CSR skills.
+  builtin_names <- setdiff(
+    builtin_names,
+    c(.KS_SYSTEM_PROMPT, "system_single", "capsule_classify", "capsule_review")
+  )
 
   df <- data.frame(
     name = builtin_names,

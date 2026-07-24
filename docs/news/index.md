@@ -1,33 +1,23 @@
 # Changelog
 
-## ksAI 0.2.0
+# ksAI 0.3.0
 
-### Domain inference (language-agnostic)
+## LLM-only content capsules
 
-- [`as_capsules()`](https://crow16384.github.io/ksAI/reference/as_capsules.md)
-  now infers clinical domain codes with a priority chain that works for
-  non-English titles: `enrich_context(annotations$domain)`, session
-  `domain_map`, MedDRA `ROW_KIND` structure, multilingual lexicon,
-  ICH/CSR-style output ids, then `"UNKNOWN"`.
-- New option `domain_map`
-  ([`ks_get_option()`](https://crow16384.github.io/ksAI/reference/ks_get_option.md)
-  /
-  [`ks_set_option()`](https://crow16384.github.io/ksAI/reference/ks_get_option.md)):
-  named character vector of exact output ids or regex → domain.
-- Bare English `"baseline"` is no longer mapped to `DM`.
+* `as_capsules()` now forms capsules **only via an LLM** (small or large).
+  Deterministic CDISC/domain/row-group formation has been removed. `model` is
+  required.
+* Capsules group whole **tables and figures** (`member_ids`) into a named
+  semantic tree with multi-membership. Figure image assets are resolved on
+  import and attached for vision-capable models (R does not interpret plots).
+* New review helpers: `capsule_tree()`, `capsule_membership()`,
+  `review_capsules()`, `capsule_content()`, `ks_review_capsules()`, plus
+  `as_compact()` / `as_markdown()` methods for capsules.
+* Prompts: `inst/prompts/capsule_classify.md`, `capsule_review.md`.
+* `ks_annotate()` no longer reclassifies CDISC-like domains.
+* Removed option `domain_map` and `llm_domain` / rule-based domain inference.
 
-### Optional small-LLM domain classification
+## Documentation
 
-- `as_capsules(x, model = ..., provider = ..., base_url = ..., llm_domain = c("unknown","always","never"), llm_min_confidence = 0.5)`
-  can call a small local model once per table (chat reused across a
-  study).
-- `ks_annotate(..., force_domain = FALSE, llm_min_confidence = 0.5)`
-  with `model` set also reclassifies remaining `UNKNOWN` domains (once
-  per `source_id`). Use `force_domain = TRUE` to reclassify every table.
-- Closed codes: `AE`, `DM`, `VS`, `LB`, `EFFC`, `EX`, `DS`, `UNKNOWN`
-  (plus common aliases).
-
-### Documentation
-
-- Architecture, Capsule Pipeline Pilot, and Targeted Workflow articles
-  updated for the new parameters and domain flow.
+* Architecture and capsule pipeline docs describe content-based LLM capsules
+  and figure vision attachment.

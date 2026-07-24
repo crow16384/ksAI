@@ -21,7 +21,8 @@ ks_retrieve(
 
 \item{n}{Maximum number of capsules to return.}
 
-\item{filter}{Optional named list with any of: \code{domain}, \code{level}, \code{population}.}
+\item{filter}{Optional named list with any of: \code{label}, \code{population},
+\code{member_id} (output id that must be among capsule members).}
 
 \item{weights}{Named numeric list with \code{semantic}, \code{keyword}, \code{metadata}.}
 

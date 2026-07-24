@@ -1,62 +1,63 @@
-# Clinical Capsule Pipeline — Extended Pilot Study Example
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE,
+  purl = FALSE
+)
+```
 
 ## What this article is for
 
-This article is a **worked, end-to-end walkthrough** of the clinical
-capsule pipeline on the **bundled CDISC Pilot Study** outputs shipped
-with ksAI (`inst/examples/pilot-study/meta`).
+This article is a **worked, end-to-end walkthrough** of the clinical capsule
+pipeline on the **bundled CDISC Pilot Study** outputs shipped with ksAI
+(`inst/examples/pilot-study/meta`).
 
-It is intentionally long. Each section explains not only *what* to call,
-but *why* that step exists, how capsules are shaped for that table type,
-and what you should inspect before moving on. Use it as:
+It is intentionally long. Each section explains not only *what* to call, but
+*why* that step exists, how capsules are shaped by the LLM, and what you
+should inspect before moving on. Use it as:
 
-- a companion to the [Architecture and
-  Pipeline](https://crow16384.github.io/ksAI/articles/Architecture_and_Pipeline.md)
+- a companion to the [Architecture and Pipeline](Architecture_and_Pipeline.html)
   article (concepts → practice);
 - a template for wiring your own study through
-  [`as_capsules()`](https://crow16384.github.io/ksAI/reference/as_capsules.md)
-  →
-  [`ks_annotate()`](https://crow16384.github.io/ksAI/reference/ks_annotate.md)
-  →
-  [`ks_embed()`](https://crow16384.github.io/ksAI/reference/ks_embed.md)
-  →
-  [`ks_retrieve()`](https://crow16384.github.io/ksAI/reference/ks_retrieve.md)
-  →
-  [`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md);
-- a reference for LM Studio setup when running the live LLM / embedding
-  steps.
+  `as_capsules()` → `ks_annotate()` → `ks_embed()` → `ks_retrieve()` → `ks_reason()`;
+- a reference for LM Studio setup when running the live LLM / embedding steps.
 
-Live model calls require a local LM Studio server. Structure, inventory,
-and keyword annotation steps run without any model. Set
-`RUN_LLM <- FALSE` below to stop before network-backed steps.
+Capsule **formation** (`as_capsules()`) always needs a chat model — there is no
+rule-based / CDISC domain path. Keyword annotation can still run offline once
+you have a store. Set `RUN_LLM <- FALSE` below to skip the optional LLM
+annotate pass, embeddings, live retrieval scoring, and reasoning (you can still
+inspect a previously saved `.ksc`).
 
-------------------------------------------------------------------------
+---
 
 ## Why a capsule pipeline (instead of dumping full tables)
 
-Medical writers rarely need every row of every table for one question.
-Full injection of a large AE or laboratory table into an 8k-token local
-model fails or forces aggressive `max_rows` truncation that silently
-drops evidence.
+Medical writers rarely need every row of every table for one question. Full
+injection of a large AE or laboratory table into an 8k-token local model
+fails or forces aggressive `max_rows` truncation that silently drops evidence.
 
-The capsule pipeline solves that by changing **what** the reasoning
-model sees:
+The capsule pipeline solves that by changing **what** the reasoning model sees:
 
 | Approach | What the model receives | Best for |
-|----|----|----|
+|----------|-------------------------|----------|
 | Direct `ks_llm(study, ids=...)` | Entire selected table(s) as markdown/compact | 1–2 known, modest tables |
-| Capsule pipeline | Only top-*n* concept summaries (and optional children) | Many tables, exploratory Q&A, token limits |
+| Capsule pipeline | Only top-*n* concept summaries (and optional children) | Many tables/figures, exploratory Q&A, token limits |
 
-A **clinical capsule** is a concept-centric unit (for example one SOC,
-one PT, one demographic parameter) with:
+A **clinical capsule** is a named semantic unit (for example “cardiac adverse
+events”, “ADAS-Cog efficacy”, “vital signs change from baseline”) with:
 
-- **traceability** — `source_id` + `source_rows` point back to the
-  table;
-- **compact evidence** — `compact_text` and parsed `stats` for the LLM;
-- **hierarchy** — `parent_id` / `child_ids` for progressive disclosure;
-- **retrieval handles** — `domain`, `keywords`, optional `embedding`.
+- **membership** — `member_ids` lists whole table/figure output ids (one output
+  may belong to several capsules);
+- **compact evidence** — `compact_text` concatenates member excerpts for the LLM;
+- **hierarchy** — `parent_id` / `child_ids` from the LLM tree (not MedDRA
+  `ROW_KIND`);
+- **retrieval handles** — `label`, `keywords`, optional `embedding`, and
+  optional `population`.
 
-``` mermaid
+```{mermaid}
 flowchart LR
   subgraph prep["Build once"]
     L["ks_load()"]
@@ -73,10 +74,10 @@ flowchart LR
   S --> R --> Q
 ```
 
-Build the store once per study (or per writing campaign). Reuse the
-`.ksc` file across sessions without reloading ksTFL JSON.
+Build the store once per study (or per writing campaign). Reuse the `.ksc`
+file across sessions without reloading ksTFL JSON.
 
-------------------------------------------------------------------------
+---
 
 ## Prerequisites
 
@@ -85,15 +86,17 @@ Build the store once per study (or per writing campaign). Reuse the
 ksAI ships a self-contained meta folder from the CDISC Pilot Study
 (ksTFL `save_report()` artefacts):
 
-    inst/examples/pilot-study/meta/
-      _index.json
-      *.json          # specs + data
-      *.svg           # figures (ignored by capsule build for tables)
+```
+inst/examples/pilot-study/meta/
+  _index.json
+  *.json          # specs + data
+  *.svg           # figures (included when loaded; vision models get pixels)
+```
 
 Resolve it at runtime with:
 
-``` r
-
+```{r}
+#| eval: false
 meta_path <- system.file(
   "examples", "pilot-study", "meta",
   package = "ksAI"
@@ -103,8 +106,8 @@ dir.exists(meta_path)
 
 In a development checkout before install, use:
 
-``` r
-
+```{r}
+#| eval: false
 meta_path <- file.path("inst", "examples", "pilot-study", "meta")
 ```
 
@@ -113,33 +116,37 @@ meta_path <- file.path("inst", "examples", "pilot-study", "meta")
 This walkthrough is written for **LM Studio** with three roles:
 
 | Role | Example model | Used by |
-|----|----|----|
-| Domain + semantic (small) | `qwen3.5-4b` | `as_capsules(..., model = ...)`, `ks_annotate(..., model = ...)` |
-| Reasoning / CSR (large) | `qwen3.6-14b-a3b-fablevibes` | [`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md) |
-| Reasoning / CSR (large) | `gemma-4-14b-a4b-heretic-v2` | [`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md) |
-| Embeddings | `text-embedding-nomic-embed-text-v1.5` | [`ks_embed()`](https://crow16384.github.io/ksAI/reference/ks_embed.md), query vectors in [`ks_retrieve()`](https://crow16384.github.io/ksAI/reference/ks_retrieve.md) |
+|------|---------------|---------|
+| Capsule formation + semantic (small) | `qwen3.5-4b` | `as_capsules(..., model = ...)`, `ks_annotate(..., model = ...)`, optional `ks_review_capsules()` |
+| Reasoning / CSR (large) | `qwen3.6-14b-a3b-fablevibes` | `ks_reason()` |
+| Reasoning / CSR (large) | `gemma-4-14b-a4b-heretic-v2` | `ks_reason()` |
+| Embeddings | `text-embedding-nomic-embed-text-v1.5` | `ks_embed()`, query vectors in `ks_retrieve()` |
+
+Prefer a **vision-capable** small model when the study includes figures —
+`as_capsules(..., attach_images = TRUE)` attaches readable image assets so the
+classifier can use plot pixels, not only titles.
 
 **URL rule that matters:**
 
 - Chat / annotate / reason: `http://127.0.0.1:1234` (**no** `/v1`)
 - Embeddings: `http://127.0.0.1:1234/v1` (**with** `/v1`)
 
-ellmer’s `chat_lmstudio()` appends `/v1` itself. Passing `/v1` into chat
+ellmer's `chat_lmstudio()` appends `/v1` itself. Passing `/v1` into chat
 constructors makes model discovery fail even when the model is loaded.
 
 ### Packages and options
 
-``` r
-
+```{r}
 library(ksAI)
 
-# Capsule demos keep tables modest so compact_text stays readable.
-# The full pilot AE table can exceed 200 capsules at max_rows = 200;
+# Capsule demos keep tables modest so compact excerpts stay readable.
+# The full pilot AE table can be large at max_rows = 200;
 # 20–50 is enough to demonstrate hierarchy and retrieval.
+PROVIDER <- "lm_studio"
 ks_set_option(
   max_rows = 40L,
   context_format = "compact",
-  provider = "lm_studio",
+  provider = PROVIDER,
   embed_model = "text-embedding-nomic-embed-text-v1.5",
   embed_url = "http://127.0.0.1:1234/v1"
 )
@@ -154,72 +161,36 @@ OUT_DIR <- file.path(tempdir(), "ksAI-capsule-pilot")
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 ```
 
-------------------------------------------------------------------------
+---
 
-## Step 0 — Choose outputs that span clinical domains
+## Step 0 — Choose outputs that span clinical topics
 
-Domain tags on capsules are inferred by `.capsule_infer_domain()` in a
-**language-agnostic** order:
+`as_capsules()` does **not** assign CDISC domains. The LLM groups loaded
+**tables and figures** by meaning into a named capsule tree. Membership is by
+whole output id (`member_ids`); multi-membership is allowed (one AE table can
+sit under both a safety root and a cardiac child).
 
-1.  Explicit `annotations$domain` via
-    [`enrich_context()`](https://crow16384.github.io/ksAI/reference/enrich_context.md)
-2.  Session `domain_map`
-    ([`ks_set_option()`](https://crow16384.github.io/ksAI/reference/ks_get_option.md))
-    — exact output id or regex
-3.  Structural cues (`ROW_KIND` SOC/PT/HLGT/… → `AE`)
-4.  Optional small LLM when
-    `as_capsules(..., model = ..., llm_domain = "always")`
-5.  Multilingual title/subtitle/source lexicon (EN, DE, FR, ES, IT, RU,
-    ZH, JA, …)
-6.  ICH/CSR-style numbering in the output id (`14-5.x` → AE, `14-6.x` →
-    LB, …)
-7.  Optional small LLM when still `UNKNOWN` (`model` + default
-    `llm_domain = "unknown"`)
-8.  `"UNKNOWN"`
+We deliberately load **six tables across five clinical topics** so retrieval
+and inventory are non-trivial:
 
-Bare English `"baseline"` alone is **not** mapped to `DM` (avoids
-tagging efficacy change-from-baseline tables as demographics). Prefer
-`enrich_context(..., annotations = list(domain = ...))`, `domain_map`,
-or a small local model for study-specific / non-English titles:
+| Topic | Typical pilot tables |
+|-------|----------------------|
+| Demographics | `14-2.01` |
+| Efficacy (ADAS / CIBIC) | `14-3.01`, `14-3.02` |
+| Adverse events | `14-5.01` |
+| Laboratory | `14-6.01` |
+| Vital signs | `14-7.02` |
 
-``` r
-
-store <- as_capsules(
-  study,
-  model = "qwen3.5-4b",
-  provider = "lm_studio",
-  base_url = "http://127.0.0.1:1234",
-  llm_domain = "unknown"   # or "always" after hard signals
-)
-# Later: re-tag remaining UNKNOWN domains during annotate
-store <- ks_annotate(store, model = "qwen3.5-4b", provider = "lm_studio",
-                     base_url = "http://127.0.0.1:1234")
-```
-
-| Domain | Typical cues (any language) | Typical pilot tables |
-|----|----|----|
-| `AE` | adverse / НДЯ / 不良事件; MedDRA SOC/PT | `14-5.01`, `14-5.02` |
-| `DM` | demograph / демограф / 人口学 | `14-2.01` |
-| `VS` | vital / витальн / バイタル | `14-7.01`, `14-7.02` |
-| `LB` | lab / лаборатор / 实验室 | `14-6.01`, `14-6.02`, … |
-| `EFFC` | efficacy / эффективност / 疗效 | `14-3.01`, `14-3.02`, … |
-| `EX` / `DS` | exposure / disposition (lexicon or id) | — |
-| `UNKNOWN` | no match (until LLM / override) | figures, untitled stubs |
-
-We deliberately load **six tables across five domains** so retrieval
-filters and domain inventory are non-trivial:
-
-``` r
-
+```{r}
 meta_path <- system.file("examples", "pilot-study", "meta", package = "ksAI")
 
 TABLES <- c(
-  demographics   = "14-2.01",  # DM  — Age, Sex, Race, …
-  efficacy_adas  = "14-3.01",  # EFFC
-  efficacy_cibic = "14-3.02",  # EFFC
-  adverse_events = "14-5.01",  # AE   — SOC / PT hierarchy
-  laboratory     = "14-6.01",  # LB   — visit / parameter rows
-  vital_signs    = "14-7.02"   # VS   — change from baseline
+  demographics   = "14-2.01",
+  efficacy_adas  = "14-3.01",
+  efficacy_cibic = "14-3.02",
+  adverse_events = "14-5.01",
+  laboratory     = "14-6.01",
+  vital_signs    = "14-7.02"
 )
 
 # Discover without loading data JSON:
@@ -227,220 +198,257 @@ catalog <- ks_list_ids(meta_path)
 catalog[catalog$id %in% TABLES, c("id", "type", "title")]
 ```
 
-------------------------------------------------------------------------
+Figures in the same meta folder can be loaded alongside tables. When
+`attach_images = TRUE` (default), readable `asset_path` images are sent to
+vision-capable models during classification and deep review.
+
+---
 
 ## Step 1 — Load a targeted study
 
-``` r
-
+```{r}
 study <- ks_load(meta_path, ids = unname(TABLES))
 study
 # 6 tables, 0 figures, 0 texts (for this subset)
 ```
 
-Each `study[["14-5.01"]]` is a `ks_context`: title, population, columns,
-span headers, rendered rows (with `section` / `kind`), footnotes.
-Capsules are built from those rows — they never re-open the original
-ksTFL session.
+Each `study[["14-5.01"]]` is a `ks_context`: title, population, columns, span
+headers, rendered rows (with `section` / `kind`), footnotes. Capsule
+`compact_text` is built from member excerpts of these contexts — formation
+never re-opens the original ksTFL session.
 
 Inspect one context before capsule construction:
 
-``` r
-
+```{r}
 ctx_ae <- study[["14-5.01"]]
 ctx_ae
 cat(substr(as_compact(ctx_ae), 1, 700), "\n...\n")
 ```
 
-You should see the compact DSL: `SPANS:` legend, SOC section headers, PT
-lines with arm-keyed `n(%)` values. That same DSL is what each capsule
-stores in `compact_text` for its row group.
+You should see the compact DSL: `SPANS:` legend, SOC section headers, PT lines
+with arm-keyed `n(%)` values. Similar excerpts (truncated by
+`max_excerpt_rows`) are what the structure LLM sees in the classify catalog.
 
-------------------------------------------------------------------------
+---
 
 ## Step 2 — Structure agent: `as_capsules()`
 
 ### What the structure agent does
 
-`as_capsules(study)` walks every loaded context and:
+`as_capsules(study, model = ...)` is **LLM-only**. It:
 
-1.  Infers a **domain** once per output (rules; optional `model` /
-    `llm_domain` / `llm_min_confidence` when a small LLM is available).
-2.  Identifies a **row-label column** (first visible column).
-3.  Assigns each row (or section block) a **level**:
-    - AE-style: `OVERALL` → `SOC` → `PT` (from `ROW_KIND` / section
-      headers);
-    - continuous / demo / lab: `OVERALL` → `PARAM`.
-4.  Builds synthetic **SOC** capsules when a section header exists
-    without an explicit SOC kind row.
-5.  Parses arm-wise **stats** where possible.
-6.  Renders **compact_text** for that row slice only.
-7.  Wires **parent_id** / **child_ids**.
-8.  Links **linked_ids** to text listings in the same inferred domain
-    (if any text outputs were loaded).
+1. Builds a catalog of Table/Figure contexts (titles, populations, compact or
+   full excerpts, figure assets when available).
+2. Asks the chat model to propose a named semantic tree (`capsule_id`,
+   `label`, `member_ids`, `parent_id`, confidence).
+3. Batches large catalogs (`batch_size`) and merges partial trees when needed.
+4. Drops capsules below `min_confidence`.
+5. Materializes each capsule with `compact_text` from its members and wires
+   `parent_id` / `child_ids`.
 
-``` r
+There is **no** rule-based domain inference, no MedDRA `ROW_KIND` hierarchy,
+and no `linked_ids` / CDISC domain chain. Hierarchy is whatever meaning the
+LLM assigns.
 
-store <- as_capsules(study)
-# Optional domain LLM (same signature as Step 0):
-# store <- as_capsules(study, model = MODEL_SMALL, provider = PROVIDER,
-#                      base_url = CHAT_URL, llm_domain = "unknown")
+`model` is required. Typical call for this walkthrough:
+
+```{r}
+store <- as_capsules(
+  study,
+  model = MODEL_SMALL,
+  provider = PROVIDER,
+  base_url = CHAT_URL
+)
 store
 length(store$capsules)
 ```
 
-### Inventory by source table and domain
+Useful knobs when refining locally:
 
-Always print an inventory before annotation. It surfaces domain mis-tags
-and unexpected capsule counts early.
+```{r}
+#| eval: false
+store <- as_capsules(
+  study,
+  model = MODEL_SMALL,
+  provider = PROVIDER,
+  base_url = CHAT_URL,
+  max_excerpt_rows = 12L,   # rows per catalog excerpt
+  detail = "compact",       # or "full"
+  min_confidence = 0.5,
+  batch_size = 24L,
+  attach_images = TRUE      # figure pixels for vision models
+)
+```
 
-``` r
+### Inventory by label and members
 
+Always print an inventory before annotation. It surfaces odd labels, empty
+membership, and unexpected multi-membership early.
+
+```{r}
 inventory <- do.call(rbind, lapply(names(store$capsules), function(cid) {
   cap <- store$capsules[[cid]]
   data.frame(
     capsule_id = cid,
-    source_id  = cap$source_id,
-    domain     = cap$domain,
-    level      = cap$level,
     label      = cap$label,
-    n_rows     = length(cap$source_rows),
+    members    = paste(cap$member_ids, collapse = ", "),
+    n_members  = length(cap$member_ids),
+    parent_id  = cap$parent_id %||% NA_character_,
     n_children = length(cap$child_ids),
     stringsAsFactors = FALSE
   )
 }))
+inventory
 
-# Counts by table × domain × level
-print(as.data.frame(table(
-  source = inventory$source_id,
-  domain = inventory$domain
-)))
+# Which capsules claim each output?
+for (cid in names(store$capsules)) {
+  cap <- store$capsules[[cid]]
+  cat(cid, ": ", cap$label, " — members ",
+      paste(cap$member_ids, collapse = ", "), "\n", sep = "")
+}
+```
 
-print(as.data.frame(table(
-  source = inventory$source_id,
-  level  = inventory$level
-)))
+Structural review helpers (no LLM for `review_capsules` / `capsule_tree`):
+
+```{r}
+print(review_capsules(store, study))   # empty / unknown members / cycles / orphans
+capsule_tree(store)                    # printable parent → child tree
+
+# Membership table (output_id × capsule); multi-membership shows n_capsules > 1
+print(capsule_membership(store, study))
+```
+
+Optional deep critique with a (vision-capable) model:
+
+```{r}
+if (RUN_LLM) {
+  rev <- ks_review_capsules(
+    store,
+    study,
+    model = MODEL_SMALL,
+    provider = PROVIDER,
+    base_url = CHAT_URL
+  )
+  cat(rev$response)
+}
+```
+
+Inspect one capsule’s full member renders from the live study (not the
+truncated build excerpt):
+
+```{r}
+sample_id <- names(store$capsules)[[1]]
+cat(capsule_content(store, sample_id, study, format = "compact"))
 ```
 
 ### Anatomy of one capsule (inspect deeply)
 
-Pick one AE SOC capsule and one demographic PARAM capsule:
+Pick capsules by **label** (exact ids are LLM-assigned slugs):
 
-``` r
-
-# Exact IDs depend on labels; search rather than hard-coding when exploring:
-cardiac_ids <- grep("CARDIAC", names(store$capsules), value = TRUE)
+```{r}
+# Exact IDs depend on the model; search labels rather than hard-coding:
+cardiac_ids <- names(store$capsules)[
+  grepl("cardiac|bradycardia|heart",
+        vapply(store$capsules, function(c) c$label, character(1)),
+        ignore.case = TRUE)
+]
 cardiac_ids
 
-cap_soc <- store$capsules[[cardiac_ids[[1]]]]
-cap_soc
+cap <- store$capsules[[cardiac_ids[[1]]]]
+cap
 
-# Traceability — which table rows produced this capsule?
-cap_soc$source_id
-cap_soc$source_rows
+# Membership — which outputs belong to this concept?
+cap$member_ids
 
-# Hierarchy
-cap_soc$parent_id
-cap_soc$child_ids   # PT capsules under this SOC
+# Hierarchy (LLM tree, not MedDRA ROW_KIND)
+cap$parent_id
+cap$child_ids
 
-# Evidence the LLM will see later
-cat(cap_soc$compact_text)
-
-# Parsed statistics (list structure; arm / measure dependent)
-str(cap_soc$stats, max.level = 2)
+# Evidence the reasoning model will see later
+cat(cap$compact_text)
 
 # Semantic slots (empty until annotate / embed)
-cap_soc$concepts
-cap_soc$keywords
-cap_soc$embedding   # NULL until ks_embed()
+cap$concepts
+cap$keywords
+cap$embedding   # NULL until ks_embed()
 ```
 
-**What “good” looks like for an AE SOC capsule:**
+**What “good” looks like:**
 
-- `level == "SOC"`, `domain == "AE"`;
-- `child_ids` lists PT capsule ids under that SOC;
-- `compact_text` contains arm-keyed incidence lines, not the whole AE
-  table;
-- `source_rows` is a contiguous or section-scoped index set you could
-  audit against `study[["14-5.01"]]$rows`.
+- `label` is a readable clinical concept name (any language the titles use);
+- `member_ids` are real study output ids (audit with `review_capsules()`);
+- multi-membership is coherent (same table under related parent/child labels);
+- `compact_text` is a member excerpt bundle, not the entire study;
+- `child_ids` refine the parent when the tree has depth.
 
-Compare with a demographics capsule:
+Compare with a demographics- or efficacy-oriented capsule:
 
-``` r
-
-age_ids <- grep("AGE|Age", names(store$capsules), value = TRUE, ignore.case = TRUE)
-cap_age <- store$capsules[[age_ids[[1]]]]
-cap_age$level      # typically PARAM
-cap_age$domain     # typically DM
-cat(cap_age$compact_text)
+```{r}
+age_ids <- names(store$capsules)[
+  grepl("age|demographic|baseline characteristic",
+        vapply(store$capsules, function(c) c$label, character(1)),
+        ignore.case = TRUE)
+]
+if (length(age_ids)) {
+  cap_age <- store$capsules[[age_ids[[1]]]]
+  cap_age$label
+  cap_age$member_ids
+  cat(cap_age$compact_text)
+}
 ```
 
-PARAM capsules are flatter: fewer children, one characteristic or visit
-row, still arm-spanned compact text when the source table uses span
-headers.
+### Persist the store after formation
 
-### Persist the empty (structure-only) store
+Save early so you can resume without re-calling the structure model:
 
-Even before enrichment, save the store so you can resume without
-rebuilding:
-
-``` r
-
+```{r}
 path_struct <- file.path(OUT_DIR, "pilot_capsules_structure.ksc")
 save_capsules(store, path_struct)
 # Later: store <- load_capsules(path_struct)
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Step 3 — Semantic agent: `ks_annotate()`
 
 ### Pass 1 — deterministic keywords (no model)
 
-`ks_annotate(store)` without a `model` argument always runs a pure-R
-pass:
+`ks_annotate(store)` without a `model` argument always runs a pure-R pass:
 
 - tokenizes `label` + `compact_text` (+ existing concepts);
 - drops a small stopword list;
-- maps known abbreviations to synonyms (`teae` → “treatment emergent
-  adverse event”, `soc` → “system organ class”, …);
+- maps known abbreviations to synonyms (`teae` → “treatment emergent adverse
+  event”, `soc` → “system organ class”, …);
 - seeds `concepts` from the label when empty.
 
-``` r
-
+```{r}
 store <- ks_annotate(store)
 
 # Keywords are now retrieval fodder even without embeddings
-cap_soc <- store$capsules[[cardiac_ids[[1]]]]
-head(cap_soc$keywords, 30)
-cap_soc$synonyms
-cap_soc$concepts
+cap <- store$capsules[[cardiac_ids[[1]]]]
+head(cap$keywords, 30)
+cap$synonyms
+cap$concepts
 ```
 
 **Why this pass matters:** keyword overlap is 30% of the default
-[`ks_retrieve()`](https://crow16384.github.io/ksAI/reference/ks_retrieve.md)
-score. A capsule with empty keywords and no embedding ranks only on
-metadata filters. Always run at least the R pass before retrieval demos.
+`ks_retrieve()` score. A capsule with empty keywords and no embedding ranks
+only on metadata filters. Always run at least the R pass before retrieval
+demos.
 
 ### Pass 2 — optional small-LLM enrichment
 
-A 4B local model can add clinical concepts and synonyms that pure
-tokenization misses (for example mapping “SINUS BRADYCARDIA” to broader
-cardiac terms). The same `model` argument also reclassifies capsules
-still tagged `UNKNOWN` (once per `source_id`). Use `force_domain = TRUE`
-to reclassify every table. This is slower and memory-heavy: unload the
-26B model in LM Studio first if needed.
+A 4B local model can add clinical concepts and synonyms that pure tokenization
+misses (for example mapping “SINUS BRADYCARDIA” to broader cardiac terms).
+`model` is optional and only used for concept / synonym / keyword extraction.
 
-``` r
-
+```{r}
 if (RUN_LLM) {
   # Annotate a representative subset first — full stores can be large.
   demo_ids <- unique(c(
-    cardiac_ids[1],
-    age_ids[1],
-    grep("14-3.01", names(store$capsules), value = TRUE)[1],
-    grep("14-6.01", names(store$capsules), value = TRUE)[1],
-    grep("14-7.02", names(store$capsules), value = TRUE)[1]
+    head(cardiac_ids, 1L),
+    head(age_ids, 1L),
+    head(names(store$capsules), 3L)
   ))
 
   demo <- store
@@ -448,12 +456,10 @@ if (RUN_LLM) {
 
   demo <- ks_annotate(
     demo,
-    model              = MODEL_SMALL,
-    provider           = "lm_studio",
-    base_url           = CHAT_URL,
-    force              = TRUE,   # re-run even if concepts already seeded
-    force_domain       = FALSE,  # only repair UNKNOWN domains
-    llm_min_confidence = 0.5
+    model    = MODEL_SMALL,
+    provider = PROVIDER,
+    base_url = CHAT_URL,
+    force    = TRUE   # re-run even if concepts already seeded
   )
 
   store$capsules[demo_ids] <- demo$capsules
@@ -467,22 +473,19 @@ if (RUN_LLM) {
 ```
 
 The LLM is instructed to return JSON with keys `concepts`, `synonyms`,
-`keywords`. Non-JSON wrappers are stripped when possible; failed parses
-leave the capsule unchanged for that field.
+`keywords`. Non-JSON wrappers are stripped when possible; failed parses leave
+the capsule unchanged for that field.
 
-------------------------------------------------------------------------
+---
 
 ## Step 4 — Embeddings: `ks_embed()`
 
 Embeddings turn capsule `compact_text` into dense vectors for semantic
-similarity. Without them,
-[`ks_retrieve()`](https://crow16384.github.io/ksAI/reference/ks_retrieve.md)
-still works (keyword + metadata only); with them, natural-language
-queries align better to clinical phrasing that does not share surface
-tokens with the table.
+similarity. Without them, `ks_retrieve()` still works (keyword + metadata
+only); with them, natural-language queries align better to clinical phrasing
+that does not share surface tokens with the table.
 
-``` r
-
+```{r}
 if (RUN_LLM) {
   store <- ks_embed(store)   # uses embed_model / embed_url options
 
@@ -501,69 +504,63 @@ if (RUN_LLM) {
 **Operational notes:**
 
 - Capsules with empty `compact_text` may be skipped on embed failure.
-- Re-running
-  [`ks_embed()`](https://crow16384.github.io/ksAI/reference/ks_embed.md)
-  skips capsules that already have vectors unless `force = TRUE`.
-- Persist after embedding so you do not re-hit the endpoint every
-  session:
+- Re-running `ks_embed()` skips capsules that already have vectors unless
+  `force = TRUE`.
+- Persist after embedding so you do not re-hit the endpoint every session:
 
-``` r
-
+```{r}
 path_full <- file.path(OUT_DIR, "pilot_capsules.ksc")
 save_capsules(store, path_full)
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Step 5 — Retrieval agent: `ks_retrieve()`
 
 ### Scoring model
 
-For each capsule,
-[`ks_retrieve()`](https://crow16384.github.io/ksAI/reference/ks_retrieve.md)
-computes:
+For each capsule, `ks_retrieve()` computes:
 
-``` math
+$$
 \text{score} = w_s \cdot \text{semantic} + w_k \cdot \text{keyword} + w_m \cdot \text{metadata}
-```
+$$
 
-Defaults: $`w_s = 0.6`$, $`w_k = 0.3`$, $`w_m = 0.1`$.
+Defaults: $w_s = 0.6$, $w_k = 0.3$, $w_m = 0.1$.
 
 | Signal | Range | Meaning |
-|----|----|----|
+|--------|-------|---------|
 | Semantic | 0–1 (cosine) | Query embedding vs `capsule$embedding`; 0 if either missing |
 | Keyword | 0–1 | Fraction of query tokens found in keywords ∪ label |
-| Metadata | 0–1 | Fraction of supplied `filter` fields that match exactly |
+| Metadata | 0–1 | Fraction of supplied `filter` fields that match |
 
-Filters (`domain`, `level`, `population`) **do not hard-exclude**
-capsules in the current implementation; they contribute to the metadata
-score. Prefer post-filtering the subset or inspecting scores when you
-need a hard domain gate.
+Filters accept `label`, `member_id`, and/or `population`. They **do not
+hard-exclude** capsules in the current implementation; they contribute to the
+metadata score. Prefer post-filtering the subset or inspecting scores when you
+need a hard gate (for example “must include table `14-5.01`”).
 
-### Domain-specific queries on the pilot store
+### Content queries on the pilot store
 
-``` r
-
+```{r}
 queries <- list(
   ae_cardiac = list(
     query  = "cardiac disorders and bradycardia in the high dose arm",
-    filter = list(domain = "AE", level = "SOC")
+    filter = list(member_id = "14-5.01")
   ),
   efficacy = list(
     query  = "ADAS-Cog change from baseline week 24 treatment difference",
-    filter = list(level = "PARAM")
+    filter = list(member_id = "14-3.01")
   ),
   laboratory = list(
     query  = "laboratory summary statistics change from baseline over visits",
-    filter = list(domain = "LB")
+    filter = list(member_id = "14-6.01")
   ),
   vital_signs = list(
     query  = "systolic blood pressure change from baseline end of treatment",
-    filter = list(level = "PARAM")
+    filter = list(label = "vital")
   ),
   demographics = list(
     query  = "age sex race baseline demographic characteristics",
-    filter = list(domain = "DM", level = "PARAM")
+    filter = list(member_id = "14-2.01")
   )
 )
 
@@ -588,7 +585,7 @@ if (RUN_LLM) {
     store,
     query = "cardiac bradycardia",
     n = 5L,
-    filter = list(domain = "AE"),
+    filter = list(member_id = "14-5.01"),
     # Without embeddings, semantic weight is wasted — shift mass to keywords:
     weights = list(semantic = 0, keyword = 0.8, metadata = 0.2)
   )
@@ -599,71 +596,67 @@ if (RUN_LLM) {
 
 **How to read `scores`:**
 
-- High `semantic`, low `keyword` — paraphrased clinical language matched
-  the embedding space.
+- High `semantic`, low `keyword` — paraphrased clinical language matched the
+  embedding space.
 - High `keyword`, low `semantic` — shared tokens (or no embeddings).
-- High `metadata` — filter fields matched; still compare against raw
-  rank.
+- High `metadata` — filter fields matched; still compare against raw rank.
 
 Inspect the winning capsule’s evidence before reasoning:
 
-``` r
-
+```{r}
 # Using the offline or first live subset:
 top_id <- names(sub_offline$capsules)[[1]]
 cat(store$capsules[[top_id]]$compact_text)
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Step 6 — Reasoning agent: `ks_reason()`
 
-[`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md)
-is retrieve + generate in one call:
+`ks_reason()` is retrieve + generate in one call:
 
-1.  `ks_retrieve(store, query, n)` (same scoring as above);
-2.  optional **progressive disclosure** — if `expand = TRUE`, pull every
-    `child_ids` capsule from the store into the prompt;
-3.  format capsule metadata + `compact_text` into a context block;
-4.  chat with a larger model under a system prompt that forbids
-    inventing statistics.
+1. `ks_retrieve(store, query, n)` (same scoring as above);
+2. optional **progressive disclosure** — if `expand = TRUE`, pull every
+   `child_ids` capsule from the store into the prompt;
+3. format capsule metadata + `compact_text` into a context block;
+4. chat with a larger model under a system prompt that forbids inventing
+   statistics.
 
-``` r
-
+```{r}
 if (RUN_LLM) {
-  # 6a. Safety narrative at SOC level, then expand PT children
+  # 6a. Safety narrative, then expand child capsules under retrieved parents
   out_ae <- ks_reason(
     store,
     query    = "Summarize cardiac disorder incidence across treatment arms. Cite specific n(%) values from the capsules.",
     n        = 6L,
     expand   = TRUE,
     model    = MODEL_LARGE,
-    provider = "lm_studio",
+    provider = PROVIDER,
     base_url = CHAT_URL
   )
   out_ae
   cat(out_ae$response)
 
-  # 6b. Efficacy question — usually PARAM capsules, expand often unnecessary
+  # 6b. Efficacy question — expand often unnecessary if leaves already answer
   out_eff <- ks_reason(
     store,
     query    = "What treatment differences for ADAS-Cog change from baseline at Week 24 appear in the capsules?",
     n        = 6L,
     expand   = FALSE,
     model    = MODEL_LARGE,
-    provider = "lm_studio",
+    provider = PROVIDER,
     base_url = CHAT_URL
   )
   cat(out_eff$response)
 
-  # 6c. Cross-domain question — do not over-filter; let retrieval pick
+  # 6c. Cross-topic question — do not over-filter; let retrieval pick
   out_mix <- ks_reason(
     store,
     query    = "Are there safety signals that should contextualize interpretation of the primary efficacy results?",
     n        = 5L,
     expand   = FALSE,
     model    = MODEL_LARGE,
-    provider = "lm_studio",
+    provider = PROVIDER,
     base_url = CHAT_URL
   )
   cat(out_mix$response)
@@ -675,42 +668,41 @@ if (RUN_LLM) {
 
 ### Progressive disclosure in practice
 
-    expand = FALSE  →  only the top-n retrieved capsules
-    expand = TRUE   →  top-n plus all of their child_ids (e.g. SOC → PTs)
+```
+expand = FALSE  →  only the top-n retrieved capsules
+expand = TRUE   →  top-n plus all of their child_ids
+```
 
-Use `expand = TRUE` when the question needs preferred-term detail under
-a system organ class. Use `FALSE` when SOC-level (or PARAM-level)
-summaries already answer the question — smaller prompts, less noise,
-lower chance of context overflow on local 8k models.
+Use `expand = TRUE` when the question needs finer detail under a broad parent
+capsule (for example a safety root whose children split cardiac vs hepatic).
+Use `FALSE` when the retrieved leaves already answer the question — smaller
+prompts, less noise, lower chance of context overflow on local 8k models.
 
 ### Guardrails you should still enforce as a writer
 
 The model is instructed not to invent numbers, but you must:
 
-1.  Check that cited `n(%)` values appear in the printed capsule
-    `compact_text` or original table;
-2.  Remember `max_rows` truncated the source table — rare PTs below the
-    row cap never became capsules;
-3.  Treat domain tags as retrieval aids, not regulatory classifications.
+1. Check that cited `n(%)` values appear in the printed capsule
+   `compact_text`, `capsule_content()`, or original table;
+2. Remember `max_rows` / `max_excerpt_rows` truncated what the structure model
+   and capsules could see — rare rows below the cap may never appear;
+3. Treat capsule labels as retrieval aids, not regulatory classifications.
 
-------------------------------------------------------------------------
+---
 
 ## Step 7 — Chain capsule reasoning into CSR drafting
 
 Capsule answers are often drafts. A common pattern is:
 
-1.  [`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md)
-    over retrieved capsules → safety/efficacy bullets;
-2.  [`save_result()`](https://crow16384.github.io/ksAI/reference/save_result.md);
-3.  [`ks_llm()`](https://crow16384.github.io/ksAI/reference/ks_llm.md)
-    on a **small** related table with `prior =` that result to draft a
-    CSR paragraph, verifying numbers against the table context.
+1. `ks_reason()` over retrieved capsules → safety/efficacy bullets;
+2. `save_result()`;
+3. `ks_llm()` on a **small** related table with `prior =` that result to draft
+   a CSR paragraph, verifying numbers against the table context.
 
 Keep the second step on a compact table (ADAS or CIBIC, not the full AE
 listing). Prior text plus a large table overflows local contexts.
 
-``` r
-
+```{r}
 if (RUN_LLM) {
   prior <- load_result(file.path(OUT_DIR, "reason-cardiac"))
 
@@ -728,7 +720,7 @@ if (RUN_LLM) {
     ),
     prior    = prior,
     model    = MODEL_LARGE,
-    provider = "lm_studio",
+    provider = PROVIDER,
     base_url = CHAT_URL
   )
 
@@ -737,42 +729,37 @@ if (RUN_LLM) {
 }
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Step 8 — Operational checklist for your own study
 
-1.  **Load targeted ids** — start with the domains your question needs;
-    add tables later rather than always loading the full meta folder.
-2.  **Set `max_rows` deliberately** — capsules cannot recover rows never
-    imported.
-3.  **`as_capsules(study)`** — inventory `domain` × `level` ×
-    `source_id`; optional `model` / `llm_domain` for UNKNOWN titles.
-4.  **Fix or accept domain tags** — use
-    `enrich_context(..., annotations = list(domain = ...))`,
-    `domain_map`, or `ks_annotate(..., model = ..., force_domain = ...)`
-    for non-English / custom titles.
-5.  **`ks_annotate(store)`** — always; add `model =` for
-    concepts/keywords and UNKNOWN domain repair on high-value capsules
-    if needed.
-6.  **`ks_embed(store)`** — when an embedding endpoint is available.
-7.  **[`save_capsules()`](https://crow16384.github.io/ksAI/reference/save_capsules.md)**
-    — `.ksc` is the reusable artefact.
-8.  **[`ks_retrieve()`](https://crow16384.github.io/ksAI/reference/ks_retrieve.md)
-    /
-    [`ks_reason()`](https://crow16384.github.io/ksAI/reference/ks_reason.md)**
-    — tune `n`, `expand`, `filter`, and `weights` per question type.
-9.  **Audit** — every claim against `compact_text` or the source
-    `ks_context`.
+1. **Load targeted ids** — start with the tables/figures your question needs;
+   add outputs later rather than always loading the full meta folder.
+2. **Set `max_rows` deliberately** — capsules cannot recover rows never
+   imported; `max_excerpt_rows` further limits what the structure LLM sees.
+3. **`as_capsules(study, model = ...)`** — required model; inventory labels and
+   `member_ids`; review with `review_capsules()`, `capsule_tree()`,
+   `capsule_membership()`, and optionally `ks_review_capsules()`.
+4. **Accept multi-membership** — one output in several capsules is intentional;
+   audit with `capsule_membership()` rather than forcing a single domain tag.
+5. **`ks_annotate(store)`** — always; add `model =` for concepts/keywords on
+   high-value capsules if needed (no domain re-tagging).
+6. **`ks_embed(store)`** — when an embedding endpoint is available.
+7. **`save_capsules()`** — `.ksc` is the reusable artefact.
+8. **`ks_retrieve()` / `ks_reason()`** — tune `n`, `expand`,
+   `filter` (`label` / `member_id` / `population`), and `weights` per question.
+9. **Audit** — every claim against `compact_text`, `capsule_content()`, or the
+   source `ks_context`.
 10. **Chain** — optional `ks_llm(..., prior =)` on a small table for CSR
     polish.
 
-------------------------------------------------------------------------
+---
 
 ## Runnable script twin
 
 The same pilot meta folder powers the executable script:
 
-``` r
+```r
 # Development checkout
 Rscript inst/examples/pilot-study-workflows.R
 
@@ -783,23 +770,23 @@ Rscript system.file(
 )
 ```
 
-That script covers direct LLM skills, fact filtering, capsules, and
-chaining in one file. This article isolates the **capsule pipeline** and
-documents the decisions behind each call.
+That script covers direct LLM skills, fact filtering, capsules, and chaining
+in one file. This article isolates the **capsule pipeline** and documents the
+decisions behind each call.
 
-------------------------------------------------------------------------
+---
 
 ## Design takeaways
 
-- Capsules are the **unit of retrieval and reasoning**, not whole
-  tables.
-- Structure is deterministic R; semantics can be cheap (keywords) or
-  richer (small LLM + embeddings).
-- Reasoning models should see **evidence subsets**, with PT detail
-  pulled on demand via `expand`.
-- Traceability (`source_id`, `source_rows`) is what makes capsule-based
-  CSR drafts auditable in a regulated setting.
-- The bundled pilot study is enough to exercise AE hierarchy, lab/visit
-  PARAMs, demographics, vitals, and efficacy tables in one store — use
-  the inventory tables in Step 2 as your ground truth before trusting
-  retrieval filters.
+- Capsules are the **unit of retrieval and reasoning**, not whole tables.
+- Formation is **LLM-only**: named semantic tree + `member_ids`, with optional
+  figure images for vision models — not CDISC domains or MedDRA `ROW_KIND`.
+- Semantics can be cheap (keywords) or richer (small LLM + embeddings).
+- Reasoning models should see **evidence subsets**, with child detail pulled on
+  demand via `expand`.
+- Traceability is via `member_ids` plus `capsule_content()` / source
+  `ks_context` — that audit path is what makes capsule-based CSR drafts
+  usable in a regulated setting.
+- The bundled pilot study is enough to exercise AE, lab/visit, demographics,
+  vitals, and efficacy content in one store — use the inventory in Step 2 as
+  your ground truth before trusting retrieval filters.
