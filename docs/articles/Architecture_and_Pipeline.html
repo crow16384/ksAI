@@ -486,6 +486,8 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 <li>Large catalogs are batched (<code>batch_size</code>); multiple chunks are merged with a second LLM pass</li>
 <li>Capsules below <code>min_confidence</code> are dropped; unknown member ids are ignored</li>
 </ul>
+<p><code>n_ctx</code> cannot be passed to <code><a href="../reference/as_capsules.html">as_capsules()</a></code> — raise it in LM Studio / Ollama when loading the model.</p>
+<p><strong>Option A — small context</strong> (~8k): shrink prompts; merge pass stitches the tree.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span></span>
@@ -493,8 +495,28 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 <span>  model <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
 <span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
 <span>  base_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
+<span>  detail <span class="op">=</span> <span class="st">"compact"</span>,</span>
+<span>  max_excerpt_rows <span class="op">=</span> <span class="fl">4L</span>,</span>
+<span>  batch_size <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  attach_images <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  params <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/params.html" class="external-link">params</a></span><span class="op">(</span>temperature <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  api_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>enable_thinking <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<p><strong>Option B — large context</strong> (raise Context Length first, e.g. 32k+): larger batches; better whole-catalog grouping. Vision images only if the model supports them.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span></span>
+<span>  <span class="va">study</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
+<span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
+<span>  base_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
+<span>  detail <span class="op">=</span> <span class="st">"compact"</span>,</span>
 <span>  max_excerpt_rows <span class="op">=</span> <span class="fl">12L</span>,</span>
-<span>  min_confidence <span class="op">=</span> <span class="fl">0.5</span></span>
+<span>  batch_size <span class="op">=</span> <span class="fl">12L</span>,</span>
+<span>  attach_images <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  params <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/params.html" class="external-link">params</a></span><span class="op">(</span>temperature <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  api_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>enable_thinking <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 <p><strong>Capsule anatomy:</strong></p>
@@ -546,7 +568,7 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 </tbody>
 </table>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/capsule_tree.html">capsule_tree</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/capsule_membership.html">capsule_membership</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">study</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/review_capsules.html">review_capsules</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">study</span><span class="op">)</span></span>
@@ -569,7 +591,7 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 <strong>Optional small-LLM pass</strong> (when <code>model</code> is set): structured JSON extraction of <code>concepts</code>, <code>synonyms</code>, <code>keywords</code>. A 4B local model is sufficient. Use <code>force = TRUE</code> to recompute even when keywords already exist.</li>
 </ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span>   <span class="co"># keywords only</span></span>
 <span></span>
 <span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span></span>
@@ -620,7 +642,7 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 <p>Returns a <code>ks_capsule_subset</code> with ranked capsules and score breakdown.</p>
 <p>Optional <code>filter</code> fields contribute to the metadata score:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_retrieve.html">ks_retrieve</a></span><span class="op">(</span><span class="va">store</span>,</span>
 <span>  query <span class="op">=</span> <span class="st">"cardiac bradycardia high dose"</span>,</span>
 <span>  n <span class="op">=</span> <span class="fl">5</span>,</span>
@@ -640,7 +662,7 @@ Additional user request: &lt;refinement instructions&gt;</code></pre>
 </ol>
 <p>The reasoning model <strong>never sees the full study</strong> — only retrieved capsule summaries. This is the capsule pipeline’s primary token advantage.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span><span class="va">store</span>,</span>
 <span>  query <span class="op">=</span> <span class="st">"Summarize cardiac findings with n(%) per arm"</span>,</span>
 <span>  n <span class="op">=</span> <span class="fl">5</span>,</span>
@@ -896,7 +918,7 @@ analysis/
 </h2>
 <p>A full walkthrough of all four workflows (direct, facts, capsule, chaining) ships with the package:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Development checkout</span></span>
 <span><span class="co"># Rscript inst/examples/pilot-study-workflows.R</span></span>
 <span></span>

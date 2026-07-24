@@ -1,51 +1,63 @@
-# ks_review_capsules
+# LLM Deep Review of Capsules
 
+Asks an LLM (typically vision-capable for figures) to critique capsule
+grouping and member content.
+
+## Usage
+
+``` r
+ks_review_capsules(
+  store,
+  study,
+  model,
+  capsule_ids = NULL,
+  provider = ks_get_option("provider"),
+  base_url = NULL,
+  attach_images = TRUE,
+  echo = "none",
+  ...
+)
 ```
-ks_review_capsules            package:ksAI             R Documentation
 
-_L_L_M _D_e_e_p _R_e_v_i_e_w _o_f _C_a_p_s_u_l_e_s
+## Arguments
 
-_D_e_s_c_r_i_p_t_i_o_n:
+- store:
 
-     Asks an LLM (typically vision-capable for figures) to critique
-     capsule grouping and member content.
+  A `ks_capsule_store`.
 
-_U_s_a_g_e:
+- study:
 
-     ks_review_capsules(
-       store,
-       study,
-       model,
-       capsule_ids = NULL,
-       provider = ks_get_option("provider"),
-       base_url = NULL,
-       attach_images = TRUE,
-       echo = "none",
-       ...
-     )
-     
-_A_r_g_u_m_e_n_t_s:
+  A `ks_study` for member expansion and figure assets.
 
-   store: A ‘ks_capsule_store’.
+- model:
 
-   study: A ‘ks_study’ for member expansion and figure assets.
+  LLM model name.
 
-   model: LLM model name.
+- capsule_ids:
 
-capsule_ids: Optional subset of capsule ids (default: all).
+  Optional subset of capsule ids (default: all).
 
-provider: LLM provider.
+- provider:
 
-base_url: Optional provider URL.
+  LLM provider.
 
-attach_images: Logical. Attach figure images for vision models.
+- base_url:
 
-    echo: Echo mode for ellmer.
+  Optional provider URL.
 
-     ...: Extra args to the chat constructor.
+- attach_images:
 
-_V_a_l_u_e:
+  Logical. Attach figure images for vision models.
 
-     A ks_result.
+- echo:
 
-```
+  Echo mode for ellmer.
+
+- ...:
+
+  Extra args to the chat constructor.
+
+## Value
+
+A
+[ks_result](https://crow16384.github.io/ksAI/reference/is_ks_result.md).

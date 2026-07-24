@@ -66,12 +66,16 @@ loaded_out <- load_result("analysis/table-14-3-01")
   [`save_result()`](https://crow16384.github.io/ksAI/reference/save_result.md)
   /
   [`load_result()`](https://crow16384.github.io/ksAI/reference/load_result.md).
-- **Clinical capsules** —
-  [`as_capsules(study, model = ...)`](https://crow16384.github.io/ksAI/reference/as_capsules.md)
-  asks an LLM to group tables and figures into a named semantic tree
-  (`member_ids`, multi-membership). Vision-capable models receive figure
-  images. Review with `review_capsules()` / `capsule_content()` /
-  `ks_review_capsules()`, then enrich with
+- **Clinical capsules** — `as_capsules(study, model = ...)` asks an LLM
+  to group tables and figures into a named semantic tree (`member_ids`,
+  multi-membership). Vision-capable models receive figure images. Review
+  with
+  [`review_capsules()`](https://crow16384.github.io/ksAI/reference/review_capsules.md)
+  /
+  [`capsule_content()`](https://crow16384.github.io/ksAI/reference/capsule_content.md)
+  /
+  [`ks_review_capsules()`](https://crow16384.github.io/ksAI/reference/ks_review_capsules.md),
+  then enrich with
   [`ks_annotate()`](https://crow16384.github.io/ksAI/reference/ks_annotate.md),
   embed, retrieve, and reason.
 - **Skills** — customizable Markdown prompt templates. Built-ins:

@@ -1,4 +1,4 @@
-# Render a `ks_context` as a Human-Readable Markdown Table
+# Render Capsule as Markdown
 
 Reconstructs the output the way a reader sees it: real column labels
 (not raw column codes), treatment-arm/span-header groups,
@@ -10,6 +10,9 @@ table far more richly than the machine-shaped JSON produced by
 ## Usage
 
 ``` r
+# S3 method for class 'ks_capsule'
+as_markdown(x, ...)
+
 as_markdown(x, ...)
 ```
 
@@ -24,6 +27,8 @@ as_markdown(x, ...)
   Unused; for S3 compatibility.
 
 ## Value
+
+Character scalar.
 
 A length-1 character string of Markdown.
 

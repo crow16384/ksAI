@@ -13,10 +13,11 @@
 <url><loc>https://crow16384.github.io/ksAI/reference/as_facts.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/as_json.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/as_markdown.html</loc></url>
+<url><loc>https://crow16384.github.io/ksAI/reference/capsule_content.html</loc></url>
+<url><loc>https://crow16384.github.io/ksAI/reference/capsule_membership.html</loc></url>
+<url><loc>https://crow16384.github.io/ksAI/reference/capsule_tree.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/enrich_context.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/index.html</loc></url>
-<url><loc>https://crow16384.github.io/ksAI/reference/is_ks_capsule.html</loc></url>
-<url><loc>https://crow16384.github.io/ksAI/reference/is_ks_capsule_store.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/is_ks_context.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/is_ks_facts.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/is_ks_result.html</loc></url>
@@ -24,6 +25,8 @@
 <url><loc>https://crow16384.github.io/ksAI/reference/is_kschat.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/ksAI-package.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/ks_annotate.html</loc></url>
+<url><loc>https://crow16384.github.io/ksAI/reference/ks_capsule.html</loc></url>
+<url><loc>https://crow16384.github.io/ksAI/reference/ks_capsule_store.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/ks_chat.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/ks_embed.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/ks_get_option.html</loc></url>
@@ -33,9 +36,11 @@
 <url><loc>https://crow16384.github.io/ksAI/reference/ks_load.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/ks_reason.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/ks_retrieve.html</loc></url>
+<url><loc>https://crow16384.github.io/ksAI/reference/ks_review_capsules.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/load_capsules.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/load_result.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/retrieve.html</loc></url>
+<url><loc>https://crow16384.github.io/ksAI/reference/review_capsules.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/save_capsules.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/save_result.html</loc></url>
 <url><loc>https://crow16384.github.io/ksAI/reference/save_study.html</loc></url>

@@ -261,20 +261,15 @@ There is **no** rule-based domain inference, no MedDRA `ROW_KIND` hierarchy,
 and no `linked_ids` / CDISC domain chain. Hierarchy is whatever meaning the
 LLM assigns.
 
-`model` is required. Typical call for this walkthrough:
+`model` is required. **`n_ctx` cannot be set in `as_capsules()`** — raise
+Context Length when loading the model in LM Studio / Ollama.
 
-```{r}
-store <- as_capsules(
-  study,
-  model = MODEL_SMALL,
-  provider = PROVIDER,
-  base_url = CHAT_URL
-)
-store
-length(store$capsules)
-```
+Two practical call patterns:
 
-Useful knobs when refining locally:
+**Option A — small context** (e.g. `n_ctx = 8192`): shrink each classify
+prompt. Partial trees are merged by a second LLM pass. Good when you cannot
+raise context; weaker for subtle cross-output multi-membership than a single
+full-catalog call.
 
 ```{r}
 #| eval: false
@@ -283,12 +278,52 @@ store <- as_capsules(
   model = MODEL_SMALL,
   provider = PROVIDER,
   base_url = CHAT_URL,
-  max_excerpt_rows = 12L,   # rows per catalog excerpt
-  detail = "compact",       # or "full"
-  min_confidence = 0.5,
-  batch_size = 24L,
-  attach_images = TRUE      # figure pixels for vision models
+  detail = "compact",
+  max_excerpt_rows = 4L,
+  batch_size = 1L,
+  attach_images = FALSE,
+  params = ellmer::params(temperature = 0),
+  api_args = list(enable_thinking = FALSE)
 )
+```
+
+**Option B — large context** (raise Context Length in LM Studio, e.g. 32k+):
+larger batches / excerpts; better whole-catalog interpretation. Use
+`attach_images = TRUE` only with a vision-capable model.
+
+```{r}
+#| eval: false
+store <- as_capsules(
+  study,
+  model = MODEL_SMALL,
+  provider = PROVIDER,
+  base_url = CHAT_URL,
+  detail = "compact",
+  max_excerpt_rows = 12L,
+  batch_size = 12L,
+  attach_images = FALSE,  # TRUE only if the model has vision
+  params = ellmer::params(temperature = 0),
+  api_args = list(enable_thinking = FALSE)
+)
+```
+
+This walkthrough uses Option A by default so it fits typical local 8k windows:
+
+```{r}
+store <- as_capsules(
+  study,
+  model = MODEL_SMALL,
+  provider = PROVIDER,
+  base_url = CHAT_URL,
+  detail = "compact",
+  max_excerpt_rows = 4L,
+  batch_size = 1L,
+  attach_images = FALSE,
+  params = ellmer::params(temperature = 0),
+  api_args = list(enable_thinking = FALSE)
+)
+store
+length(store$capsules)
 ```
 
 ### Inventory by label and members

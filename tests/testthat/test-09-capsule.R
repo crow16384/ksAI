@@ -112,3 +112,16 @@ test_that("save_capsules/load_capsules round-trip member_ids", {
     sort(c("a", "b"))
   )
 })
+
+test_that(".cli_safe escapes braces so HTTP JSON errors do not break cli", {
+  raw <- '{"error":{"code":400,"message":"bad request"}}'
+  safe <- ksAI:::.cli_safe(raw)
+  expect_equal(safe, '{{"error":{{"code":400,"message":"bad request"}}}}')
+  # Simulated abort path used by as_capsules — must not hit cli parse errors.
+  err <- tryCatch(
+    cli::cli_abort(c("Capsule classification LLM call failed.", x = safe)),
+    error = function(e) e
+  )
+  expect_match(conditionMessage(err), "400", fixed = TRUE)
+  expect_false(grepl("Could not parse cli", conditionMessage(err), fixed = TRUE))
+})

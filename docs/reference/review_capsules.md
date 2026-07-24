@@ -1,27 +1,24 @@
-# review_capsules
+# Structural Audit of a Capsule Store
 
+Offline checks (no LLM): empty capsules, unknown members, cycles,
+orphans.
+
+## Usage
+
+``` r
+review_capsules(store, study = NULL)
 ```
-review_capsules              package:ksAI              R Documentation
 
-_S_t_r_u_c_t_u_r_a_l _A_u_d_i_t _o_f _a _C_a_p_s_u_l_e _S_t_o_r_e
+## Arguments
 
-_D_e_s_c_r_i_p_t_i_o_n:
+- store:
 
-     Offline checks (no LLM): empty capsules, unknown members, cycles,
-     orphans.
+  A `ks_capsule_store`.
 
-_U_s_a_g_e:
+- study:
 
-     review_capsules(store, study = NULL)
-     
-_A_r_g_u_m_e_n_t_s:
+  Optional `ks_study` for catalog membership checks.
 
-   store: A ‘ks_capsule_store’.
+## Value
 
-   study: Optional ‘ks_study’ for catalog membership checks.
-
-_V_a_l_u_e:
-
-     A ‘ks_capsule_review’ list with findings.
-
-```
+A `ks_capsule_review` list with findings.

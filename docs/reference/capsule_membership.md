@@ -1,28 +1,24 @@
-# capsule_membership
+# Capsule Membership Table
 
+Capsule Membership Table
+
+## Usage
+
+``` r
+capsule_membership(store, study = NULL)
 ```
-capsule_membership            package:ksAI             R Documentation
 
-_C_a_p_s_u_l_e _M_e_m_b_e_r_s_h_i_p _T_a_b_l_e
+## Arguments
 
-_D_e_s_c_r_i_p_t_i_o_n:
+- store:
 
-     Capsule Membership Table
+  A `ks_capsule_store`.
 
-_U_s_a_g_e:
+- study:
 
-     capsule_membership(store, study = NULL)
-     
-_A_r_g_u_m_e_n_t_s:
+  Optional `ks_study` to include catalog ids with zero membership.
 
-   store: A ‘ks_capsule_store’.
+## Value
 
-   study: Optional ‘ks_study’ to include catalog ids with zero
-          membership.
-
-_V_a_l_u_e:
-
-     A data.frame with columns ‘output_id’, ‘capsule_id’, ‘label’,
-     ‘n_capsules’.
-
-```
+A data.frame with columns `output_id`, `capsule_id`, `label`,
+`n_capsules`.

@@ -46,14 +46,10 @@
   Render a `ks_context` as a JSON String
 
 - [`as_markdown()`](https://crow16384.github.io/ksAI/reference/as_markdown.md)
-  :
-
-  Render a `ks_context` as a Human-Readable Markdown Table
+  : Render Capsule as Markdown
 
 - [`as_compact()`](https://crow16384.github.io/ksAI/reference/as_compact.md)
-  :
-
-  Render a `ks_context` as Compact DSL Text
+  : Render Capsule Compact Text
 
 - [`enrich_context()`](https://crow16384.github.io/ksAI/reference/enrich_context.md)
   : Enrich a Table Context with User Knowledge
@@ -77,18 +73,18 @@
 
 ## Clinical Capsules
 
-- [`is_ks_capsule()`](https://crow16384.github.io/ksAI/reference/is_ks_capsule.md)
+- [`is_ks_capsule()`](https://crow16384.github.io/ksAI/reference/ks_capsule.md)
   :
 
   The `ks_capsule` Class
 
-- [`is_ks_capsule_store()`](https://crow16384.github.io/ksAI/reference/is_ks_capsule_store.md)
+- [`is_ks_capsule_store()`](https://crow16384.github.io/ksAI/reference/ks_capsule_store.md)
   :
 
   The `ks_capsule_store` Class
 
 - [`as_capsules()`](https://crow16384.github.io/ksAI/reference/as_capsules.md)
-  : Build Clinical Capsules from Contexts
+  : Build Clinical Capsules from Contexts (LLM)
 
 - [`save_capsules()`](https://crow16384.github.io/ksAI/reference/save_capsules.md)
   :
@@ -99,6 +95,21 @@
   :
 
   Load a Capsule Store from a `.ksc` File
+
+- [`capsule_tree()`](https://crow16384.github.io/ksAI/reference/capsule_tree.md)
+  : Capsule Tree as Nested List / Printable Structure
+
+- [`capsule_membership()`](https://crow16384.github.io/ksAI/reference/capsule_membership.md)
+  : Capsule Membership Table
+
+- [`review_capsules()`](https://crow16384.github.io/ksAI/reference/review_capsules.md)
+  : Structural Audit of a Capsule Store
+
+- [`capsule_content()`](https://crow16384.github.io/ksAI/reference/capsule_content.md)
+  : Detailed Member Content for One Capsule
+
+- [`ks_review_capsules()`](https://crow16384.github.io/ksAI/reference/ks_review_capsules.md)
+  : LLM Deep Review of Capsules
 
 - [`ks_annotate()`](https://crow16384.github.io/ksAI/reference/ks_annotate.md)
   : Annotate Capsule Store with Semantic Metadata

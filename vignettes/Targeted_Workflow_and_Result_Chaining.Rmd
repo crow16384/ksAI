@@ -186,16 +186,23 @@ prompt, ask an LLM to group **tables and figures** into **clinical capsules** �
 named semantic units with a meaning-based tree and multi-membership
 (`member_ids`). There is no rule-based / CDISC formation path: `model` is
 required. Vision-capable models receive figure images; R only attaches assets.
+`n_ctx` is set when the model is loaded in LM Studio — not in this call.
+
+**Option A — small context** (fit ~8k): small batches, no images, merge pass.
 
 ```{r}
-# LLM-only capsule formation (small or large model).
+# LLM-only capsule formation — Option A (8k-class context).
 store <- as_capsules(
   study,
   model = "qwen3.5-4b",
   provider = "lm_studio",
   base_url = "http://127.0.0.1:1234",
-  max_excerpt_rows = 12L,
-  attach_images = TRUE
+  detail = "compact",
+  max_excerpt_rows = 4L,
+  batch_size = 1L,
+  attach_images = FALSE,
+  params = ellmer::params(temperature = 0),
+  api_args = list(enable_thinking = FALSE)
 )
 store
 
@@ -213,6 +220,23 @@ cap$child_ids          # child capsule ids in the semantic tree
 
 # Expand full member content from the live study.
 cat(capsule_content(store, cap$capsule_id, study, format = "compact"))
+```
+
+**Option B — large context** (raise Context Length in LM Studio first, e.g. 32k+):
+
+```{r}
+# store <- as_capsules(
+#   study,
+#   model = "qwen3.5-4b",
+#   provider = "lm_studio",
+#   base_url = "http://127.0.0.1:1234",
+#   detail = "compact",
+#   max_excerpt_rows = 12L,
+#   batch_size = 12L,
+#   attach_images = FALSE,  # TRUE only with a vision model
+#   params = ellmer::params(temperature = 0),
+#   api_args = list(enable_thinking = FALSE)
+# )
 ```
 
 The hierarchy is an LLM-assigned tree (`parent_id` / `child_ids`) by information

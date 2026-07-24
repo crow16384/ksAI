@@ -29,7 +29,7 @@
 
     <a class="navbar-brand me-2" href="index.html">ksAI</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -109,7 +109,7 @@
 <li>
 <strong><code>ks_result</code></strong> — persisted output from <code><a href="reference/ks_llm.html">ks_llm()</a></code>. Save/load with <code><a href="reference/save_result.html">save_result()</a></code> / <code><a href="reference/load_result.html">load_result()</a></code>.</li>
 <li>
-<strong>Clinical capsules</strong> — <code><a href="reference/as_capsules.html">as_capsules(study, model = ...)</a></code> asks an LLM to group tables and figures into a named semantic tree (<code>member_ids</code>, multi-membership). Vision-capable models receive figure images. Review with <code>review_capsules()</code> / <code>capsule_content()</code> / <code>ks_review_capsules()</code>, then enrich with <code><a href="reference/ks_annotate.html">ks_annotate()</a></code>, embed, retrieve, and reason.</li>
+<strong>Clinical capsules</strong> — <code>as_capsules(study, model = ...)</code> asks an LLM to group tables and figures into a named semantic tree (<code>member_ids</code>, multi-membership). Vision-capable models receive figure images. Review with <code><a href="reference/review_capsules.html">review_capsules()</a></code> / <code><a href="reference/capsule_content.html">capsule_content()</a></code> / <code><a href="reference/ks_review_capsules.html">ks_review_capsules()</a></code>, then enrich with <code><a href="reference/ks_annotate.html">ks_annotate()</a></code>, embed, retrieve, and reason.</li>
 <li>
 <strong>Skills</strong> — customizable Markdown prompt templates. Built-ins: <code>describe</code>, <code>summarize</code>, <code>csr_section</code>, <code>review</code>. Add your own with <code>ks_set_option(skills_dir = ...)</code>; see <code><a href="reference/ks_list_skills.html">ks_list_skills()</a></code>.</li>
 </ul>

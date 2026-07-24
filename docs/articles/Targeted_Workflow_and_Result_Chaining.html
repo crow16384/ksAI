@@ -226,16 +226,23 @@ figures</strong> into <strong>clinical capsules</strong> — named
 semantic units with a meaning-based tree and multi-membership
 (<code>member_ids</code>). There is no rule-based / CDISC formation
 path: <code>model</code> is required. Vision-capable models receive
-figure images; R only attaches assets.</p>
+figure images; R only attaches assets. <code>n_ctx</code> is set when
+the model is loaded in LM Studio — not in this call.</p>
+<p><strong>Option A — small context</strong> (fit ~8k): small batches,
+no images, merge pass.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># LLM-only capsule formation (small or large model).</span></span>
+<code class="sourceCode R"><span><span class="co"># LLM-only capsule formation — Option A (8k-class context).</span></span>
 <span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_capsules.html">as_capsules</a></span><span class="op">(</span></span>
 <span>  <span class="va">study</span>,</span>
 <span>  model <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
 <span>  provider <span class="op">=</span> <span class="st">"lm_studio"</span>,</span>
 <span>  base_url <span class="op">=</span> <span class="st">"http://127.0.0.1:1234"</span>,</span>
-<span>  max_excerpt_rows <span class="op">=</span> <span class="fl">12L</span>,</span>
-<span>  attach_images <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  detail <span class="op">=</span> <span class="st">"compact"</span>,</span>
+<span>  max_excerpt_rows <span class="op">=</span> <span class="fl">4L</span>,</span>
+<span>  batch_size <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  attach_images <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  params <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/params.html" class="external-link">params</a></span><span class="op">(</span>temperature <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  api_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>enable_thinking <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">store</span></span>
 <span></span>
@@ -253,12 +260,27 @@ figure images; R only attaches assets.</p>
 <span></span>
 <span><span class="co"># Expand full member content from the live study.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/capsule_content.html">capsule_content</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">cap</span><span class="op">$</span><span class="va">capsule_id</span>, <span class="va">study</span>, format <span class="op">=</span> <span class="st">"compact"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Option B — large context</strong> (raise Context Length in LM
+Studio first, e.g. 32k+):</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># store &lt;- as_capsules(</span></span>
+<span><span class="co">#   study,</span></span>
+<span><span class="co">#   model = "qwen3.5-4b",</span></span>
+<span><span class="co">#   provider = "lm_studio",</span></span>
+<span><span class="co">#   base_url = "http://127.0.0.1:1234",</span></span>
+<span><span class="co">#   detail = "compact",</span></span>
+<span><span class="co">#   max_excerpt_rows = 12L,</span></span>
+<span><span class="co">#   batch_size = 12L,</span></span>
+<span><span class="co">#   attach_images = FALSE,  # TRUE only with a vision model</span></span>
+<span><span class="co">#   params = ellmer::params(temperature = 0),</span></span>
+<span><span class="co">#   api_args = list(enable_thinking = FALSE)</span></span>
+<span><span class="co"># )</span></span></code></pre></div>
 <p>The hierarchy is an LLM-assigned tree (<code>parent_id</code> /
 <code>child_ids</code>) by information meaning — not MedDRA
 <code>ROW_KIND</code> levels. One output may appear in several
 capsules.</p>
 <p>Persist the store alongside your <code>.ks</code> file:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/save_capsules.html">save_capsules</a></span><span class="op">(</span><span class="va">store</span>, <span class="st">"my_study.ksc"</span><span class="op">)</span></span>
 <span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_capsules.html">load_capsules</a></span><span class="op">(</span><span class="st">"my_study.ksc"</span><span class="op">)</span></span></code></pre></div>
 <hr>
@@ -269,7 +291,7 @@ capsules.</p>
 <div class="section level3">
 <h3 id="a--pure-r-keyword-pass-always-fast-no-model-needed">6a. Pure-R keyword pass (always fast, no model needed)<a class="anchor" aria-label="anchor" href="#a--pure-r-keyword-pass-always-fast-no-model-needed"></a>
 </h3>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
 <span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">store</span><span class="op">$</span><span class="va">capsules</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">keywords</span></span></code></pre></div>
 <p>This tokenizes <code>label</code>, <code>member_ids</code>, and
@@ -284,7 +306,7 @@ etc.).</p>
 richer keywords (JSON keys <code>concepts</code>, <code>synonyms</code>,
 <code>keywords</code>). Domain reclassification is not part of
 annotation.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_annotate.html">ks_annotate</a></span><span class="op">(</span></span>
 <span>  <span class="va">store</span>,</span>
 <span>  model    <span class="op">=</span> <span class="st">"qwen3.5-4b"</span>,</span>
@@ -300,7 +322,7 @@ annotation.</p>
 <code>/v1/embeddings</code> endpoint —
 <code>text-embedding-nomic-embed-text-v1.5</code> runs out of the box in
 LM Studio:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ks_get_option.html">ks_set_option</a></span><span class="op">(</span></span>
 <span>  embed_model <span class="op">=</span> <span class="st">"text-embedding-nomic-embed-text-v1.5"</span>,</span>
 <span>  embed_url   <span class="op">=</span> <span class="st">"http://127.0.0.1:1234/v1"</span></span>
@@ -348,7 +370,7 @@ three signals blended by configurable weights:</p>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">subset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_retrieve.html">ks_retrieve</a></span><span class="op">(</span></span>
 <span>  <span class="va">store</span>,</span>
 <span>  query  <span class="op">=</span> <span class="st">"cardiac events in the Xanomeline High Dose arm"</span>,</span>
@@ -368,7 +390,7 @@ three signals blended by configurable weights:</p>
 one call. The model <strong>never sees the full study</strong> — only
 the capsule compact texts for the matched subset, plus label / members /
 tree metadata:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>  <span class="va">store</span>,</span>
 <span>  query    <span class="op">=</span> <span class="st">"Summarize cardiac findings and statistical significance"</span>,</span>
@@ -382,7 +404,7 @@ tree metadata:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">out</span><span class="op">$</span><span class="va">response</span><span class="op">)</span></span></code></pre></div>
 <p>Set <code>expand = TRUE</code> for progressive disclosure: children
 of matched capsules are included via <code>child_ids</code>:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">out_expanded</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ks_reason.html">ks_reason</a></span><span class="op">(</span></span>
 <span>  <span class="va">store</span>,</span>
 <span>  query    <span class="op">=</span> <span class="st">"Which related outputs drove the cardiac safety theme?"</span>,</span>
@@ -393,7 +415,7 @@ of matched capsules are included via <code>child_ids</code>:</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Optional LLM critique of the capsule tree (vision models can review
 figures):</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># rev &lt;- ks_review_capsules(</span></span>
 <span><span class="co">#   store, study,</span></span>
 <span><span class="co">#   model = "qwen3:14b",</span></span>

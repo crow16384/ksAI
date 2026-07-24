@@ -380,6 +380,11 @@ JSON into a `ks_capsule_store`.
   second LLM pass
 - Capsules below `min_confidence` are dropped; unknown member ids are ignored
 
+`n_ctx` cannot be passed to `as_capsules()` — raise it in LM Studio / Ollama
+when loading the model.
+
+**Option A — small context** (~8k): shrink prompts; merge pass stitches the tree.
+
 ```{r}
 #| eval: false
 store <- as_capsules(
@@ -387,8 +392,31 @@ store <- as_capsules(
   model = "qwen3.5-4b",
   provider = "lm_studio",
   base_url = "http://127.0.0.1:1234",
+  detail = "compact",
+  max_excerpt_rows = 4L,
+  batch_size = 1L,
+  attach_images = FALSE,
+  params = ellmer::params(temperature = 0),
+  api_args = list(enable_thinking = FALSE)
+)
+```
+
+**Option B — large context** (raise Context Length first, e.g. 32k+): larger
+batches; better whole-catalog grouping. Vision images only if the model supports them.
+
+```{r}
+#| eval: false
+store <- as_capsules(
+  study,
+  model = "qwen3.5-4b",
+  provider = "lm_studio",
+  base_url = "http://127.0.0.1:1234",
+  detail = "compact",
   max_excerpt_rows = 12L,
-  min_confidence = 0.5
+  batch_size = 12L,
+  attach_images = FALSE,
+  params = ellmer::params(temperature = 0),
+  api_args = list(enable_thinking = FALSE)
 )
 ```
 

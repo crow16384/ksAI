@@ -132,9 +132,56 @@ print.ks_capsule_store <- function(x, ...) {
 #' @param batch_size Maximum catalog items per classify call before an LLM
 #'   merge pass.
 #' @param attach_images Logical. Attach figure assets via ellmer when readable.
-#' @param ... Extra args forwarded to the ellmer chat constructor.
+#' @param ... Extra args forwarded to the ellmer chat constructor
+#'   (e.g. `params = ellmer::params(temperature = 0)`,
+#'   `api_args = list(enable_thinking = FALSE)`). Context length (`n_ctx`)
+#'   is **not** set here — configure it when loading the model in LM Studio
+#'   or Ollama.
 #'
 #' @return A `ks_capsule_store`.
+#'
+#' @section Context size:
+#' Two practical patterns when the prompt exceeds the model window:
+#'
+#' **Option A (small `n_ctx`, e.g. 8192):** shrink each classify call with
+#' `batch_size = 1`, low `max_excerpt_rows`, and `attach_images = FALSE`.
+#' Partial trees are merged by a second LLM pass. Preferable when you cannot
+#' raise context; slightly weaker for subtle cross-output multi-membership.
+#'
+#' **Option B (large `n_ctx`):** raise Context Length in LM Studio first, then
+#' use larger `batch_size` / `max_excerpt_rows`. Better whole-catalog
+#' interpretation. Set `attach_images = TRUE` only with a vision-capable model.
+#'
+#' @examples
+#' \dontrun{
+#' # Option A — fit an 8k-class local model
+#' store <- as_capsules(
+#'   study,
+#'   model = "qwen3.5-4b",
+#'   provider = "lm_studio",
+#'   base_url = "http://127.0.0.1:1234",
+#'   detail = "compact",
+#'   max_excerpt_rows = 4L,
+#'   batch_size = 1L,
+#'   attach_images = FALSE,
+#'   params = ellmer::params(temperature = 0),
+#'   api_args = list(enable_thinking = FALSE)
+#' )
+#'
+#' # Option B — after raising Context Length in LM Studio (e.g. 32k+)
+#' store <- as_capsules(
+#'   study,
+#'   model = "qwen3.5-4b",
+#'   provider = "lm_studio",
+#'   base_url = "http://127.0.0.1:1234",
+#'   detail = "compact",
+#'   max_excerpt_rows = 12L,
+#'   batch_size = 12L,
+#'   attach_images = FALSE,
+#'   params = ellmer::params(temperature = 0),
+#'   api_args = list(enable_thinking = FALSE)
+#' )
+#' }
 #' @export
 as_capsules <- function(x,
                         model,
@@ -696,7 +743,23 @@ ks_review_capsules <- function(store,
       }
     }
   }
-  response <- as.character(do.call(chat$chat, turn))
+  response <- tryCatch(
+    as.character(do.call(chat$chat, turn)),
+    error = function(e) {
+      msg <- conditionMessage(e)
+      hints <- character()
+      if (attach_images && grepl("\\b400\\b|unsupported|image|vision|multimodal", msg, ignore.case = TRUE)) {
+        hints <- c(
+          i = "Figure images were attached. Use a vision-capable model, or set {.code attach_images = FALSE}."
+        )
+      }
+      cli::cli_abort(c(
+        "Capsule review LLM call failed.",
+        x = .cli_safe(msg),
+        hints
+      ))
+    }
+  )
   new_ks_result(
     ids = ids,
     skill = "capsule_review",
@@ -710,6 +773,16 @@ ks_review_capsules <- function(store,
 # ---------------------------------------------------------------------------
 # Internal: classify / merge / validate
 # ---------------------------------------------------------------------------
+
+#' Escape `{` / `}` so LLM / HTTP error text is safe for cli glue.
+#'
+#' @keywords internal
+#' @noRd
+.cli_safe <- function(x) {
+  x <- as.character(x %||% "")
+  x <- gsub("{", "{{", x, fixed = TRUE)
+  gsub("}", "}}", x, fixed = TRUE)
+}
 
 #' @keywords internal
 #' @noRd
@@ -747,7 +820,7 @@ ks_review_capsules <- function(store,
     error = function(e) {
       cli::cli_abort(c(
         "Could not create LLM chat for {.fn as_capsules}.",
-        x = conditionMessage(e)
+        x = .cli_safe(conditionMessage(e))
       ))
     }
   )
@@ -828,7 +901,7 @@ ks_review_capsules <- function(store,
       error = function(e) {
         cli::cli_warn(c(
           "Failed to convert figure {.path {path}} for vision.",
-          x = conditionMessage(e)
+          x = .cli_safe(conditionMessage(e))
         ))
         FALSE
       }
@@ -844,7 +917,7 @@ ks_review_capsules <- function(store,
     error = function(e) {
       cli::cli_warn(c(
         "Could not attach figure image {.path {path}}.",
-        x = conditionMessage(e)
+        x = .cli_safe(conditionMessage(e))
       ))
       NULL
     }
@@ -883,9 +956,17 @@ ks_review_capsules <- function(store,
   out <- tryCatch(
     as.character(do.call(chat$chat, turn)),
     error = function(e) {
+      msg <- conditionMessage(e)
+      hints <- character()
+      if (attach_images && grepl("\\b400\\b|unsupported|image|vision|multimodal", msg, ignore.case = TRUE)) {
+        hints <- c(
+          i = "Figure images were attached. Use a vision-capable model, or set {.code attach_images = FALSE}."
+        )
+      }
       cli::cli_abort(c(
         "Capsule classification LLM call failed.",
-        x = conditionMessage(e)
+        x = .cli_safe(msg),
+        hints
       ))
     }
   )
@@ -917,7 +998,7 @@ ks_review_capsules <- function(store,
     error = function(e) {
       cli::cli_abort(c(
         "Capsule merge LLM call failed.",
-        x = conditionMessage(e)
+        x = .cli_safe(conditionMessage(e))
       ))
     }
   )

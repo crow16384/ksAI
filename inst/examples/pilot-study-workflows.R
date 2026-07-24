@@ -16,7 +16,7 @@
 ##   A. Direct context  — ks_llm() on targeted tables (compact format)
 ##   B. Structured facts — as_facts() + retrieve() for row-level filtering
 ##   C. Capsule pipeline — as_capsules → annotate → embed → retrieve → reason
-##      (optional model= on as_capsules / ks_annotate for domain + concepts)
+##      (model= required; Option A = small context / Option B = large n_ctx)
 ##   D. Result chaining — save_result() / load_result() + prior =
 
 suppressPackageStartupMessages({
@@ -240,13 +240,46 @@ cat(as_compact(facts_bsln_high), "\n")
 hr("5. Workflow C — Capsule pipeline")
 
 # 5a. Build capsule store from tables + figures (LLM required).
-# Prefer a vision-capable model when figures are included.
-store <- as_capsules(
-  study,
-  model = MODEL_SMALL,
-  provider = PROVIDER,
-  base_url = CHAT_URL
-)
+# n_ctx is set when the model is loaded in LM Studio / Ollama — not in this call.
+#
+# Option A — small context (e.g. n_ctx = 8192): shrink each classify prompt;
+#            partial trees are merged by a second LLM pass. Weaker for subtle
+#            cross-output multi-membership than a single full-catalog call.
+# Option B — large context (raise Context Length in LM Studio, e.g. 32k+):
+#            larger batches / excerpts; better whole-catalog interpretation.
+#            Use attach_images = TRUE only with a vision-capable model.
+
+CAPSULE_CONTEXT <- Sys.getenv("KSAI_CAPSULE_CONTEXT", "small")  # "small" | "large"
+
+if (identical(CAPSULE_CONTEXT, "large")) {
+  cli_h2("5a. as_capsules — Option B (large n_ctx in LM Studio)")
+  store <- as_capsules(
+    study,
+    model = MODEL_SMALL,
+    provider = PROVIDER,
+    base_url = CHAT_URL,
+    detail = "compact",
+    max_excerpt_rows = 12L,
+    batch_size = 12L,
+    attach_images = FALSE,  # TRUE only if MODEL_SMALL has vision
+    params = ellmer::params(temperature = 0),
+    api_args = list(enable_thinking = FALSE)
+  )
+} else {
+  cli_h2("5a. as_capsules — Option A (fit 8k-class context)")
+  store <- as_capsules(
+    study,
+    model = MODEL_SMALL,
+    provider = PROVIDER,
+    base_url = CHAT_URL,
+    detail = "compact",
+    max_excerpt_rows = 4L,
+    batch_size = 1L,
+    attach_images = FALSE,
+    params = ellmer::params(temperature = 0),
+    api_args = list(enable_thinking = FALSE)
+  )
+}
 cli_alert_success("Built {length(store$capsules)} capsules")
 
 # Inventory by capsule label / members.

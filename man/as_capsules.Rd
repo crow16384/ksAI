@@ -65,7 +65,11 @@ merge pass.}
 
 \item{attach_images}{Logical. Attach figure assets via ellmer when readable.}
 
-\item{...}{Extra args forwarded to the ellmer chat constructor.}
+\item{...}{Extra args forwarded to the ellmer chat constructor
+(e.g. \code{params = ellmer::params(temperature = 0)},
+\code{api_args = list(enable_thinking = FALSE)}). Context length (\code{n_ctx})
+is \strong{not} set here — configure it when loading the model in LM Studio
+or Ollama.}
 }
 \value{
 A \code{ks_capsule_store}.
@@ -75,4 +79,49 @@ Groups \strong{tables} and \strong{figures} into a named semantic capsule tree u
 an LLM only (small or large). There is no rule-based / CDISC formation path.
 \code{model} is required. Figure image pixels are attached for vision-capable
 models; R does not interpret plots.
+}
+\section{Context size}{
+
+Two practical patterns when the prompt exceeds the model window:
+
+\strong{Option A (small \code{n_ctx}, e.g. 8192):} shrink each classify call with
+\code{batch_size = 1}, low \code{max_excerpt_rows}, and \code{attach_images = FALSE}.
+Partial trees are merged by a second LLM pass. Preferable when you cannot
+raise context; slightly weaker for subtle cross-output multi-membership.
+
+\strong{Option B (large \code{n_ctx}):} raise Context Length in LM Studio first, then
+use larger \code{batch_size} / \code{max_excerpt_rows}. Better whole-catalog
+interpretation. Set \code{attach_images = TRUE} only with a vision-capable model.
+}
+
+\examples{
+\dontrun{
+# Option A — fit an 8k-class local model
+store <- as_capsules(
+  study,
+  model = "qwen3.5-4b",
+  provider = "lm_studio",
+  base_url = "http://127.0.0.1:1234",
+  detail = "compact",
+  max_excerpt_rows = 4L,
+  batch_size = 1L,
+  attach_images = FALSE,
+  params = ellmer::params(temperature = 0),
+  api_args = list(enable_thinking = FALSE)
+)
+
+# Option B — after raising Context Length in LM Studio (e.g. 32k+)
+store <- as_capsules(
+  study,
+  model = "qwen3.5-4b",
+  provider = "lm_studio",
+  base_url = "http://127.0.0.1:1234",
+  detail = "compact",
+  max_excerpt_rows = 12L,
+  batch_size = 12L,
+  attach_images = FALSE,
+  params = ellmer::params(temperature = 0),
+  api_args = list(enable_thinking = FALSE)
+)
+}
 }

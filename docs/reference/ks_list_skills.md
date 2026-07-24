@@ -21,14 +21,9 @@ and `path`.
 
 ``` r
 ks_list_skills()
-#>          name   source
-#> 1 csr_section built-in
-#> 2    describe built-in
-#> 3      review built-in
-#> 4   summarize built-in
-#>                                                                                                                       path
-#> 1 /private/var/folders/rn/3s0h46m118j426j_fmjr1z8m0000gn/T/RtmpJ3qOFU/temp_libpath1edd350ac77f/ksAI/prompts/csr_section.md
-#> 2    /private/var/folders/rn/3s0h46m118j426j_fmjr1z8m0000gn/T/RtmpJ3qOFU/temp_libpath1edd350ac77f/ksAI/prompts/describe.md
-#> 3      /private/var/folders/rn/3s0h46m118j426j_fmjr1z8m0000gn/T/RtmpJ3qOFU/temp_libpath1edd350ac77f/ksAI/prompts/review.md
-#> 4   /private/var/folders/rn/3s0h46m118j426j_fmjr1z8m0000gn/T/RtmpJ3qOFU/temp_libpath1edd350ac77f/ksAI/prompts/summarize.md
+#>          name   source                                                     path
+#> 1 csr_section built-in /Users/meguty/Develop/R/ksAI/inst/prompts/csr_section.md
+#> 2    describe built-in    /Users/meguty/Develop/R/ksAI/inst/prompts/describe.md
+#> 3      review built-in      /Users/meguty/Develop/R/ksAI/inst/prompts/review.md
+#> 4   summarize built-in   /Users/meguty/Develop/R/ksAI/inst/prompts/summarize.md
 ```

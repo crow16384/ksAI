@@ -1,31 +1,33 @@
-# capsule_content
+# Detailed Member Content for One Capsule
 
+Expands full member contexts from a live
+[ks_study](https://crow16384.github.io/ksAI/reference/is_ks_study.md)
+(not truncated build excerpts).
+
+## Usage
+
+``` r
+capsule_content(store, capsule_id, study, format = c("compact", "markdown"))
 ```
-capsule_content              package:ksAI              R Documentation
 
-_D_e_t_a_i_l_e_d _M_e_m_b_e_r _C_o_n_t_e_n_t _f_o_r _O_n_e _C_a_p_s_u_l_e
+## Arguments
 
-_D_e_s_c_r_i_p_t_i_o_n:
+- store:
 
-     Expands full member contexts from a live ks_study (not truncated
-     build excerpts).
+  A `ks_capsule_store`.
 
-_U_s_a_g_e:
+- capsule_id:
 
-     capsule_content(store, capsule_id, study, format = c("compact", "markdown"))
-     
-_A_r_g_u_m_e_n_t_s:
+  Capsule id.
 
-   store: A ‘ks_capsule_store’.
+- study:
 
-capsule_id: Capsule id.
+  A `ks_study` containing the member contexts.
 
-   study: A ‘ks_study’ containing the member contexts.
+- format:
 
-  format: ‘"compact"’ or ‘"markdown"’.
+  `"compact"` or `"markdown"`.
 
-_V_a_l_u_e:
+## Value
 
-     Character scalar with concatenated member renders.
-
-```
+Character scalar with concatenated member renders.
